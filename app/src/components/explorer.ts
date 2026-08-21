@@ -6,23 +6,25 @@ import { attachScrub, frame } from "../lib/frame";
 import { bn, btc as fmtBtc, mult, sats, usd, usd0 } from "../lib/format";
 import { RANGE_LABEL, rangeIndices, type RangeKey } from "../lib/range";
 import {
-  drawMnav, drawPrice, drawRiverUsd, mnavLabels, overlay, priceLabels, riverUsdLabels,
+  drawMnav, drawPerShare, drawPrice, drawRiverUsd,
+  mnavLabels, overlay, perShareLabels, priceLabels, riverUsdLabels,
 } from "../charts/timeseries";
 import { drawRiverBtc, riverBtcLabels, type RiverBtcGeo } from "../charts/riverBtc";
 
-const H = { price: 190, mnav: 190, riverUsd: 210, riverBtc: 240 } as const;
+const H = { price: 190, mnav: 190, perShare: 190, riverUsd: 210, riverBtc: 240 } as const;
 type ChartKey = keyof typeof H;
 
 const LABEL: Record<ChartKey, string> = {
   price: "MSTR 與 BTC 價格(同基期指數化,對數軸)",
   mnav: "mNAV — basic(看不到優先股)vs CEBE(扣求償權後)",
+  perShare: "每股持幣:帳面(gross BPS)vs 實際(CEBE),對數軸",
   riverUsd: "美元計價:求償權堆疊 + MSTR 市值,虛線是 BTC 總市值",
   riverBtc: "BTC 計價:同樣的結構,但縱軸是「幣的顆數」",
 };
 
 /** 放大用的高度 —— 電腦螢幕上把圖拉高,波動才看得清楚。 */
 const H_ZOOM: Record<ChartKey, number> = {
-  price: 520, mnav: 520, riverUsd: 560, riverBtc: 600,
+  price: 520, mnav: 520, perShare: 520, riverUsd: 560, riverBtc: 600,
 };
 
 function staleBadge(d: number): { cls: string; txt: string } {
@@ -111,6 +113,7 @@ export function explorer(root: HTMLElement, opts: ExplorerOpts = {}): () => void
   const detach: Array<() => void> = [];
   let gPrice: ReturnType<typeof drawPrice> | null = null;
   let gMnav: ReturnType<typeof drawMnav> | null = null;
+  let gPerShare: ReturnType<typeof drawPerShare> | null = null;
   let gRiverUsd: ReturnType<typeof drawRiverUsd> | null = null;
   let gRiverBtc: RiverBtcGeo | null = null;
   let perShare = false;
@@ -124,6 +127,7 @@ export function explorer(root: HTMLElement, opts: ExplorerOpts = {}): () => void
   function render(c: ChartKey, host: HTMLElement, h: number, range?: [number, number]): void {
     if (c === "price") gPrice = drawPrice(host, h, range);
     if (c === "mnav") gMnav = drawMnav(host, h, range);
+    if (c === "perShare") gPerShare = drawPerShare(host, h, range);
     if (c === "riverUsd") gRiverUsd = drawRiverUsd(host, h, range);
     if (c === "riverBtc") gRiverBtc = drawRiverBtc(host, h, perShare, range);
   }
@@ -174,6 +178,7 @@ export function explorer(root: HTMLElement, opts: ExplorerOpts = {}): () => void
     const pT = padded(c) ? 18 : 16, pB = padded(c) ? 26 : 24;
     if (c === "price" && gPrice) overlay(host, priceLabels(gPrice, i), h, pT, pB, range);
     if (c === "mnav" && gMnav) overlay(host, mnavLabels(gMnav, i), h, pT, pB, range);
+    if (c === "perShare" && gPerShare) overlay(host, perShareLabels(gPerShare, i), h, pT, pB, range);
     if (c === "riverUsd" && gRiverUsd) overlay(host, riverUsdLabels(gRiverUsd, i), h, pT, pB, range);
     if (c === "riverBtc" && gRiverBtc) overlay(host, riverBtcLabels(gRiverBtc, i), h, pT, pB, range);
   }

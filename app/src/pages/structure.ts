@@ -120,6 +120,6 @@ export const structurePage: PageFn = (root) => {
     </div>`;
 
   return explorer(root.querySelector<HTMLElement>("#explorer")!, {
-    charts: ["riverBtc", "riverUsd"], showIdentity: false,
+    charts: ["perShare", "riverBtc", "riverUsd"], showIdentity: false,
   });
 };

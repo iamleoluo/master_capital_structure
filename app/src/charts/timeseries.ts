@@ -4,7 +4,7 @@ import { daily, meta, N } from "../data";
 import { state } from "../state";
 import { crosshair, type SeriesLabel } from "../lib/crosshair";
 import { axisX, breakLines, CW, frame, gridY, PAD_R } from "../lib/frame";
-import { bn, mult, usd, usd0 } from "../lib/format";
+import { bn, mult, sats, usd, usd0 } from "../lib/format";
 import { extent, linear, log } from "../lib/scale";
 import { band, line, path, svg, text } from "../lib/svg";
 
@@ -76,6 +76,42 @@ export function mnavLabels(g: Geo, i: number): SeriesLabel[] {
   return [
     { label: "CEBE mNAV", value: mult(daily.mnav_cebe[i]!), color: "var(--equity)", y: g.y(daily.mnav_cebe[i]!) },
     { label: "basic mNAV", value: mult(daily.mnav_basic[i]!), color: "var(--c3)", y: g.y(daily.mnav_basic[i]!) },
+  ];
+}
+
+// --------------------------------------------------------------- 每股 BTC(帳面 vs CEBE)
+const cebePerShare = (i: number): number => (daily.common_btc[i]! / (daily.shares[i]! * 1e6)) * 1e8;
+
+export function drawPerShare(el: HTMLElement, h = 190, range?: [number, number]): Geo {
+  const [lo, hi] = range ?? [0, N - 1];
+  const f = frame(h, 16, 24, range);
+  const cebe = daily.date.map((_, i) => cebePerShare(i));
+  const [ylo, yhi] = extent(daily.bps.slice(lo, hi + 1).concat(cebe.slice(lo, hi + 1)), 0.9, 1.1);
+  const y = log([ylo, yhi], [f.plotBottom, f.plotTop]);
+  const pts = (arr: number[]) => {
+    const out: Array<[number, number]> = [];
+    for (let i = lo; i <= hi; i++) out.push([f.x(i), y(arr[i]!)]);
+    return out;
+  };
+
+  const parts = [
+    axisX(f),
+    breakLines(f, meta.breaks),
+    `<path d="${path(pts(daily.bps))}" fill="none" stroke="var(--c3)" stroke-width="1.5" opacity=".85"/>`,
+    `<path d="${path(pts(cebe))}" fill="none" stroke="var(--equity)" stroke-width="1.8"/>`,
+    text(CW - PAD_R, y(daily.bps[hi]!) + 13, "帳面", { size: 10, anchor: "end", fill: "var(--c3)", weight: 600 }),
+    text(CW - PAD_R, y(cebe[hi]!) - 6, "CEBE", { size: 10, anchor: "end", fill: "var(--equity)", weight: 600 }),
+  ];
+  el.innerHTML = svg(CW, h, parts.join(""),
+    "帳面每股持幣(gross BPS)vs 實際每股持幣(CEBE),對數座標,單位 sats");
+  return { y };
+}
+
+export function perShareLabels(g: Geo, i: number): SeriesLabel[] {
+  const cebe = cebePerShare(i);
+  return [
+    { label: "CEBE 每股", value: sats(cebe), color: "var(--equity)", y: g.y(cebe) },
+    { label: "帳面每股", value: sats(daily.bps[i]!), color: "var(--c3)", y: g.y(daily.bps[i]!) },
   ];
 }
 
