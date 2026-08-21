@@ -108,7 +108,7 @@ export const structurePage: PageFn = (root) => {
         <div>
           <h3 style="margin-bottom:8px">為什麼帳面會漲、實際會縮</h3>
           <p style="font-size:.9rem;color:var(--ink-2);margin:0">
-            優先股募來的錢拿去買幣,總持幣上升,帳面每股(gross BPS)也跟著上升,
+            優先股募來的錢拿去買幣,總持幣上升,帳面每股(basic 股數)也跟著上升,
             看起來像在替股東累積比特幣。但同一筆交易等量增加了排在普通股前面的求償權,
             扣掉之後普通股一顆都沒多拿到 —— 這就是 phantom growth。
             真正會讓 CEBE 上升的只有三種:以高於淨值的價格增發普通股、
