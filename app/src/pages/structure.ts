@@ -1,12 +1,13 @@
-import { daily, indexOfDate, N } from "../data";
+import { daily, N } from "../data";
 import { explorer } from "../components/explorer";
 import { btc as fmtBtc, pct } from "../lib/format";
+import { rangeIndices } from "../lib/range";
 import type { PageFn } from "../router";
 
-const HI = "2025-08-11", LO = "2026-06-26";
-
 export const structurePage: PageFn = (root) => {
-  const a = indexOfDate(HI), b = indexOfDate(LO);
+  // 對比窗口跟著資料走:永遠是「約一年前 → 最新一天」,
+  // 每次資料更新這一頁的頭條數字就會跟著動,不會卡在建置當下的舊快照。
+  const [a, b] = rangeIndices("1y");
   const i = N - 1;
 
   const perShareOf = (k: number) =>
@@ -48,7 +49,7 @@ export const structurePage: PageFn = (root) => {
           <div class="d">${daily.shares[a]!.toFixed(0)}M → ${daily.shares[b]!.toFixed(0)}M<br>增發也在稀釋每股</div></div>
         <div class="tile"><div class="k">公司多買了</div>
           <div class="v">${sign(dHeld)}</div>
-          <div class="d">${fmtBtc(daily.held[a]!)} → ${fmtBtc(daily.held[b]!)} 顆<br>${HI} → ${LO}</div></div>
+          <div class="d">${fmtBtc(daily.held[a]!)} → ${fmtBtc(daily.held[b]!)} 顆<br>${daily.date[a]!} → ${daily.date[b]!}</div></div>
       </div>
 
       <div class="note key" style="margin-bottom:26px">
