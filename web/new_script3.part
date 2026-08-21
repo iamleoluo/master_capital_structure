@@ -1,0 +1,143 @@
+<script>
+// ---------------------------------------------------------------------------
+// 主更新函式:setIndex 驅動所有畫面
+// ---------------------------------------------------------------------------
+function updateCursor(name, xPix, dots, geo){
+  const g = document.getElementById('cursor-'+name);
+  if(!g) return;
+  const line = g.querySelector('.cursor-line');
+  line.setAttribute('x1', xPix); line.setAttribute('x2', xPix);
+  const circles = g.querySelectorAll('.cursor-dot');
+  dots.forEach((d,i)=>{
+    if(!circles[i]) return;
+    if(d==null){ circles[i].style.display='none'; return; }
+    circles[i].style.display='';
+    circles[i].setAttribute('cx', xPix); circles[i].setAttribute('cy', d);
+  });
+}
+
+function setIndex(i){
+  i = clamp(i,0,N-1);
+  state.idx = i;
+  const x = cx(i);
+
+  $('ex-date').textContent = D.date[i];
+  const stale = D.days_stale_primary[i];
+  const b = staleBadge(stale);
+  $('ex-badge').className = 'explorer-badge '+b.cls;
+  $('ex-badge-txt').textContent = b.txt;
+  $('ex-date-sub').textContent = `BTC 持有 ${D.held[i].toLocaleString('en-US')} 顆 · basic 股數 ${D.shares[i].toFixed(1)}M`;
+
+  $('r-mstr').textContent = fmt$(D.mstr[i]);
+  $('r-btc').textContent = fmt$0(D.btc[i]);
+  $('r-basic').textContent = fmtX(D.mnav_basic[i]);
+  $('r-cebe').textContent = fmtX(D.mnav_cebe[i]);
+  $('r-claims').textContent = fmtB(D.pref_total[i] + D.debt[i]);
+  $('r-amp').textContent = fmtX(D.amp[i]);
+
+  // 即時恆等式:MSTR 股價 = CEBE mNAV × 每股 BTC(sats) × BTC 價格 × (1-求償權%)
+  $('id-price').textContent = fmt$(D.mstr[i]);
+  $('id-mnav').textContent = fmtX(D.mnav_cebe[i]);
+  $('id-bps').textContent = fmtSats(D.bps[i]);
+  $('id-btc').textContent = fmt$0(D.btc[i]);
+  $('id-lev').textContent = (1-D.claims_pct[i]).toFixed(3);
+
+  $('date-scrub').value = i;
+
+  updateCursor('price', x, [priceGeo.y(priceGeo.ids.btc[i]), priceGeo.y(priceGeo.ids.mstr[i])]);
+  updateCursor('mnav', x, [mnavGeo.y(D.mnav_basic[i]), mnavGeo.y(D.mnav_cebe[i])]);
+  updateCursor('river', x, [riverGeo.y(riverGeo.stackTop[i]), riverGeo.y(riverGeo.nav[i])]);
+  updateModalCursor(i);
+
+  drawWaterfall(i);
+}
+
+// ---------------------------------------------------------------------------
+// §02 資本結構瀑布(日期驅動)
+// ---------------------------------------------------------------------------
+function drawWaterfall(i){
+  const held=D.held[i], btc=D.btc[i], nav=held*btc/1e9;
+  const debt=D.debt[i], cash=D.cash[i];
+  const prefs = {STRF:D.strf_lp[i], STRC:D.strc_lp[i], STRK:D.strk_lp[i], STRD:D.strd_lp[i], STRE:D.stre_lp[i]};
+  const prefTotal = Object.values(prefs).reduce((a,b)=>a+b,0);
+  const claims = debt + prefTotal - cash;
+  const resid = nav - claims;
+  const shares = D.shares[i];
+
+  $('wf-title').textContent = `${D.date[i]} 的 BTC 資產怎麼分`;
+  $('t-nav').textContent = fmtB(nav);
+  $('t-nav-d').textContent = `${held.toLocaleString('en-US')} BTC × ${fmt$0(btc)}`;
+  $('t-claims').textContent = fmtB(claims);
+  $('t-resid').textContent = fmtB(resid);
+  $('t-resid-d').textContent = `÷ ${shares.toFixed(1)}M 股 = $${(resid*1e9/(shares*1e6)).toFixed(2)}／股`;
+  $('t-amp').textContent = fmtX(D.amp[i]);
+
+  const W=920,H=340, barW=150;
+  const scale = (H-60)/Math.max(nav,1);
+  let svg=[];
+  const order = [['可轉債',debt,'--c1'], ['STRF',prefs.STRF,'--c2'], ['STRC',prefs.STRC,'--c3'],
+                 ['STRK',prefs.STRK,'--c4'], ['STRD',prefs.STRD,'--c5'], ['STRE',prefs.STRE,'--c6']];
+  let y = H-30, bx = 60;
+  order.forEach(([name,val,col])=>{
+    const h = Math.max(0,val)*scale;
+    y -= h;
+    if(h>1) svg.push(`<rect x="${bx}" y="${y}" width="${barW}" height="${h}" fill="var(${col})"/>`);
+    if(h>16) svg.push(`<text x="${bx+barW/2}" y="${y+h/2+4}" font-size="11" fill="#fff" text-anchor="middle">${name}</text>`);
+  });
+  const cashH = Math.min(cash,debt+prefTotal)*scale;
+  const equityH = Math.max(0,resid)*scale;
+  y -= equityH;
+  svg.push(`<rect x="${bx}" y="${Math.max(y,26)}" width="${barW}" height="${Math.max(equityH,0)}" fill="var(--equity)"/>`);
+  if(equityH>16) svg.push(`<text x="${bx+barW/2}" y="${y+equityH/2+4}" font-size="12" font-weight="600" fill="#fff" text-anchor="middle">普通股</text>`);
+  svg.push(`<line x1="${bx}" y1="${H-30-nav*scale}" x2="${bx+barW}" y2="${H-30-nav*scale}" stroke="currentColor" stroke-width="1"/>`);
+  svg.push(`<text x="${bx}" y="${H-30-nav*scale-8}" font-size="11" fill="currentColor">BTC 總市值 ${fmtB(nav)}</text>`);
+
+  const rx = bx+barW+40; let ly=26;
+  svg.push(`<text x="${rx}" y="${ly}" font-size="11" fill="currentColor" opacity=".6" font-family="var(--mono)">依清償順位(上→下越後償)</text>`);
+  ly+=22;
+  const notes={'可轉債':'最優先,所有優先股之上','STRF':'累積型,優先股中最優先','STRC':'變動利率,規模最大',
+               'STRK':'可轉換 0.1 MSTR/股','STRD':'非累積,優先股中最劣後','STRE':'歐元計價'};
+  order.forEach(([name,val,col])=>{
+    svg.push(`<rect x="${rx}" y="${ly-10}" width="10" height="10" fill="var(${col})"/>`);
+    svg.push(`<text x="${rx+16}" y="${ly}" font-size="12" font-weight="600" fill="currentColor">${name}</text>`);
+    svg.push(`<text x="${rx+72}" y="${ly}" font-size="12" font-family="var(--mono)" fill="currentColor">${fmtB(val)}</text>`);
+    svg.push(`<text x="${rx+16}" y="${ly+15}" font-size="10.5" fill="currentColor" opacity=".62">${notes[name]||''}</text>`);
+    ly+=38;
+  });
+  svg.push(`<rect x="${rx}" y="${ly-10}" width="10" height="10" fill="var(--equity)"/>`);
+  svg.push(`<text x="${rx+16}" y="${ly}" font-size="12" font-weight="600" fill="var(--equity)">普通股殘值</text>`);
+  svg.push(`<text x="${rx+72}" y="${ly}" font-size="12" font-family="var(--mono)" fill="var(--equity)">${fmtB(resid)}</text>`);
+  svg.push(`<text x="${rx+16}" y="${ly+15}" font-size="10.5" fill="currentColor" opacity=".62">已扣資產負債表現金 ${fmtB(cash)}</text>`);
+
+  $('waterfall').innerHTML = `<svg viewBox="0 0 ${rx+300} ${H}" role="img" aria-label="${D.date[i]} 的資本結構瀑布圖">${svg.join('')}</svg>`;
+}
+
+// ---------------------------------------------------------------------------
+// 滑桿 / 鍵盤 / 播放
+// ---------------------------------------------------------------------------
+const scrubEl = $('date-scrub');
+scrubEl.max = N-1;
+scrubEl.addEventListener('input', ()=> setIndex(+scrubEl.value));
+document.addEventListener('keydown', e=>{
+  if(e.key==='ArrowLeft'){ setIndex(state.idx-1); e.preventDefault(); }
+  if(e.key==='ArrowRight'){ setIndex(state.idx+1); e.preventDefault(); }
+});
+
+$('play-btn').addEventListener('click', ()=>{
+  state.playing = !state.playing;
+  $('play-btn').setAttribute('aria-pressed', state.playing);
+  $('play-btn').textContent = state.playing ? '⏸ 暫停' : '▶ 自動播放';
+  if(state.playing){
+    if(state.idx>=N-1) setIndex(0);
+    state.playTimer = setInterval(()=>{
+      if(state.idx>=N-1){ state.playing=false; $('play-btn').setAttribute('aria-pressed','false');
+        $('play-btn').textContent='▶ 自動播放'; clearInterval(state.playTimer); return; }
+      setIndex(state.idx+2);
+    }, 45);
+  } else {
+    clearInterval(state.playTimer);
+  }
+});
+
+setIndex(N-1);
+</script>

@@ -1,0 +1,54 @@
+/* 設計 token。
+   配色的語意規則(不是美學偏好,是資訊編碼):
+   - 可轉債用**另一個色系**(暖褐),因為它在所有優先股之上,不屬於優先股那條漸層
+   - 五個優先股系列用同一色系、依清償順位由深到淺,順位是真實資訊
+   - 明度跨距刻意拉大並讓色相隨階梯微幅位移,否則相鄰兩層在堆疊圖上分不出來
+   - 普通股用暖色(琥珀)與冷色的求償權對比;BTC 用中性色當基準線 */
+:root{
+  --paper:#F4F6F4; --surface:#FFFFFF; --surface-2:#EDF0EE;
+  --ink:#141B1F; --ink-2:#46545B; --ink-3:#78868D;
+  --line:#DCE2E0; --line-2:#C2CCC9;
+
+  --convert:#6B5443;
+  --c1:#0E3B57; --c2:#1A6E93; --c3:#2E9BB8; --c4:#6BC2D4; --c5:#AEDDE6;
+  --c6:#D5EEF2;
+
+  --equity:#C97A22; --equity-soft:#F6E4CD;
+  --senti:#B23E58; --senti-soft:#F7DCE2;
+  --btc:#26333A;
+  --good:#2C7A55; --warn:#A8720F; --bad:#B23E58;
+
+  --serif:"Iowan Old Style",Georgia,"Songti TC","Noto Serif CJK TC",serif;
+  --sans:system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,"Cascadia Mono",Consolas,monospace;
+}
+
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0C1216; --surface:#141C21; --surface-2:#1C262C;
+  --ink:#EBECE7; --ink-2:#A3B3BA; --ink-3:#71808A;
+  --line:#222E34; --line-2:#33434C;
+
+  --convert:#9C7C5F;
+  --c1:#1D5F82; --c2:#2C8CB4; --c3:#4BB0CB; --c4:#83CEDC; --c5:#B8E6ED;
+  --c6:#DAF2F6;
+
+  --equity:#E9A755; --equity-soft:#3D2E19;
+  --senti:#DE8296; --senti-soft:#3D242B;
+  --btc:#C7D1D6;
+  --good:#5FAA82; --warn:#D9A93F; --bad:#DE8296;
+}}
+
+:root[data-theme="dark"]{
+  --paper:#0C1216; --surface:#141C21; --surface-2:#1C262C;
+  --ink:#EBECE7; --ink-2:#A3B3BA; --ink-3:#71808A;
+  --line:#222E34; --line-2:#33434C;
+
+  --convert:#9C7C5F;
+  --c1:#1D5F82; --c2:#2C8CB4; --c3:#4BB0CB; --c4:#83CEDC; --c5:#B8E6ED;
+  --c6:#DAF2F6;
+
+  --equity:#E9A755; --equity-soft:#3D2E19;
+  --senti:#DE8296; --senti-soft:#3D242B;
+  --btc:#C7D1D6;
+  --good:#5FAA82; --warn:#D9A93F; --bad:#DE8296;
+}

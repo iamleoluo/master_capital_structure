@@ -1,0 +1,49 @@
+<section>
+  <div class="sec-head">
+    <div class="sec-num">06</div>
+    <div>
+      <p class="eyebrow">定價錨點</p>
+      <h2>公司自己給的答案,以及它與第三方差在哪</h2>
+      <p class="lede">2026-08-13 的 Form FWP 附了一張敏感度表。這是 Tier 1 的一手資料,也是本專案唯一能拿來對答案的東西。</p>
+    </div>
+  </div>
+  <div class="grid2">
+    <div>
+      <h3 style="margin-bottom:12px">官方敏感度表(已完整重現)</h3>
+      <div class="scroller"><table class="mini"><thead><tr>
+        <th>BTC 價格</th><th class="n">官方每股淨值</th><th class="n">本系統計算</th><th class="n">誤差</th>
+      </tr></thead><tbody id="sens-tbl"></tbody></table></div>
+      <p style="font-size:.82rem;color:var(--ink-3);margin-top:12px">六列全部落在 1 個基點(0.01%)內。<strong>無法做到逐分吻合</strong>,原因不在公式:FWP 揭露的三個輸入只到 $1M 精度,FDSO 只寫「~398.2M」。可以證明不存在任何單一 FDSO 能在同一個進位規則下重現全部六列。</p>
+    </div>
+    <div>
+      <h3 style="margin-bottom:12px">歸零價有三個都對的答案</h3>
+      <div class="scroller"><table class="mini"><thead><tr>
+        <th>定義</th><th class="n">歸零 BTC 價</th><th class="n">緩衝</th>
+      </tr></thead><tbody id="be-tbl"></tbody></table></div>
+      <p style="font-size:.82rem;color:var(--ink-3);margin-top:12px">差異全在「求償權」怎麼定義:要不要扣現金、扣的是資產負債表現金還是 USD Reserve、算不算歐元計價的 STRE。這不是誰算錯,是三種定義並存。</p>
+      <div class="note" style="margin-top:16px"><b>2020 年的歸零價是 $9,224。</b>到 2026 年變成 $20,635–$25,054,約 2.5 倍。這條軌跡本身就是槓桿累積的紀錄。</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="sec-num">07</div>
+    <div>
+      <p class="eyebrow">誠實聲明</p>
+      <h2>這份分析站不住的地方</h2>
+      <p class="lede">建置過程中對來源資料做了交叉驗證。以下是查出來的內部矛盾與覆蓋缺口,原始數值全部保留未改。</p>
+    </div>
+  </div>
+  <div class="grid2" id="findings"></div>
+  <div class="note warn" style="margin-top:26px">
+    <b>最大的單一缺口:可轉債各系列的轉換價。</b>價內的可轉債會轉成股票而不是被償還,所以判定價內／價外直接決定求償權多大。2024 年底 MSTR 在 $290–543、已知轉換價約 $143 ⇒ 幾乎全部價內,當時的真實求償權只有 $1.4B 而非面額 $8.2B。也就是說,2024→2025 求償權暴增有很大一部分不是新發債,<strong>而是既有可轉債從價內變成價外</strong>。缺了這組轉換價,那一段歷史的槓桿軌跡無法正確重建。
+  </div>
+</section>
+</div>
+
+<footer><div class="wrap">
+  <p>市場資料:BTC = Binance 日線;MSTR = Yahoo 日線(已回溯調整 2024-08-07 的 10-for-1 分割,以 2024-11-21 盤中高點 $543 驗證)。資本結構:SEC 申報與公司新聞稿,事件頻,查詢時 forward-fill。</p>
+  <p>四因子恆等式的求償權採 cebetracker 定義(可轉債面額 + 優先股清算優先權 − 資產負債表現金),普通股數用 basic shares,以取得最完整的時間覆蓋。§06 的官方錨點另採公司定義(扣 USD Reserve、排除價內求償權、除以 FDSO)。兩者刻意不混用。</p>
+  <p style="margin:0">本頁為資料分析,不構成投資建議。</p>
+</div></footer>

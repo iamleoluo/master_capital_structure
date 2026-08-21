@@ -1,0 +1,175 @@
+<script>
+// ---------------------------------------------------------------------------
+// §01 拆解:兩個日期之間的恆等式橋接
+// ---------------------------------------------------------------------------
+function decompose(i0,i1){
+  const L=(a1,a0)=>Math.log(a1/a0);
+  return {
+    logMnav: L(D.mnav_cebe[i1], D.mnav_cebe[i0]),
+    logBps:  L(D.bps[i1], D.bps[i0]),
+    logBtc:  L(D.btc[i1], D.btc[i0]),
+    logLev:  Math.log((1-D.claims_pct[i1])/(1-D.claims_pct[i0])),
+    logTotal:L(D.mstr[i1], D.mstr[i0]),
+    i0,i1
+  };
+}
+function pctFromLog(l){ return (Math.exp(l)-1)*100; }
+
+function drawWaterfall2(dc){
+  const p0=D.mstr[dc.i0], p1=D.mstr[dc.i1];
+  const steps=[{name:'BTC 價格',log:dc.logBtc,col:'--btc'},
+               {name:'槓桿(求償權)',log:dc.logLev,col:'--c3'},
+               {name:'每股 BTC',log:dc.logBps,col:'--c5'},
+               {name:'情緒溢價',log:dc.logMnav,col:'--senti'}];
+  const W=920,H=280,padL=70,padR=70,padT=24,padB=40;
+  const plotW=W-padL-padR, plotH=H-padT-padB;
+  let running=Math.log(p0); const points=[running];
+  steps.forEach(s=>{running+=s.log; points.push(running);});
+  const allVals=points.map(Math.exp);
+  const lo=Math.min(...allVals)*0.85, hi=Math.max(...allVals)*1.15;
+  const y=v=>padT+plotH*(1-(Math.log(v)-Math.log(lo))/(Math.log(hi)-Math.log(lo)));
+  const n=steps.length+1; const x=i=>padL+plotW*i/(n-1);
+
+  let svg=[];
+  [p0,p1].forEach(v=>svg.push(`<line x1="${padL}" y1="${y(v)}" x2="${W-padR}" y2="${y(v)}" stroke="currentColor" stroke-opacity=".1" stroke-dasharray="2,3"/>`));
+  for(let i=0;i<n-1;i++){
+    const v0=allVals[i], v1=allVals[i+1], x0=x(i), x1=x(i+1), y0=y(v0), y1=y(v1), col=steps[i].col;
+    svg.push(`<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="var(${col})" stroke-width="3" stroke-linecap="round"/>`);
+    svg.push(`<circle cx="${x0}" cy="${y0}" r="3.4" fill="var(${col})"/>`);
+    svg.push(`<text x="${(x0+x1)/2}" y="${(y0+y1)/2-10}" font-size="11" font-weight="600" text-anchor="middle" fill="var(${col})">${v1>=v0?'+':''}${pctFromLog(steps[i].log).toFixed(0)}%</text>`);
+    svg.push(`<text x="${(x0+x1)/2}" y="${H-padB+18}" font-size="10.5" text-anchor="middle" fill="currentColor" opacity=".68">${steps[i].name}</text>`);
+  }
+  svg.push(`<circle cx="${x(n-1)}" cy="${y(allVals[n-1])}" r="3.4" fill="var(--ink)"/>`);
+  svg.push(`<text x="${x(0)}" y="${y(p0)-14}" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">${fmt$(p0)}</text>`);
+  svg.push(`<text x="${x(0)}" y="${y(p0)+20}" font-size="9.5" text-anchor="middle" fill="currentColor" opacity=".6">${D.date[dc.i0]}</text>`);
+  svg.push(`<text x="${x(n-1)}" y="${y(p1)-14}" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">${fmt$(p1)}</text>`);
+  svg.push(`<text x="${x(n-1)}" y="${y(p1)+20}" font-size="9.5" text-anchor="middle" fill="currentColor" opacity=".6">${D.date[dc.i1]}</text>`);
+
+  $('waterfall2').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="股價變化橋接圖">${svg.join('')}</svg>`;
+}
+
+function renderDecomp(){
+  $('a-label').textContent = D.date[state.aIdx];
+  $('b-label').textContent = D.date[state.bIdx];
+  let i0=state.aIdx, i1=state.bIdx;
+  let swapped=false;
+  if(i0>i1){ [i0,i1]=[i1,i0]; swapped=true; }
+  const dc = decompose(i0,i1);
+  drawWaterfall2(dc);
+
+  const tiles=[
+    {lab:'BTC 價格', pct:pctFromLog(dc.logBtc), col:'--btc', d:'底層資產的漲跌'},
+    {lab:'槓桿(求償權變化)', pct:pctFromLog(dc.logLev), col:'--c3', d:'優先股/債佔比升高會拖累這項'},
+    {lab:'每股 BTC', pct:pctFromLog(dc.logBps), col:'--c5', d:'買幣增速 vs 增股稀釋的淨結果'},
+    {lab:'情緒溢價', pct:pctFromLog(dc.logMnav), col:'--senti', d:'市場願付倍數的變化'},
+  ];
+  $('attrib-tiles').innerHTML = tiles.map(t=>`
+    <div class="tile" style="border-left:3px solid var(${t.col})">
+      <div class="k">${t.lab}</div>
+      <div class="v" style="color:${t.pct>=0?'var(--good)':'var(--bad)'}">${t.pct>=0?'+':''}${t.pct.toFixed(1)}%</div>
+      <div class="d">${t.d}</div>
+    </div>`).join('');
+
+  const contribs=[{n:'BTC 價格',l:Math.abs(dc.logBtc)},{n:'槓桿變化',l:Math.abs(dc.logLev)},
+                  {n:'每股 BTC 增速',l:Math.abs(dc.logBps)},{n:'情緒溢價',l:Math.abs(dc.logMnav)}]
+                 .sort((a,b)=>b.l-a.l);
+  const totalPct = pctFromLog(dc.logTotal);
+  const staleNote = (D.days_stale_primary[i0]>90||D.days_stale_primary[i1]>90)
+    ? ' 兩個端點至少有一個是長距離插值,數字請當方向參考。' : '';
+  $('verdict').innerHTML = `<b>${D.date[i0]} → ${D.date[i1]}:</b> MSTR ${totalPct>=0?'上漲':'下跌'} ${Math.abs(totalPct).toFixed(0)}%。影響力最大的是<b>${contribs[0].n}</b>,其次是<b>${contribs[1].n}</b>。${staleNote}`;
+}
+
+$('set-a').addEventListener('click', ()=>{ state.aIdx = state.idx; renderDecomp(); });
+$('set-b').addEventListener('click', ()=>{ state.bIdx = state.idx; renderDecomp(); });
+renderDecomp();
+
+// ---------------------------------------------------------------------------
+// §03 STRC 堆疊圖 + 面額對照 + IPO 表
+// ---------------------------------------------------------------------------
+function drawStackChart(){
+  const S=['STRF','STRC','STRK','STRD','STRE'];
+  const W=920,H=280, padL=54,padR=16,padT=18,padB=34;
+  const plotW=W-padL-padR, plotH=H-padT-padB;
+  const x=i=>padL+plotW*i/(N-1);
+  const fieldOf={STRF:'strf_lp',STRC:'strc_lp',STRK:'strk_lp',STRD:'strd_lp',STRE:'stre_lp'};
+
+  let maxTotal=0; const stacks=[];
+  for(let i=0;i<N;i++){
+    let s=0; const layer=[];
+    S.forEach(k=>{ s+=D[fieldOf[k]][i]; layer.push(s); });
+    stacks.push(layer); if(s>maxTotal) maxTotal=s;
+  }
+  maxTotal*=1.08;
+  const y=v=>padT+plotH*(1-v/maxTotal);
+
+  let svg=[];
+  for(let g=0;g<=4;g++){
+    const val=maxTotal*g/4, gy=y(val);
+    svg.push(`<line x1="${padL}" y1="${gy}" x2="${W-padR}" y2="${gy}" stroke="currentColor" stroke-opacity=".08"/>`);
+    svg.push(`<text x="${padL-8}" y="${gy+4}" font-size="10" text-anchor="end" fill="currentColor" opacity=".55" font-family="var(--mono)">$${val.toFixed(0)}B</text>`);
+  }
+  addXTicks(svg, padT, H-padB);
+
+  S.forEach((k,li)=>{
+    let top=[],bottom=[];
+    for(let i=0;i<N;i++){
+      const upper=stacks[i][li], lower=li===0?0:stacks[i][li-1];
+      top.push([x(i),y(upper)]); bottom.push([x(i),y(lower)]);
+    }
+    const path=top.map((p,i)=>(i===0?'M':'L')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')
+      +' '+bottom.slice().reverse().map(p=>'L'+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')+' Z';
+    svg.push(`<path d="${path}" fill="var(${PREF_COL[k]})" opacity=".92"/>`);
+  });
+  DATA.ipos.forEach(ipo=>{
+    const idx=D.date.findIndex(d=>d>=ipo.d); if(idx<0) return;
+    svg.push(`<line x1="${x(idx)}" y1="${padT}" x2="${x(idx)}" y2="${H-padB}" stroke="var(${PREF_COL[ipo.t]})" stroke-dasharray="1.5,2.5" stroke-width="1"/>`);
+    svg.push(`<text x="${x(idx)}" y="${padT-6}" font-size="9.5" text-anchor="middle" fill="var(${PREF_COL[ipo.t]})">${ipo.t}</text>`);
+  });
+  $('stack-chart').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="優先股各系列清算優先權堆疊面積圖">${svg.join('')}</svg>`;
+  $('stack-legend').innerHTML = S.map(k=>`<span><i class="swatch" style="background:var(${PREF_COL[k]})"></i>${k} · ${fmtB(D[fieldOf[k]][N-1])}</span>`).join('');
+}
+drawStackChart();
+
+function drawStrcParChart(){
+  const dates=[], prices=[];
+  D.date.forEach((dt,i)=>{ if(D.strc_price[i]!=null){ dates.push(i); prices.push(D.strc_price[i]); } });
+  if(!dates.length){ $('strc-par-chart').innerHTML='<p style="padding:20px;color:var(--ink-3)">尚無資料</p>'; return; }
+  const W=560,H=220,padL=44,padR=14,padT=14,padB=26;
+  const plotW=W-padL-padR, plotH=H-padT-padB;
+  const i0=dates[0], i1=dates[dates.length-1];
+  const xx=i=>padL+plotW*(i-i0)/(i1-i0);
+  const lo=Math.min(...prices,80)*0.97, hi=Math.max(...prices,102)*1.02;
+  const y=v=>padT+plotH*(1-(v-lo)/(hi-lo));
+
+  let svg=[];
+  svg.push(`<line x1="${padL}" y1="${y(100)}" x2="${W-padR}" y2="${y(100)}" stroke="var(--good)" stroke-opacity=".5" stroke-dasharray="3,2"/>`);
+  svg.push(`<text x="${padL-6}" y="${y(100)+3}" font-size="9" text-anchor="end" fill="var(--good)" font-family="var(--mono)">面額$100</text>`);
+  const path=dates.map((i,k)=>xx(i).toFixed(1)+','+y(prices[k]).toFixed(1)).join(' L ');
+  svg.push(`<path d="M ${path}" fill="none" stroke="var(--c2)" stroke-width="1.8"/>`);
+  const seen=new Set();
+  dates.forEach(i=>{
+    const ym=D.date[i].slice(0,7);
+    if(D.date[i].slice(8,10)==='01'&&!seen.has(ym)&&(ym.slice(5,7)==='01'||ym.slice(5,7)==='07')){
+      seen.add(ym);
+      svg.push(`<text x="${xx(i)}" y="${H-padB+13}" font-size="9" text-anchor="middle" fill="currentColor" opacity=".5" font-family="var(--mono)">${ym}</text>`);
+    }
+  });
+  $('strc-par-chart').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="STRC 每日市價與面額 $100 對照">${svg.join('')}</svg>`;
+}
+drawStrcParChart();
+
+(function(){
+  $('ipo-tbl').innerHTML = DATA.ipos.map(i=>`
+    <tr><td><i class="swatch" style="background:var(${PREF_COL[i.t]});display:inline-block;margin-right:6px"></i>${i.t}</td>
+    <td class="num" style="font-size:.82rem">${i.d}</td>
+    <td class="n">${i.cur==='EUR'?'€':'$'}${i.lp.toFixed(2)}B</td>
+    <td class="n">${i.rate?i.rate.toFixed(1)+'%':'變動'}</td><td class="n">${i.rank}</td></tr>`).join('');
+  const gross = D.held[N-1]/ (394.204253) *1e8/1e6; // not used directly, placeholder guard
+  const fwp = DATA.fwp;
+  const grossBps = fwp.held/fwp.assumed*1e8;
+  const netBps = 92.11/fwp.btc*1e8;
+  const gap = grossBps-netBps;
+  $('phantom').textContent = Math.round(gap).toLocaleString('en-US');
+  $('phantom-pct').textContent = (gap/grossBps*100).toFixed(1)+'%';
+})();
+</script>

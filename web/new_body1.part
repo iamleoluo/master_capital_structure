@@ -1,0 +1,166 @@
+<div class="wrap hero">
+  <p class="stamp"><span>資本結構探索器</span><span id="hero-range">2024-07 → 2026-08</span><span>拖曳下方時間軸看任意一天</span></p>
+  <h1>拖著時間走,<br>看 MSTR 怎麼被拆開</h1>
+  <p class="sub">MSTR 股價 = <b style="color:var(--senti)">情緒溢價</b>(市場願付的倍數)× <b style="color:var(--equity)">底層資產</b>(BTC 價格、每股 BTC、優先股規模共同決定)。拖曳下面的時間軸,任何一天的股價都能拆成這兩塊 —— 藍色錨點是 SEC 申報的真實數字,錨點之間是線性插值,介面會誠實標出每個數字離最近一次真實觀測多遠。</p>
+</div>
+
+<div class="wrap">
+<section style="padding-top:0">
+  <div class="explorer">
+    <div class="explorer-top">
+      <div>
+        <div class="explorer-date" id="ex-date">—</div>
+        <div style="font-size:.82rem;color:var(--ink-3);margin-top:2px" id="ex-date-sub">—</div>
+      </div>
+      <div class="explorer-badge" id="ex-badge"><i class="dot"></i><span id="ex-badge-txt">—</span></div>
+    </div>
+
+    <div class="reading-grid">
+      <div class="reading"><div class="k">MSTR 股價</div><div class="v" id="r-mstr">—</div></div>
+      <div class="reading"><div class="k">BTC 價格</div><div class="v" id="r-btc">—</div></div>
+      <div class="reading"><div class="k">basic mNAV</div><div class="v" id="r-basic">—</div></div>
+      <div class="reading"><div class="k">CEBE mNAV</div><div class="v accent" id="r-cebe">—</div></div>
+      <div class="reading"><div class="k">優先求償權合計</div><div class="v" id="r-claims">—</div></div>
+      <div class="reading"><div class="k">槓桿倍數</div><div class="v" id="r-amp">—</div></div>
+    </div>
+
+    <div class="identity" style="margin:20px 26px 0;padding:22px 22px">
+      <div class="eq" style="min-width:0;flex-wrap:wrap">
+        <div class="eq-term result" style="flex:1 1 140px">
+          <div class="eq-lab">MSTR 股價</div>
+          <div class="eq-val" id="id-price">—</div>
+        </div>
+        <div class="eq-op">=</div>
+        <div class="eq-term" style="flex:1 1 140px">
+          <div class="eq-lab"><i class="swatch" style="background:var(--senti)"></i>情緒溢價</div>
+          <div class="eq-val" id="id-mnav">—</div>
+          <div class="eq-sub">CEBE mNAV</div>
+        </div>
+        <div class="eq-op">×</div>
+        <div class="eq-term" style="flex:1 1 160px">
+          <div class="eq-lab"><i class="swatch" style="background:var(--equity)"></i>每股 BTC</div>
+          <div class="eq-val" id="id-bps">—</div>
+          <div class="eq-sub">sats／股</div>
+        </div>
+        <div class="eq-op">×</div>
+        <div class="eq-term" style="flex:1 1 140px">
+          <div class="eq-lab"><i class="swatch" style="background:var(--btc)"></i>BTC 價格</div>
+          <div class="eq-val" id="id-btc">—</div>
+        </div>
+        <div class="eq-op">×</div>
+        <div class="eq-term" style="flex:1 1 160px">
+          <div class="eq-lab"><i class="swatch" style="background:var(--c3)"></i>普通股殘值率</div>
+          <div class="eq-val" id="id-lev">—</div>
+          <div class="eq-sub">1 − 求償權佔比</div>
+        </div>
+      </div>
+      <p class="eq-cap" style="margin-top:16px;padding-top:12px">這條恆等式逐日精確成立(殘差 &lt;10⁻¹⁵),隨時間軸即時更新 —— 拖到任何一天都能立刻讀出當天股價是怎麼被這四項乘出來的。</p>
+    </div>
+
+    <div class="scrub-charts">
+      <div class="scrub-panel">
+        <div class="scrub-panel-head">
+          <div class="scrub-panel-label">MSTR 與 BTC 價格(同基期指數化,對數軸)</div>
+          <button type="button" class="expand-btn" data-chart="price">⤢ 放大</button>
+        </div>
+        <div class="scrub-svg-wrap" id="chart-price"></div>
+      </div>
+      <div class="scrub-panel">
+        <div class="scrub-panel-head">
+          <div class="scrub-panel-label">mNAV — basic(看不到優先股)vs CEBE(扣求償權後),對數軸</div>
+          <button type="button" class="expand-btn" data-chart="mnav">⤢ 放大</button>
+        </div>
+        <div class="scrub-svg-wrap" id="chart-mnav"></div>
+      </div>
+      <div class="scrub-panel">
+        <div class="scrub-panel-head">
+          <div class="scrub-panel-label">資本結構河流圖 —— 求償權堆疊 + MSTR 市值疊在其上,虛線是 BTC 總市值</div>
+          <button type="button" class="expand-btn" data-chart="river">⤢ 放大</button>
+        </div>
+        <div class="scrub-svg-wrap" id="chart-river"></div>
+        <div class="legend" style="margin-top:8px">
+          <span><i class="swatch" style="background:var(--good)"></i>頂端突出虛線之上 = 市場付溢價(CEBE mNAV &gt; 1)</span>
+          <span><i class="swatch" style="background:var(--bad)"></i>頂端縮在虛線之下 = 市場打折(CEBE mNAV &lt; 1)</span>
+        </div>
+      </div>
+    </div>
+    <p class="hint" style="padding:0 26px 4px;font-size:.76rem;color:var(--ink-3)">點任一張圖右上角的「放大」,或直接點圖表本身,可以看更高、波動感更明顯的版本。</p>
+
+    <div class="scrub-slider">
+      <input type="range" class="date-scrub" id="date-scrub" min="0" max="1" step="1" value="0" aria-label="選擇日期">
+    </div>
+
+    <div class="explorer-controls">
+      <button type="button" class="play-btn" id="play-btn" aria-pressed="false">▶ 自動播放</button>
+      <span class="hint">方向鍵 ← → 逐日移動;拖曳圖表或下方滑桿跳到任意一天</span>
+    </div>
+
+    <div class="stale-legend">
+      <span><i class="dot" style="background:var(--equity)"></i>0–15 天內有真實 SEC 觀測點 —— 數字紮實</span>
+      <span><i class="dot" style="background:var(--good)"></i>16–90 天 —— 中距離插值</span>
+      <span><i class="dot" style="background:var(--senti)"></i>90 天以上 —— 長距離插值,當方向參考</span>
+    </div>
+  </div>
+</section>
+
+<div class="chart-modal-backdrop" id="chart-modal-backdrop">
+  <div class="chart-modal" role="dialog" aria-modal="true" aria-labelledby="chart-modal-title">
+    <div class="chart-modal-head">
+      <h3 id="chart-modal-title">—</h3>
+      <button type="button" class="chart-modal-close" id="chart-modal-close" aria-label="關閉">×</button>
+    </div>
+    <div class="chart-modal-body">
+      <div class="reading-grid" id="modal-reading-grid">
+        <div class="reading"><div class="k">日期</div><div class="v" id="m-date">—</div></div>
+        <div class="reading"><div class="k">MSTR 股價</div><div class="v" id="m-mstr">—</div></div>
+        <div class="reading"><div class="k">BTC 價格</div><div class="v" id="m-btc">—</div></div>
+      </div>
+      <div class="scrub-svg-wrap" id="chart-modal-svg"></div>
+      <div class="scrub-slider" style="padding:16px 0 0">
+        <input type="range" class="date-scrub" id="modal-date-scrub" min="0" max="1" step="1" value="0" aria-label="選擇日期">
+      </div>
+      <p class="hint" style="font-size:.78rem;color:var(--ink-3);margin-top:8px">拖曳圖表或下方滑桿、方向鍵 ← → 都能換日期,跟背景頁面同步。按 Esc 或點外面關閉。</p>
+    </div>
+  </div>
+</div>
+
+<section>
+  <div class="sec-head">
+    <div class="sec-num">01</div>
+    <div>
+      <p class="eyebrow">拆解</p>
+      <h2>選兩個日期,看漲跌是誰造成的</h2>
+      <p class="lede">先把時間軸拖到起點按「設為 A」,再拖到終點按「設為 B」。恆等式會把兩點之間的股價變化精確拆成四項,加總等於實際變化 —— 不是近似。</p>
+    </div>
+  </div>
+
+  <div class="decompose-picker">
+    <button type="button" class="pick-btn set-a" id="set-a">設為起點 A · <span id="a-label">2024-12-31</span></button>
+    <span class="arrow">→</span>
+    <button type="button" class="pick-btn set-b" id="set-b">設為終點 B · <span id="b-label">2026-08-14</span></button>
+    <span class="hint" style="margin-left:8px">先把時間軸拖到想要的日期,再點按鈕</span>
+  </div>
+
+  <div class="card scroller"><div id="waterfall2"></div></div>
+  <div class="grid3" style="margin-top:20px" id="attrib-tiles"></div>
+  <div class="note key" style="margin-top:26px" id="verdict"></div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="sec-num">02</div>
+    <div>
+      <p class="eyebrow">放大看同一天的資本結構</p>
+      <h2 id="wf-title">2026-08-13 的 BTC 資產怎麼分</h2>
+      <p class="lede">跟頂部時間軸是同一個日期(拖那裡,這裡也會跟著換)。放大版本方便看清楚每個系列的清算優先權。</p>
+    </div>
+  </div>
+  <div class="card scroller"><div id="waterfall"></div></div>
+  <div class="grid3" style="margin-top:20px">
+    <div class="tile"><div class="k">BTC 總市值</div><div class="v" id="t-nav">—</div><div class="d" id="t-nav-d">—</div></div>
+    <div class="tile"><div class="k">優先求償權合計</div><div class="v" id="t-claims">—</div><div class="d">可轉債 + 五系列優先股</div></div>
+    <div class="tile"><div class="k">普通股殘值</div><div class="v" id="t-resid">—</div><div class="d" id="t-resid-d">—</div></div>
+    <div class="tile"><div class="k">槓桿放大倍數</div><div class="v" id="t-amp">—</div><div class="d">BTC 動 1%,殘值動這麼多</div></div>
+  </div>
+  <div class="note warn"><b>三個數字都不是「面額」。</b>優先股一律用<strong>清算優先權</strong>($100／股 × 股數,STRE 為 €100)計算,不是 IPO 發行價,也不是市價。</div>
+</section>

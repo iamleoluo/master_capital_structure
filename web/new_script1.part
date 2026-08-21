@@ -1,0 +1,32 @@
+<script>
+const DATA = __DATA_JSON__;
+const fmt$  = (v,dg=2)=>'$'+Number(v).toLocaleString('en-US',{minimumFractionDigits:dg,maximumFractionDigits:dg});
+const fmt$0 = v=>'$'+Math.round(v).toLocaleString('en-US');
+const fmtB  = v=>(v==null?'—':'$'+v.toFixed(2)+'B');
+const fmtX  = v=>(v==null?'—':v.toFixed(2)+'x');
+const fmtPct= v=>(v*100).toFixed(1)+'%';
+const fmtSats=v=>Math.round(v).toLocaleString('en-US')+' sats';
+const $ = id=>document.getElementById(id);
+const clamp=(v,lo,hi)=>Math.max(lo,Math.min(hi,v));
+
+const PREF_COL = {STRF:'--c1',STRC:'--c2',STRK:'--c3',STRD:'--c4',STRE:'--c5',UNALLOCATED:'--c6'};
+const D = DATA.daily;
+const N = D.date.length;
+$('hero-range').textContent = D.date[0]+' → '+D.date[N-1];
+
+// ---------------------------------------------------------------------------
+// 全域狀態
+// ---------------------------------------------------------------------------
+const state = { idx: N-1, aIdx: 0, bIdx: N-1, playing:false, playTimer:null, modalType:null, modalGeo:null };
+
+function staleBadge(days){
+  if(days<=15) return {cls:'b-live', txt:`真實觀測 ±${days}天內`, col:'var(--equity)'};
+  if(days<=90) return {cls:'b-near', txt:`中距離插值 ±${days}天`, col:'var(--good)'};
+  return {cls:'b-far', txt:`長距離插值 ±${days}天`, col:'var(--senti)'};
+}
+function staleColor(days){
+  if(days<=15) return 'var(--equity)';
+  if(days<=90) return 'var(--good)';
+  return 'var(--senti)';
+}
+</script>

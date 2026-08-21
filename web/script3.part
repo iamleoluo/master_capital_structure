@@ -1,0 +1,176 @@
+<script>
+// ---------- §04 decomposition ----------
+function findIdx(dstr){
+  const arr = DATA.daily.date;
+  let idx = arr.indexOf(dstr);
+  if(idx>=0) return idx;
+  for(let i=0;i<arr.length;i++){ if(arr[i]>=dstr) return i; }
+  return arr.length-1;
+}
+const PERIODS = [
+  {a:'2024-12-31', b:'2025-08-11', label:'飛輪高峰', desc:'發優先股買幣,同時股價衝上 52 週高'},
+  {a:'2025-08-11', b:'2026-06-26', label:'崩跌',     desc:'BTC 回落,溢價收縮,槓桿同時反噬'},
+  {a:'2026-06-26', b:'2026-08-14', label:'止穩',     desc:'止跌回穩,情緒與槓桿同步小幅回補'},
+  {a:'2024-12-31', b:'2026-08-14', label:'全期',     desc:'兩年拉通看'}
+];
+function decompose(i0,i1){
+  const d=DATA.daily;
+  const L = (a1,a0)=>Math.log(a1/a0);
+  const logMnav = L(d.mnav_cebe[i1], d.mnav_cebe[i0]);
+  const logBps  = L(d.bps[i1], d.bps[i0]);
+  const logBtc  = L(d.btc[i1], d.btc[i0]);
+  const logLev  = Math.log((1-d.cp[i1])/(1-d.cp[i0]));
+  const logTotal= L(d.mstr[i1], d.mstr[i0]);
+  return {logMnav,logBps,logBtc,logLev,logTotal,i0,i1};
+}
+function pctFromLog(l){ return (Math.exp(l)-1)*100; }
+
+let curPeriod = 3; // default 全期
+
+function renderPeriodSeg(){
+  $('period-seg').innerHTML = PERIODS.map((p,i)=>
+    `<button type="button" data-i="${i}" aria-pressed="${i===curPeriod}">${p.label}</button>`).join('');
+  $('period-seg').querySelectorAll('button').forEach(b=>{
+    b.addEventListener('click',()=>{ curPeriod=+b.dataset.i; renderPeriodSeg(); renderDecomp(); });
+  });
+}
+
+function drawWaterfall2(dc){
+  const d = DATA.daily;
+  const p0 = d.mstr[dc.i0], p1 = d.mstr[dc.i1];
+  // bridge: start -> ×btc -> ×lev -> ×bps -> ×mnav -> end  (order chosen for narrative: fundamentals then sentiment)
+  const steps = [
+    {name:'BTC 價格', log:dc.logBtc, col:'--btc'},
+    {name:'槓桿(求償權)', log:dc.logLev, col:'--c3'},
+    {name:'每股 BTC', log:dc.logBps, col:'--c5'},
+    {name:'情緒溢價', log:dc.logMnav, col:'--senti'},
+  ];
+  const W=920,H=280,padL=70,padR=70,padT=24,padB=40;
+  const plotW=W-padL-padR, plotH=H-padT-padB;
+
+  // running value in log space anchored at p0
+  let running = Math.log(p0);
+  const points = [running];
+  steps.forEach(s=>{ running+=s.log; points.push(running); });
+  const allVals = points.map(Math.exp);
+  const lo = Math.min(...allVals)*0.85, hi = Math.max(...allVals)*1.15;
+  const y = v => padT + plotH*(1-(Math.log(v)-Math.log(lo))/(Math.log(hi)-Math.log(lo)));
+  const n = steps.length+1;
+  const x = i => padL + plotW*i/(n-1);
+
+  let svg=[];
+  for(const v of [lo, p0, p1, hi]){
+    // skip
+  }
+  // axis gridline at p0 and p1
+  [p0,p1].forEach((v,idx)=>{
+    const gy=y(v);
+    svg.push(`<line x1="${padL}" y1="${gy}" x2="${W-padR}" y2="${gy}" stroke="currentColor" stroke-opacity=".1" stroke-dasharray="2,3"/>`);
+  });
+
+  for(let i=0;i<n-1;i++){
+    const v0=allVals[i], v1=allVals[i+1];
+    const x0=x(i), x1=x(i+1);
+    const y0=y(v0), y1=y(v1);
+    const col = steps[i].col;
+    const up = v1>=v0;
+    svg.push(`<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="var(${col})" stroke-width="3" stroke-linecap="round"/>`);
+    svg.push(`<circle cx="${x0}" cy="${y0}" r="3.4" fill="var(${col})"/>`);
+    const midY = (y0+y1)/2;
+    svg.push(`<text x="${(x0+x1)/2}" y="${midY-10}" font-size="11" font-weight="600" text-anchor="middle" fill="var(${col})">${up?'+':''}${pctFromLog(steps[i].log).toFixed(0)}%</text>`);
+    svg.push(`<text x="${(x0+x1)/2}" y="${H-padB+18}" font-size="10.5" text-anchor="middle" fill="currentColor" opacity=".68">${steps[i].name}</text>`);
+  }
+  svg.push(`<circle cx="${x(n-1)}" cy="${y(allVals[n-1])}" r="3.4" fill="var(--ink)"/>`);
+  // start/end labels
+  svg.push(`<text x="${x(0)}" y="${y(p0)-14}" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">${fmt$(p0)}</text>`);
+  svg.push(`<text x="${x(0)}" y="${y(p0)+20}" font-size="9.5" text-anchor="middle" fill="currentColor" opacity=".6">${DATA.daily.date[dc.i0]}</text>`);
+  svg.push(`<text x="${x(n-1)}" y="${y(p1)-14}" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">${fmt$(p1)}</text>`);
+  svg.push(`<text x="${x(n-1)}" y="${y(p1)+20}" font-size="9.5" text-anchor="middle" fill="currentColor" opacity=".6">${DATA.daily.date[dc.i1]}</text>`);
+
+  $('waterfall2').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="股價變化橋接圖,從起點股價依序疊加 BTC 價格、槓桿、每股 BTC、情緒溢價四項變化到終點股價">${svg.join('')}</svg>`;
+}
+
+function drawFactorChart(){
+  const d=DATA.daily; const n=d.date.length;
+  const W=920,H=280,padL=54,padR=100,padT=18,padB=32;
+  const plotW=W-padL-padR, plotH=H-padT-padB;
+  const x=i=>padL+plotW*i/(n-1);
+
+  const base = {mnav:d.mnav_cebe[0], bps:d.bps[0], btc:d.btc[0], lev:1-d.cp[0]};
+  const series = {
+    mnav: d.mnav_cebe.map(v=>v/base.mnav),
+    bps:  d.bps.map(v=>v/base.bps),
+    btc:  d.btc.map(v=>v/base.btc),
+    lev:  d.cp.map(v=>(1-v)/base.lev),
+    total: d.mstr.map(v=>v/d.mstr[0]),
+  };
+  const cols = {mnav:'--senti', bps:'--c5', btc:'--btc', lev:'--c3', total:'--ink'};
+  const labels = {mnav:'情緒溢價', bps:'每股 BTC', btc:'BTC 價格', lev:'槓桿(1−求償權%)', total:'MSTR 實際股價'};
+
+  let allV=[]; Object.values(series).forEach(s=>allV.push(...s));
+  const lo=Math.min(...allV)*0.9, hi=Math.max(...allV)*1.1;
+  const y=v=>padT+plotH*(1-(Math.log(v)-Math.log(lo))/(Math.log(hi)-Math.log(lo)));
+
+  let svg=[];
+  // ref line at 1.0
+  svg.push(`<line x1="${padL}" y1="${y(1)}" x2="${W-padR}" y2="${y(1)}" stroke="currentColor" stroke-opacity=".2"/>`);
+  svg.push(`<text x="${padL-8}" y="${y(1)+4}" font-size="10" text-anchor="end" fill="currentColor" opacity=".55" font-family="var(--mono)">1.0×</text>`);
+
+  const seen=new Set();
+  for(let i=0;i<n;i++){
+    const ym=d.date[i].slice(0,7);
+    if(d.date[i].slice(8,10)==='01' && (ym.slice(5,7)==='01'||ym.slice(5,7)==='07') && !seen.has(ym)){
+      seen.add(ym);
+      svg.push(`<line x1="${x(i)}" y1="${padT}" x2="${x(i)}" y2="${H-padB}" stroke="currentColor" stroke-opacity=".06"/>`);
+      svg.push(`<text x="${x(i)}" y="${H-padB+16}" font-size="9.5" text-anchor="middle" fill="currentColor" opacity=".55" font-family="var(--mono)">${ym}</text>`);
+    }
+  }
+
+  ['btc','lev','bps','mnav','total'].forEach(k=>{
+    const pts = series[k].map((v,i)=>x(i).toFixed(1)+','+y(v).toFixed(1)).join(' ');
+    const w = k==='total'?2.2:1.6;
+    const op = k==='total'?1:.88;
+    svg.push(`<polyline points="${pts}" fill="none" stroke="var(${cols[k]})" stroke-width="${w}" opacity="${op}"/>`);
+    const lastV = series[k][n-1];
+    svg.push(`<text x="${W-padR+8}" y="${y(lastV)+4}" font-size="10.5" fill="var(${cols[k]})" font-weight="${k==='total'?700:500}">${labels[k]}</text>`);
+  });
+
+  $('factor-chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="四個因子的累積乘數軌跡,對數座標,四線相乘等於黑線代表的實際股價倍數">${svg.join('')}</svg>`;
+  $('factor-legend').innerHTML = ['btc','lev','bps','mnav','total'].map(k=>
+    `<span><i class="swatch" style="background:var(${cols[k]})"></i>${labels[k]}</span>`).join('');
+}
+
+function renderDecomp(){
+  const P = PERIODS[curPeriod];
+  const i0=findIdx(P.a), i1=findIdx(P.b);
+  const dc = decompose(i0,i1);
+  drawWaterfall2(dc);
+
+  const tiles = [
+    {lab:'BTC 價格', pct:pctFromLog(dc.logBtc), col:'--btc', d:'底層資產的漲跌'},
+    {lab:'槓桿(求償權變化)', pct:pctFromLog(dc.logLev), col:'--c3', d:'優先股/債佔比升高會拖累這項'},
+    {lab:'每股 BTC', pct:pctFromLog(dc.logBps), col:'--c5', d:'買幣增速 vs 增股稀釋的淨結果'},
+    {lab:'情緒溢價', pct:pctFromLog(dc.logMnav), col:'--senti', d:'市場願付倍數的變化'},
+  ];
+  $('attrib-tiles').innerHTML = tiles.map(t=>`
+    <div class="tile" style="border-left:3px solid var(${t.col})">
+      <div class="k">${t.lab}</div>
+      <div class="v" style="color:${t.pct>=0?'var(--good)':'var(--bad)'}">${t.pct>=0?'+':''}${t.pct.toFixed(1)}%</div>
+      <div class="d">${t.d}</div>
+    </div>`).join('');
+
+  // verdict text: rank contributions by |log|
+  const contribs = [
+    {n:'BTC 價格', l:Math.abs(dc.logBtc)},
+    {n:'槓桿變化', l:Math.abs(dc.logLev)},
+    {n:'每股 BTC 增速', l:Math.abs(dc.logBps)},
+    {n:'情緒溢價', l:Math.abs(dc.logMnav)},
+  ].sort((a,b)=>b.l-a.l);
+  const totalPct = pctFromLog(dc.logTotal);
+  $('verdict').innerHTML = `<b>${P.label}(${P.a} → ${P.b}):</b> MSTR ${totalPct>=0?'上漲':'下跌'} ${Math.abs(totalPct).toFixed(0)}%。影響力最大的是<b>${contribs[0].n}</b>,其次是<b>${contribs[1].n}</b>。${P.desc}`;
+}
+
+renderPeriodSeg();
+renderDecomp();
+drawFactorChart();
+</script>

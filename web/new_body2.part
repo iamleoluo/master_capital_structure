@@ -1,0 +1,132 @@
+<section>
+  <div class="sec-head">
+    <div class="sec-num">03</div>
+    <div>
+      <p class="eyebrow">主角</p>
+      <h2>STRC 一個系列,就佔了求償權的三分之二</h2>
+      <p class="lede">STRC 不只是規模最大 —— 它從 2025-07-30 掛牌起就有自己的每日市價。它跌破面額的幅度,直接就是市場對整個資本結構信心的溫度計。</p>
+    </div>
+  </div>
+  <div class="card scroller"><div id="stack-chart"></div></div>
+  <div class="legend" id="stack-legend"></div>
+
+  <div class="grid2" style="margin-top:26px">
+    <div>
+      <h3 style="margin-bottom:10px">STRC 市價 vs 面額 $100</h3>
+      <div class="card scroller"><div id="strc-par-chart"></div></div>
+      <p style="font-size:.83rem;color:var(--ink-3);margin-top:10px">STRC 跌破面額,代表市場認為它的股利率補不了風險 —— 這比任何 mNAV 數字都更直接反映信用市場對 Strategy 的評價。</p>
+    </div>
+    <div>
+      <h3 style="margin-bottom:10px">五個系列的差別</h3>
+      <div class="scroller"><table class="mini"><thead><tr>
+        <th>系列</th><th>定價日</th><th class="n">IPO 規模</th><th class="n">股利</th><th>順位</th>
+      </tr></thead><tbody id="ipo-tbl"></tbody></table></div>
+      <p style="font-size:.94rem;color:var(--ink-2);margin-top:16px">用優先股募資買 BTC,Gross BPS 會上升,但同一筆交易也等量增加求償權,普通股一枚都沒多拿到 —— 這是 phantom growth。2026-08-13 這個落差是 <span class="num" id="phantom">—</span> sats／股,佔 Gross 的 <span class="num" id="phantom-pct">—</span>。</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="sec-num">04</div>
+    <div>
+      <p class="eyebrow">反過來算</p>
+      <h2>給定 BTC 價格與 STRC 規模,MSTR 該值多少</h2>
+      <p class="lede">把恆等式倒過來用。調整三個輸入,看資本結構如何把 BTC 價格轉換成股價 —— 以及求償權在什麼價位會把普通股完全吃掉。</p>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div style="display:flex;flex-direction:column;gap:22px">
+        <div class="ctl">
+          <div class="ctl-top"><span class="ctl-lab">BTC 價格</span><span class="ctl-val" id="v-btc">—</span></div>
+          <input type="range" id="s-btc" min="15000" max="200000" step="500" value="64279" aria-label="BTC 價格">
+        </div>
+        <div class="ctl">
+          <div class="ctl-top"><span class="ctl-lab">STRC 清算優先權</span><span class="ctl-val" id="v-strc">—</span></div>
+          <input type="range" id="s-strc" min="0" max="25" step="0.25" value="10.34" aria-label="STRC 清算優先權(十億美元)">
+          <div style="font-size:.75rem;color:var(--ink-3)">其餘求償權固定:可轉債 $6.75B + 其他四系列優先股 $4.90B</div>
+        </div>
+        <div class="ctl">
+          <div class="ctl-top"><span class="ctl-lab">目標 mNAV</span><span class="ctl-val" id="v-mnav">—</span></div>
+          <input type="range" id="s-mnav" min="0.3" max="3" step="0.01" value="1" aria-label="目標 mNAV">
+        </div>
+        <div>
+          <div style="font-size:.82rem;color:var(--ink-2);margin-bottom:8px">mNAV 基準</div>
+          <div class="seg" id="basis-seg">
+            <button type="button" data-b="cebe" aria-pressed="true">CEBE(扣求償權)</button>
+            <button type="button" data-b="basic" aria-pressed="false">basic(不扣)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="k" style="font-size:.75rem;color:var(--ink-3);margin-bottom:6px">隱含 MSTR 股價</div>
+        <div style="font-family:var(--mono);font-size:2.85rem;color:var(--equity);
+             font-variant-numeric:tabular-nums;letter-spacing:-.03em;line-height:1.1" id="calc-price">—</div>
+        <div style="font-size:.83rem;color:var(--ink-3);margin-top:8px" id="calc-sub">—</div>
+      </div>
+      <div class="grid3" style="grid-template-columns:1fr 1fr">
+        <div class="tile"><div class="k">每股殘值</div><div class="v" id="calc-ps">—</div><div class="d">扣求償權後</div></div>
+        <div class="tile"><div class="k">求償權佔比</div><div class="v" id="calc-cp">—</div><div class="d">佔 BTC 總市值</div></div>
+        <div class="tile"><div class="k">槓桿倍數</div><div class="v" id="calc-amp">—</div><div class="d">BTC 動 1% → 殘值</div></div>
+        <div class="tile"><div class="k">歸零價</div><div class="v" id="calc-be">—</div><div class="d">普通股殘值 = 0</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card scroller" style="margin-top:20px"><div id="curve-chart"></div></div>
+  <figcaption>曲線是在目前設定下,MSTR 股價隨 BTC 價格的變化。它<strong>不通過原點</strong> —— 在歸零價以左完全沒有值。優先股規模越大,曲線越往右平移、斜率越陡,這就是槓桿。</figcaption>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="sec-num">05</div>
+    <div>
+      <p class="eyebrow">定價錨點</p>
+      <h2>公司自己給的答案,以及它與第三方差在哪</h2>
+      <p class="lede">2026-08-13 的 Form FWP 附了一張敏感度表。這是 Tier 1 的一手資料,也是本專案唯一能拿來對答案的東西。</p>
+    </div>
+  </div>
+  <div class="grid2">
+    <div>
+      <h3 style="margin-bottom:12px">官方敏感度表(已完整重現)</h3>
+      <div class="scroller"><table class="mini"><thead><tr>
+        <th>BTC 價格</th><th class="n">官方每股淨值</th><th class="n">本系統計算</th><th class="n">誤差</th>
+      </tr></thead><tbody id="sens-tbl"></tbody></table></div>
+      <p style="font-size:.82rem;color:var(--ink-3);margin-top:12px">六列全部落在 1 個基點內。FWP 揭露的三個輸入只到 $1M 精度,無法逐分吻合是資料本身的極限,不是公式錯誤。</p>
+    </div>
+    <div>
+      <h3 style="margin-bottom:12px">歸零價有三個都對的答案</h3>
+      <div class="scroller"><table class="mini"><thead><tr>
+        <th>定義</th><th class="n">歸零 BTC 價</th><th class="n">緩衝</th>
+      </tr></thead><tbody id="be-tbl"></tbody></table></div>
+      <p style="font-size:.82rem;color:var(--ink-3);margin-top:12px">差異全在「求償權」怎麼定義:要不要扣現金、扣的是資產負債表現金還是 USD Reserve、算不算歐元計價的 STRE。</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="sec-num">06</div>
+    <div>
+      <p class="eyebrow">誠實聲明</p>
+      <h2>這份分析站不住的地方</h2>
+      <p class="lede">建置過程中對來源資料做了交叉驗證,也在這次更新中換掉了原本會製造假訊號的階梯式資料。原始數值全部保留未改。</p>
+    </div>
+  </div>
+  <div class="grid2" id="findings"></div>
+  <div class="note key" style="margin-top:26px">
+    <b>更正:BTC 持有量其實每週都在 8-K 裡,只是換了格式。</b>早期(2024-09 ~ 2025-03)是 prose 敘述「as of 某日持有約 X 枚」,2025-03-31 之後改成結構化的「BTC Update」表格 —— 兩種格式都要解析才抓得到,單一關鍵字搜尋會漏掉格式切換。修正後從 SEC 8-K 解出 90 個真實週觀測點,平均間隔 8.7 天,取代原本用不到 10 個季度點做出來的階梯狀資料。求償權裡的優先股分系列(STRF/STRK/STRD/STRE)與可轉債/現金仍只有季頻(SEC XBRL),合計約佔優先股總額的 32%,插值誤差有限但不是零 —— 時間軸與圖表上的顏色標出每個數字離最近真實觀測點多遠。
+  </div>
+</section>
+</div>
+
+<footer><div class="wrap">
+  <p>市場資料:BTC = Binance 日線;MSTR/STRF/STRC/STRK/STRD = Yahoo 日線。BTC 持有量:SEC 8-K 逐週揭露(90 個觀測點,2024-09 起,平均間隔 8.7 天)。其餘資本結構(debt/cash/股數/優先股分系列):SEC XBRL companyconcept API(季頻)+ 10-K/10-Q/8-K/FWP 人工整理,錨點之間線性插值。</p>
+  <p>恆等式的求償權採 cebetracker 定義(可轉債面額 + 優先股清算優先權 − 資產負債表現金),股數用 basic shares。§05 的官方錨點另採公司定義(扣 USD Reserve、除以 FDSO),兩者刻意不混用。</p>
+  <p style="margin:0">本頁為資料分析,不構成投資建議。</p>
+</div></footer>

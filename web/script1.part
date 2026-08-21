@@ -1,0 +1,106 @@
+<script>
+const DATA = __DATA_JSON__;
+const fmt$  = (v,d=2)=>'$'+Number(v).toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const fmt$0 = v=>'$'+Math.round(v).toLocaleString('en-US');
+const fmtB  = v=>'$'+v.toFixed(2)+'B';
+const fmtX  = v=>v.toFixed(2)+'x';
+const fmtPct= v=>(v*100).toFixed(1)+'%';
+const fmtSats=v=>Math.round(v).toLocaleString('en-US')+' sats';
+const $ = id=>document.getElementById(id);
+
+const COL = getComputedStyle(document.documentElement);
+function cssvar(name){ return COL.getPropertyValue(name).trim(); }
+const PREF_COL = {STRF:'--c1',STRC:'--c2',STRK:'--c3',STRD:'--c4',STRE:'--c5',UNALLOCATED:'--c6'};
+
+const N = DATA.daily.date.length;
+const LAST = N-1;
+
+// ---------- hero identity ----------
+function paintHero(i){
+  $('asof').textContent = DATA.daily.date[i];
+  $('i-price').textContent = fmt$(DATA.daily.mstr[i]);
+  $('i-mnav').textContent  = fmtX(DATA.daily.mnav_cebe[i]);
+  $('i-bps').textContent   = fmtSats(DATA.daily.bps[i]);
+  $('i-btc').textContent   = fmt$0(DATA.daily.btc[i]);
+  $('i-lev').textContent   = (1-DATA.daily.cp[i]).toFixed(3);
+}
+paintHero(LAST);
+
+// ---------- §01 variant table ----------
+(function(){
+  const labels = {basic:'basic mNAV',diluted:'diluted mNAV',enterprise:'enterprise mNAV',
+                  company:'company(官方新定義)',cebe:'CEBE mNAV'};
+  const rows = DATA.variants.map(v=>{
+    const straddle = (v.v-1)*(DATA.variants[0].v-1) < 0 ? ' ← 跨到另一側' : '';
+    return `<tr><td>${labels[v.k]}</td><td class="n">${v.v.toFixed(3)}x${straddle}</td></tr>`;
+  }).join('');
+  $('variant-tbl').innerHTML = rows;
+})();
+
+// ---------- §02 waterfall (latest capital stack) ----------
+function drawWaterfall(){
+  const fwp = DATA.fwp;
+  const held = fwp.held, btc = fwp.btc, nav = held*btc/1e9;
+  const debt = fwp.debt;
+  const prefTotal = Object.values(fwp.pref).reduce((a,b)=>a+b,0);
+  const claims = debt + prefTotal;
+  const resid = nav - claims;
+
+  $('t-nav').textContent = fmtB(nav);
+  $('t-claims').textContent = fmtB(claims);
+  $('t-resid').textContent = fmtB(resid);
+  $('t-amp').textContent = fmtX(fwp.amp);
+
+  const W=920,H=360, barW=150, gap=26;
+  const scale = (H-60)/nav;
+  let x = 20, svg=[];
+  svg.push(`<defs><marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0,0L10,5L0,10z" fill="currentColor"/></marker></defs>`);
+
+  // Single stacked bar, bottom-up: converts -> STRF -> STRC -> STRK -> STRD -> STRE -> equity
+  const order = [['可轉債',debt,'--c1'], ['STRF',fwp.pref.STRF,'--c2'], ['STRC',fwp.pref.STRC,'--c3'],
+                 ['STRK',fwp.pref.STRK,'--c4'], ['STRD',fwp.pref.STRD,'--c5'], ['STRE',fwp.pref.STRE,'--c6']];
+  let y = H-30, bx = 60;
+  const labelSide = [];
+  order.forEach(([name,val,col],idx)=>{
+    const h = val*scale;
+    y -= h;
+    svg.push(`<rect x="${bx}" y="${y}" width="${barW}" height="${h}" fill="var(${col})"/>`);
+    if(h>16){
+      svg.push(`<text x="${bx+barW/2}" y="${y+h/2+4}" font-size="11" fill="#fff" text-anchor="middle">${name}</text>`);
+    }
+    labelSide.push({name,val,y:y+h/2,col});
+  });
+  const equityH = resid*scale;
+  y -= equityH;
+  svg.push(`<rect x="${bx}" y="${y}" width="${barW}" height="${equityH}" fill="var(--equity)"/>`);
+  svg.push(`<text x="${bx+barW/2}" y="${y+equityH/2+4}" font-size="12" font-weight="600" fill="#fff" text-anchor="middle">普通股</text>`);
+  svg.push(`<line x1="${bx}" y1="${H-30-nav*scale}" x2="${bx+barW}" y2="${H-30-nav*scale}" stroke="currentColor" stroke-width="1"/>`);
+  svg.push(`<text x="${bx}" y="${H-30-nav*scale-8}" font-size="11" fill="currentColor">BTC 總市值 ${fmtB(nav)}</text>`);
+
+  // right-side annotation list, aligned
+  const rx = bx+barW+40;
+  let ly = 26;
+  svg.push(`<text x="${rx}" y="${ly}" font-size="11" fill="currentColor" opacity=".6" font-family="var(--mono)">依清償順位(上→下越後償)</text>`);
+  ly += 22;
+  [['可轉債',debt,'--c1','最優先,所有優先股之上'],
+   ['STRF',fwp.pref.STRF,'--c2','累積型,優先股中最優先'],
+   ['STRC',fwp.pref.STRC,'--c3','變動利率,規模最大'],
+   ['STRK',fwp.pref.STRK,'--c4','可轉換 0.1 MSTR/股'],
+   ['STRD',fwp.pref.STRD,'--c5','非累積,優先股中最劣後'],
+   ['STRE',fwp.pref.STRE,'--c6','歐元計價']
+  ].forEach(([name,val,col,note])=>{
+    svg.push(`<rect x="${rx}" y="${ly-10}" width="10" height="10" fill="var(${col})"/>`);
+    svg.push(`<text x="${rx+16}" y="${ly}" font-size="12" font-weight="600" fill="currentColor">${name}</text>`);
+    svg.push(`<text x="${rx+70}" y="${ly}" font-size="12" font-family="var(--mono)" fill="currentColor" text-anchor="start">${fmtB(val)}</text>`);
+    svg.push(`<text x="${rx+16}" y="${ly+15}" font-size="10.5" fill="currentColor" opacity=".62">${note}</text>`);
+    ly += 38;
+  });
+  svg.push(`<rect x="${rx}" y="${ly-10}" width="10" height="10" fill="var(--equity)"/>`);
+  svg.push(`<text x="${rx+16}" y="${ly}" font-size="12" font-weight="600" fill="var(--equity)">普通股殘值</text>`);
+  svg.push(`<text x="${rx+70}" y="${ly}" font-size="12" font-family="var(--mono)" fill="var(--equity)">${fmtB(resid)}</text>`);
+  svg.push(`<text x="${rx+16}" y="${ly+15}" font-size="10.5" fill="currentColor" opacity=".62">÷ ${(fwp.fdso/1e6).toFixed(1)}M FDSO = $${fwp.nrps.toFixed(2)}／股</text>`);
+
+  $('waterfall').innerHTML = `<svg viewBox="0 0 ${rx+330} ${H}" role="img" aria-label="MSTR 資本結構瀑布圖,由下而上依清償順位堆疊:可轉債、STRF、STRC、STRK、STRD、STRE,最上層是普通股殘值">${svg.join('')}</svg>`;
+}
+drawWaterfall();
+</script>

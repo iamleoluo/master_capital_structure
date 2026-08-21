@@ -1,0 +1,128 @@
+<div class="wrap hero">
+  <p class="stamp"><span>資本結構拆解</span><span>2024-12-31 → <b id="asof">—</b></span><span>Tier 1 錨點:2026-08-13 Form FWP</span></p>
+  <h1>MSTR 的股價<br>是四件事的乘積</h1>
+  <p class="sub">把 MSTR 拆開,底下只有四個會動的東西:比特幣的價格、每股分到多少比特幣、優先求償權吃掉多少、以及市場願意付的溢價。這四項相乘<strong>精確</strong>等於股價 —— 不是近似,是恆等式。所以任何一段歷史都能問:這次是槓桿變大,還是溢價收窄?</p>
+
+  <div class="identity">
+    <div class="eq">
+      <div class="eq-term result">
+        <div class="eq-lab">MSTR 股價</div>
+        <div class="eq-val" id="i-price">—</div>
+        <div class="eq-sub">收盤</div>
+      </div>
+      <div class="eq-op">=</div>
+      <div class="eq-term">
+        <div class="eq-lab"><i class="swatch" style="background:var(--senti)"></i>情緒溢價</div>
+        <div class="eq-val" id="i-mnav">—</div>
+        <div class="eq-sub">CEBE mNAV<br>市場付的倍數</div>
+      </div>
+      <div class="eq-op">×</div>
+      <div class="eq-term">
+        <div class="eq-lab"><i class="swatch" style="background:var(--equity)"></i>每股 BTC</div>
+        <div class="eq-val" id="i-bps">—</div>
+        <div class="eq-sub">sats／股<br>買幣與增股的淨結果</div>
+      </div>
+      <div class="eq-op">×</div>
+      <div class="eq-term">
+        <div class="eq-lab"><i class="swatch" style="background:var(--btc)"></i>BTC 價格</div>
+        <div class="eq-val" id="i-btc">—</div>
+        <div class="eq-sub">底層資產</div>
+      </div>
+      <div class="eq-op">×</div>
+      <div class="eq-term">
+        <div class="eq-lab"><i class="swatch" style="background:var(--c3)"></i>普通股殘值率</div>
+        <div class="eq-val" id="i-lev">—</div>
+        <div class="eq-sub">1 − 求償權佔比<br>優先股沒吃掉的部分</div>
+      </div>
+    </div>
+    <p class="eq-cap">這條式子在 406 個交易日上逐日驗證,最大相對殘差 4×10⁻¹⁶(浮點誤差)。它之所以成立,是因為 CEBE mNAV 的定義就是「股價 ÷ 扣掉求償權後的每股 BTC 價值」—— 把定義攤開就得到上式。</p>
+  </div>
+</div>
+
+<div class="wrap">
+<section>
+  <div class="sec-head">
+    <div class="sec-num">01</div>
+    <div>
+      <p class="eyebrow">先解決一個誤解</p>
+      <h2>最常被引用的 mNAV,看不到優先股</h2>
+      <p class="lede">「mNAV」在 2024 年是個乾淨的數字。2025 年之後,同一天同一個股價,不同定義可以分別落在 1.0x 的兩側 —— 而差別正是優先股。</p>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <figure>
+      <svg viewBox="0 0 470 330" role="img" aria-label="同一筆 BTC 資產,basic mNAV 比較的是整條資產柱,CEBE mNAV 只比較優先求償權之上剩下的那一段">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+          </marker>
+        </defs>
+        <text x="0" y="14" font-size="12" font-weight="600" fill="currentColor">公司持有的 BTC 資產</text>
+        <!-- asset column -->
+        <rect x="0" y="26" width="128" height="176" fill="var(--c2)" opacity=".92"/>
+        <rect x="0" y="202" width="128" height="98" fill="var(--equity)" opacity=".92"/>
+        <text x="64" y="120" font-size="12" fill="#fff" text-anchor="middle">優先求償權</text>
+        <text x="64" y="138" font-size="11" fill="#fff" text-anchor="middle" opacity=".85">債 + 優先股</text>
+        <text x="64" y="248" font-size="12" fill="#fff" text-anchor="middle">普通股</text>
+        <text x="64" y="266" font-size="11" fill="#fff" text-anchor="middle" opacity=".85">殘值</text>
+        <line x1="0" y1="202" x2="128" y2="202" stroke="var(--paper)" stroke-width="2"/>
+
+        <!-- basic bracket: whole column -->
+        <line x1="150" y1="26" x2="150" y2="300" stroke="var(--senti)" stroke-width="1.6"/>
+        <line x1="145" y1="26" x2="155" y2="26" stroke="var(--senti)" stroke-width="1.6"/>
+        <line x1="145" y1="300" x2="155" y2="300" stroke="var(--senti)" stroke-width="1.6"/>
+        <line x1="150" y1="163" x2="196" y2="163" stroke="var(--senti)" stroke-width="1.2" marker-end="url(#ar)" color="var(--senti)"/>
+        <text x="202" y="158" font-size="12" font-weight="600" fill="var(--senti)">basic mNAV</text>
+        <text x="202" y="175" font-size="11" fill="currentColor">拿市值比<tspan font-weight="600">整條</tspan>資產</text>
+        <text x="202" y="191" font-size="11" fill="currentColor">分母裡沒有求償權這一項</text>
+
+        <!-- cebe bracket: residual only -->
+        <line x1="150" y1="202" x2="150" y2="300" stroke="var(--equity)" stroke-width="0"/>
+        <line x1="316" y1="202" x2="316" y2="300" stroke="var(--equity)" stroke-width="1.6"/>
+        <line x1="311" y1="202" x2="321" y2="202" stroke="var(--equity)" stroke-width="1.6"/>
+        <line x1="311" y1="300" x2="321" y2="300" stroke="var(--equity)" stroke-width="1.6"/>
+        <line x1="316" y1="251" x2="356" y2="251" stroke="var(--equity)" stroke-width="1.2" marker-end="url(#ar)" color="var(--equity)"/>
+        <text x="362" y="246" font-size="12" font-weight="600" fill="var(--equity)">CEBE mNAV</text>
+        <text x="362" y="263" font-size="11" fill="currentColor">只比<tspan font-weight="600">剩下</tspan>的</text>
+        <text x="362" y="279" font-size="11" fill="currentColor">這一段</text>
+
+        <line x1="0" y1="316" x2="128" y2="316" stroke="currentColor" stroke-width=".8" opacity=".45"/>
+        <text x="0" y="329" font-size="10.5" fill="currentColor" opacity=".7">優先股增發把這條分界線往下推</text>
+      </svg>
+      <figcaption>兩種 mNAV 量的是同一筆資產的<strong>不同段落</strong>。優先股增發會把藍色與橘色的分界線往下推,但 basic mNAV 的分子(市值)與分母(BTC 總市值)裡都沒有這一項 —— 所以它對這件事完全無感。</figcaption>
+    </figure>
+
+    <div>
+      <div class="card">
+        <h3 style="margin-bottom:14px">2026-08-13 同一天、同一個股價 $97.10</h3>
+        <table class="mini"><tbody id="variant-tbl"></tbody></table>
+        <p style="font-size:.83rem;color:var(--ink-3);margin:14px 0 0">五個數字全部正確。差別只在分子算不算求償權、分母用哪一種股數。</p>
+      </div>
+      <div class="note key">
+        <b>實務含意:</b>看到「MSTR mNAV 0.7x,跌破淨值」與「MSTR mNAV 1.1x,仍有溢價」同時出現,兩邊都沒說錯。任何 mNAV 數字不附上定義與日期就沒有意義 —— 這也是本頁一律標註變體名稱的原因。
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="sec-num">02</div>
+    <div>
+      <p class="eyebrow">資本結構解剖</p>
+      <h2>54 億美元的比特幣,普通股實際分到多少</h2>
+      <p class="lede">依清償順位由上而下切一次。順位不是排版,是真實的求償次序:可轉債在所有優先股之上,普通股在最後面。</p>
+    </div>
+  </div>
+  <div class="card scroller">
+    <div id="waterfall"></div>
+  </div>
+  <div class="grid3" style="margin-top:20px">
+    <div class="tile"><div class="k">BTC 總市值</div><div class="v" id="t-nav">—</div><div class="d">840,447 BTC × $64,279</div></div>
+    <div class="tile"><div class="k">優先求償權合計</div><div class="v" id="t-claims">—</div><div class="d">可轉債 + 五系列優先股</div></div>
+    <div class="tile"><div class="k">普通股殘值</div><div class="v" id="t-resid">—</div><div class="d">÷ 398.2M FDSO = <span class="num">$92.11</span>／股</div></div>
+    <div class="tile"><div class="k">槓桿放大倍數</div><div class="v" id="t-amp">—</div><div class="d">BTC 每動 1%,殘值動 1.47%</div></div>
+  </div>
+  <div class="note warn"><b>三個數字都不是「面額」。</b>優先股一律用<strong>清算優先權</strong>($100／股 × 股數,STRE 為 €100)計算,不是 IPO 發行價($80–$90),也不是市價 —— STRC 在 2026-06-17 曾跌到 $89。三者差很多:光是 IPO 當時,用發行價就會少算 $885M(14%)。</div>
+</section>

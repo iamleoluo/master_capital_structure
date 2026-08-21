@@ -1,0 +1,268 @@
+<script>
+// ---------------------------------------------------------------------------
+// 共用:index <-> x 座標
+// ---------------------------------------------------------------------------
+const CW=880, CPADL=52, CPADR=14;
+function cx(i){ return CPADL + (CW-CPADL-CPADR) * i/(N-1); }
+function idxFromX(fracX){
+  const i = Math.round((fracX*(CW-CPADL-CPADR)) / (CW-CPADL-CPADR) * (N-1));
+  return clamp(i,0,N-1);
+}
+function idxFromPixel(px, wrapWidth){
+  const svgX = (px/wrapWidth) * CW;
+  const frac = (svgX - CPADL) / (CW-CPADL-CPADR);
+  return clamp(Math.round(frac*(N-1)), 0, N-1);
+}
+
+function attachScrub(el){
+  let dragging=false;
+  const onMove = (clientX)=>{
+    const rect = el.getBoundingClientRect();
+    const i = idxFromPixel(clientX-rect.left, rect.width);
+    setIndex(i);
+  };
+  el.addEventListener('pointerdown', e=>{ dragging=true; el.setPointerCapture(e.pointerId); onMove(e.clientX); });
+  el.addEventListener('pointermove', e=>{ if(dragging) onMove(e.clientX); });
+  el.addEventListener('pointerup', ()=>{ dragging=false; });
+  el.addEventListener('pointercancel', ()=>{ dragging=false; });
+}
+
+// ---------------------------------------------------------------------------
+// 圖表 1:MSTR / BTC 指數化價格
+// ---------------------------------------------------------------------------
+function drawPriceChart(opts){
+  opts = opts || {};
+  const H=opts.h||175, padT=14, padB=22, containerId=opts.id||'chart-price', cursorName=opts.cursor||'price';
+  const plotH=H-padT-padB;
+  const btc0=D.btc[0], mstr0=D.mstr[0];
+  const btcIdx = D.btc.map(v=>v/btc0*100);
+  const mstrIdx = D.mstr.map(v=>v/mstr0*100);
+  const all = btcIdx.concat(mstrIdx);
+  const lo=Math.min(...all)*0.85, hi=Math.max(...all)*1.1;
+  const y = v => padT + plotH*(1-(Math.log(v)-Math.log(lo))/(Math.log(hi)-Math.log(lo)));
+
+  let svg=[`<line x1="${CPADL}" y1="${y(100)}" x2="${CW-CPADR}" y2="${y(100)}" stroke="currentColor" stroke-opacity=".18"/>`];
+  svg.push(`<text x="${CPADL-6}" y="${y(100)+3}" font-size="9" text-anchor="end" fill="currentColor" opacity=".5" font-family="var(--mono)">100</text>`);
+  addXTicks(svg, padT, H-padB);
+
+  const pathBtc = D.btc.map((_,i)=>cx(i).toFixed(1)+','+y(btcIdx[i]).toFixed(1)).join(' L ');
+  const pathMstr = D.mstr.map((_,i)=>cx(i).toFixed(1)+','+y(mstrIdx[i]).toFixed(1)).join(' L ');
+  svg.push(`<path d="M ${pathBtc}" fill="none" stroke="var(--btc)" stroke-width="1.5" opacity=".85"/>`);
+  svg.push(`<path d="M ${pathMstr}" fill="none" stroke="var(--senti)" stroke-width="1.8"/>`);
+  svg.push(`<text x="${CW-CPADR}" y="${y(btcIdx[N-1])+3}" font-size="10" text-anchor="end" fill="var(--btc)" font-weight="600">BTC</text>`);
+  svg.push(`<text x="${CW-CPADR}" y="${y(mstrIdx[N-1])-6}" font-size="10" text-anchor="end" fill="var(--senti)" font-weight="600">MSTR</text>`);
+
+  svg.push(cursorGroup(cursorName, H));
+  $(containerId).innerHTML = `<svg viewBox="0 0 ${CW} ${H}" role="img" aria-label="MSTR 與 BTC 同基期指數化價格,對數座標">${svg.join('')}</svg>`;
+  attachScrub($(containerId));
+  return {y, ids:{btc:btcIdx, mstr:mstrIdx}};
+}
+
+// ---------------------------------------------------------------------------
+// 圖表 2:mNAV basic / CEBE
+// ---------------------------------------------------------------------------
+function drawMnavChart(opts){
+  opts = opts || {};
+  const H=opts.h||175, padT=14, padB=22, containerId=opts.id||'chart-mnav', cursorName=opts.cursor||'mnav';
+  const plotH=H-padT-padB;
+  const all = D.mnav_basic.concat(D.mnav_cebe);
+  const lo=Math.min(...all)*0.85, hi=Math.max(...all)*1.15;
+  const y = v => padT + plotH*(1-(Math.log(v)-Math.log(lo))/(Math.log(hi)-Math.log(lo)));
+
+  let svg=[`<line x1="${CPADL}" y1="${y(1)}" x2="${CW-CPADR}" y2="${y(1)}" stroke="currentColor" stroke-opacity=".28" stroke-dasharray="2,2"/>`];
+  svg.push(`<text x="${CPADL-6}" y="${y(1)+3}" font-size="9" text-anchor="end" fill="currentColor" opacity=".55" font-family="var(--mono)">1.0x</text>`);
+  addXTicks(svg, padT, H-padB);
+
+  const pathBasic = D.mnav_basic.map((_,i)=>cx(i).toFixed(1)+','+y(D.mnav_basic[i]).toFixed(1)).join(' L ');
+  const pathCebe = D.mnav_cebe.map((_,i)=>cx(i).toFixed(1)+','+y(D.mnav_cebe[i]).toFixed(1)).join(' L ');
+  svg.push(`<path d="M ${pathBasic}" fill="none" stroke="var(--c3)" stroke-width="1.5" opacity=".85"/>`);
+  svg.push(`<path d="M ${pathCebe}" fill="none" stroke="var(--equity)" stroke-width="1.8"/>`);
+  svg.push(`<text x="${CW-CPADR}" y="${y(D.mnav_basic[N-1])+13}" font-size="10" text-anchor="end" fill="var(--c3)" font-weight="600">basic</text>`);
+  svg.push(`<text x="${CW-CPADR}" y="${y(D.mnav_cebe[N-1])-6}" font-size="10" text-anchor="end" fill="var(--equity)" font-weight="600">CEBE</text>`);
+
+  DATA.breaks.filter(b=>b.hard).forEach(b=>{
+    const i = D.date.findIndex(d=>d>=b.d);
+    if(i<0) return;
+    svg.push(`<line x1="${cx(i)}" y1="${padT}" x2="${cx(i)}" y2="${H-padB}" stroke="var(--c1)" stroke-dasharray="1.5,2.5" stroke-width="1" opacity=".7"/>`);
+  });
+
+  svg.push(cursorGroup(cursorName, H));
+  $(containerId).innerHTML = `<svg viewBox="0 0 ${CW} ${H}" role="img" aria-label="basic mNAV 與 CEBE mNAV 歷史序列,對數座標,1.0x 為參考線">${svg.join('')}</svg>`;
+  attachScrub($(containerId));
+  return {y};
+}
+
+function addXTicks(svg, padT, yBase){
+  const seen=new Set();
+  for(let i=0;i<N;i++){
+    const ym = D.date[i].slice(0,7);
+    if(D.date[i].slice(8,10)==='01' && !seen.has(ym)){
+      const mm = ym.slice(5,7);
+      if(mm==='01'||mm==='07'){
+        seen.add(ym);
+        svg.push(`<line x1="${cx(i)}" y1="${padT}" x2="${cx(i)}" y2="${yBase}" stroke="currentColor" stroke-opacity=".06"/>`);
+        svg.push(`<text x="${cx(i)}" y="${yBase+13}" font-size="9" text-anchor="middle" fill="currentColor" opacity=".5" font-family="var(--mono)">${ym}</text>`);
+      }
+    }
+  }
+}
+
+function cursorGroup(name, h){
+  h = h || 175;
+  return `<g id="cursor-${name}">
+    <line class="cursor-line" x1="0" y1="0" x2="0" y2="${h}"/>
+    <circle class="cursor-dot" cx="0" cy="0" r="4"/>
+    <circle class="cursor-dot" cx="0" cy="0" r="4"/>
+  </g>`;
+}
+
+
+// ---------------------------------------------------------------------------
+// 圖表 3:資本結構河流圖 —— 求償權堆疊 + MSTR 市值疊在求償權之上,
+// 虛線是 BTC 總市值(NAV)。堆疊頂端與虛線的落差,精確等於
+// (CEBE mNAV − 1) × (NAV − 求償權)—— 也就是市場實際付出的溢價/折價金額。
+// ---------------------------------------------------------------------------
+const CLAIM_LAYERS = [['strf_lp','--c1'],['strc_lp','--c2'],['strk_lp','--c3'],
+                       ['strd_lp','--c4'],['stre_lp','--c5']];
+function drawRiverChart(opts){
+  opts = opts || {};
+  const H=opts.h||195, padT=14, padB=22, containerId=opts.id||'chart-river', cursorName=opts.cursor||'river';
+  const plotH=H-padT-padB;
+
+  const debt = D.debt;                     // $B
+  const claimsTop = [];                    // 求償權堆疊頂(含可轉債)
+  for(let i=0;i<N;i++){
+    let s = debt[i];
+    CLAIM_LAYERS.forEach(([k])=>{ s+=D[k][i]; });
+    claimsTop.push(s);
+  }
+  const marketCap = D.mstr.map((p,i)=> p*D.shares[i]/1000);   // $B(shares 單位 M)
+  const stackTop = claimsTop.map((c,i)=> c+marketCap[i]);
+  const nav = D.held.map((h,i)=> h*D.btc[i]/1e9);              // $B
+
+  const maxV = Math.max(...stackTop, ...nav)*1.08;
+  const y = v => padT + plotH*(1-v/maxV);
+
+  let svg=[];
+  for(let g=0; g<=3; g++){
+    const val=maxV*g/3, gy=y(val);
+    svg.push(`<line x1="${CPADL}" y1="${gy}" x2="${CW-CPADR}" y2="${gy}" stroke="currentColor" stroke-opacity=".08"/>`);
+    svg.push(`<text x="${CPADL-8}" y="${gy+4}" font-size="9" text-anchor="end" fill="currentColor" opacity=".5" font-family="var(--mono)">$${val.toFixed(0)}B</text>`);
+  }
+  addXTicks(svg, padT, H-padB);
+
+  // 求償權堆疊(可轉債 + 5 個優先股系列),依序由下往上
+  let prevTop;
+  const debtTop = debt;
+  { // 可轉債層(最底層)
+    const pathTop = debtTop.map((v,i)=>cx(i).toFixed(1)+','+y(v).toFixed(1)).join(' L ');
+    const pathBottom = debtTop.map((v,i)=>cx(N-1-i).toFixed(1)+',' +y(0).toFixed(1)).join(' L ');
+    svg.push(`<path d="M ${pathTop} L ${pathBottom} Z" fill="var(--c1)" opacity=".9"/>`);
+    prevTop = debtTop.slice();
+  }
+  CLAIM_LAYERS.forEach(([k,col])=>{
+    const top = prevTop.map((v,i)=> v+D[k][i]);
+    const pathTop = top.map((v,i)=>cx(i).toFixed(1)+','+y(v).toFixed(1)).join(' L ');
+    const pathBottom = prevTop.slice().reverse().map((v,ri)=>{
+      const i=N-1-ri; return cx(i).toFixed(1)+','+y(v).toFixed(1);
+    }).join(' L ');
+    svg.push(`<path d="M ${pathTop} L ${pathBottom} Z" fill="var(${col})" opacity=".9"/>`);
+    prevTop = top;
+  });
+
+  // MSTR 市值層,疊在求償權堆疊之上(claimsTop → stackTop)
+  {
+    const pathTop = stackTop.map((v,i)=>cx(i).toFixed(1)+','+y(v).toFixed(1)).join(' L ');
+    const pathBottom = claimsTop.slice().reverse().map((v,ri)=>{
+      const i=N-1-ri; return cx(i).toFixed(1)+','+y(v).toFixed(1);
+    }).join(' L ');
+    svg.push(`<path d="M ${pathTop} L ${pathBottom} Z" fill="var(--equity)" opacity=".55"/>`);
+  }
+
+  // 溢價/折價高亮:stackTop 與 nav 之間的落差,依正負分段上色
+  let runs=[]; let cur=null;
+  for(let i=0;i<N;i++){
+    const sign = stackTop[i] >= nav[i];
+    if(!cur || cur.sign!==sign){ if(cur) runs.push(cur); cur={sign, idx:[i]}; }
+    else cur.idx.push(i);
+  }
+  if(cur) runs.push(cur);
+  runs.forEach(run=>{
+    const idx = run.idx;
+    if(idx.length<2) return;
+    const topPath = idx.map(i=>cx(i).toFixed(1)+','+y(stackTop[i]).toFixed(1)).join(' L ');
+    const botPath = idx.slice().reverse().map(i=>cx(i).toFixed(1)+','+y(nav[i]).toFixed(1)).join(' L ');
+    const col = run.sign ? 'var(--good)' : 'var(--bad)';
+    svg.push(`<path d="M ${topPath} L ${botPath} Z" fill="${col}" opacity=".38"/>`);
+  });
+
+  // BTC 總市值參考線
+  const navPath = nav.map((v,i)=>cx(i).toFixed(1)+','+y(v).toFixed(1)).join(' L ');
+  svg.push(`<path d="M ${navPath}" fill="none" stroke="var(--btc)" stroke-width="1.6" stroke-dasharray="4,3"/>`);
+  svg.push(`<text x="${CW-CPADR}" y="${y(nav[N-1])-6}" font-size="10" text-anchor="end" fill="var(--btc)" font-weight="600">BTC 總市值</text>`);
+  svg.push(`<text x="${CW-CPADR}" y="${y(stackTop[N-1])+13}" font-size="10" text-anchor="end" fill="var(--equity)" font-weight="600">股+求償權</text>`);
+
+  svg.push(cursorGroup(cursorName, H));
+  $(containerId).innerHTML = `<svg viewBox="0 0 ${CW} ${H}" role="img" aria-label="資本結構河流圖:求償權堆疊,MSTR 市值疊在其上,虛線為 BTC 總市值">${svg.join('')}</svg>`;
+  attachScrub($(containerId));
+  return {y, claimsTop, stackTop, nav};
+}
+
+const priceGeo = drawPriceChart();
+const mnavGeo = drawMnavChart();
+const riverGeo = drawRiverChart();
+
+// ---------------------------------------------------------------------------
+// 放大燈箱:同一份繪圖函式,換個容器與更高的高度,波動看起來更明顯
+// ---------------------------------------------------------------------------
+const MODAL_TITLES = {
+  price: 'MSTR 與 BTC 價格(同基期指數化)',
+  mnav: 'mNAV — basic vs CEBE',
+  river: '資本結構河流圖',
+};
+const MODAL_DRAW = { price: drawPriceChart, mnav: drawMnavChart, river: drawRiverChart };
+
+function openModal(type){
+  state.modalType = type;
+  $('chart-modal-title').textContent = MODAL_TITLES[type];
+  const h = type==='river' ? 560 : 480;
+  state.modalGeo = MODAL_DRAW[type]({id:'chart-modal-svg', h, cursor:'modal'});
+  $('modal-date-scrub').max = N-1;
+  $('chart-modal-backdrop').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  updateModalCursor(state.idx);
+}
+function closeModal(){
+  $('chart-modal-backdrop').classList.remove('open');
+  document.body.style.overflow = '';
+  state.modalType = null;
+}
+function updateModalCursor(i){
+  if(!state.modalType) return;
+  $('m-date').textContent = D.date[i];
+  $('m-mstr').textContent = fmt$(D.mstr[i]);
+  $('m-btc').textContent = fmt$0(D.btc[i]);
+  $('modal-date-scrub').value = i;
+  const x = cx(i);
+  const g = state.modalGeo;
+  if(state.modalType==='price'){
+    updateCursor('modal', x, [g.y(g.ids.btc[i]), g.y(g.ids.mstr[i])]);
+  } else if(state.modalType==='mnav'){
+    updateCursor('modal', x, [g.y(D.mnav_basic[i]), g.y(D.mnav_cebe[i])]);
+  } else if(state.modalType==='river'){
+    updateCursor('modal', x, [g.y(g.stackTop[i]), g.y(g.nav[i])]);
+  }
+}
+
+document.querySelectorAll('.expand-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=> openModal(btn.dataset.chart));
+});
+$('chart-modal-close').addEventListener('click', closeModal);
+$('chart-modal-backdrop').addEventListener('click', e=>{
+  if(e.target.id==='chart-modal-backdrop') closeModal();
+});
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape' && state.modalType) closeModal();
+});
+$('modal-date-scrub').addEventListener('input', ()=> setIndex(+$('modal-date-scrub').value));
+</script>

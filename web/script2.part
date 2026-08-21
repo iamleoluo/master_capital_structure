@@ -1,0 +1,97 @@
+<script>
+// ---------- §03 stacked area: preferred series over time ----------
+function drawStackChart(){
+  const S = DATA.series; // seniority order
+  const dates = DATA.daily.date;
+  const W=920,H=300, padL=54,padR=16,padT=18,padB=34;
+  const plotW=W-padL-padR, plotH=H-padT-padB;
+  const n = dates.length;
+  const x = i => padL + plotW*i/(n-1);
+
+  let maxTotal=0;
+  const stacks=[]; // cumulative sums per index
+  for(let i=0;i<n;i++){
+    let s=0; const layer=[];
+    S.forEach(k=>{ s+=DATA.daily[k][i]; layer.push(s); });
+    stacks.push(layer);
+    if(s>maxTotal) maxTotal=s;
+  }
+  maxTotal*=1.08;
+  const y = v => padT + plotH*(1-v/maxTotal);
+
+  let svg=[];
+  // gridlines
+  for(let g=0; g<=4; g++){
+    const val = maxTotal*g/4;
+    const gy = y(val);
+    svg.push(`<line x1="${padL}" y1="${gy}" x2="${W-padR}" y2="${gy}" stroke="currentColor" stroke-opacity=".08"/>`);
+    svg.push(`<text x="${padL-8}" y="${gy+4}" font-size="10" text-anchor="end" fill="currentColor" opacity=".55" font-family="var(--mono)">$${val.toFixed(0)}B</text>`);
+  }
+  // x-axis year ticks (quarterly-ish)
+  const seen=new Set();
+  for(let i=0;i<n;i++){
+    const ym = dates[i].slice(0,7);
+    if(dates[i].slice(8,10)==='01' && !seen.has(ym) && i>0){
+      seen.add(ym);
+      if(ym.slice(5,7)==='01'||ym.slice(5,7)==='04'||ym.slice(5,7)==='07'||ym.slice(5,7)==='10'){
+        svg.push(`<line x1="${x(i)}" y1="${padT}" x2="${x(i)}" y2="${H-padB}" stroke="currentColor" stroke-opacity=".06"/>`);
+        svg.push(`<text x="${x(i)}" y="${H-padB+16}" font-size="9.5" text-anchor="middle" fill="currentColor" opacity=".55" font-family="var(--mono)">${ym}</text>`);
+      }
+    }
+  }
+
+  // layers, bottom to top
+  S.forEach((k,li)=>{
+    let top=[], bottom=[];
+    for(let i=0;i<n;i++){
+      const upper = stacks[i][li];
+      const lower = li===0?0:stacks[i][li-1];
+      top.push([x(i),y(upper)]); bottom.push([x(i),y(lower)]);
+    }
+    const path = top.map((p,i)=>(i===0?'M':'L')+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ')
+      + ' ' + bottom.slice().reverse().map(p=>'L'+p[0].toFixed(1)+','+p[1].toFixed(1)).join(' ') + ' Z';
+    svg.push(`<path d="${path}" fill="var(${PREF_COL[k]})" opacity=".92"/>`);
+  });
+
+  // IPO markers
+  DATA.ipos.forEach(ipo=>{
+    const idx = dates.findIndex(d=>d>=ipo.d);
+    if(idx<0) return;
+    svg.push(`<line x1="${x(idx)}" y1="${padT}" x2="${x(idx)}" y2="${H-padB}" stroke="var(${PREF_COL[ipo.t]})" stroke-dasharray="1.5,2.5" stroke-width="1"/>`);
+    svg.push(`<text x="${x(idx)}" y="${padT-6}" font-size="9.5" text-anchor="middle" fill="var(${PREF_COL[ipo.t]})">${ipo.t}</text>`);
+  });
+
+  // border
+  svg.push(`<line x1="${padL}" y1="${H-padB}" x2="${W-padR}" y2="${H-padB}" stroke="currentColor" stroke-opacity=".25"/>`);
+
+  $('stack-chart').innerHTML = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="優先股各系列清算優先權堆疊面積圖,依清償順位由下而上堆疊,STRC 佔絕大部分">${svg.join('')}</svg>`;
+
+  const legend = S.filter(k=>DATA.daily[k][LAST]>0 || k!=='UNALLOCATED').map(k=>{
+    if(k==='UNALLOCATED') return '';
+    return `<span><i class="swatch" style="background:var(${PREF_COL[k]})"></i>${k} · ${fmtB(DATA.daily[k][LAST])}</span>`;
+  }).join('');
+  $('stack-legend').innerHTML = legend;
+}
+drawStackChart();
+
+// ---------- §03 ipo table ----------
+(function(){
+  $('ipo-tbl').innerHTML = DATA.ipos.map(i=>`
+    <tr>
+      <td><i class="swatch" style="background:var(${PREF_COL[i.t]});display:inline-block;margin-right:6px"></i>${i.t}</td>
+      <td class="num" style="font-size:.82rem">${i.d}</td>
+      <td class="n">${i.cur==='EUR'?'€':'$'}${i.lp.toFixed(2)}B</td>
+      <td class="n">${i.rate?i.rate.toFixed(1)+'%':'變動'}</td>
+      <td class="n">${i.rank}</td>
+      <td style="font-size:.82rem;color:var(--ink-3)">${i.note}</td>
+    </tr>`).join('');
+})();
+
+// ---------- §03 phantom growth ----------
+(function(){
+  const fwp = DATA.fwp;
+  const gap = fwp.gross_bps - fwp.net_bps;
+  $('phantom').textContent = Math.round(gap).toLocaleString('en-US');
+  $('phantom-pct').textContent = (gap/fwp.gross_bps*100).toFixed(1)+'%';
+})();
+</script>

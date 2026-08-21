@@ -1,0 +1,111 @@
+<section>
+  <div class="sec-head">
+    <div class="sec-num">03</div>
+    <div>
+      <p class="eyebrow">主角</p>
+      <h2>STRC 一個系列,就佔了求償權的三分之二</h2>
+      <p class="lede">五個優先股系列裡,STRC 半年翻一倍,2026 年至今募了 $7.53B。要理解 2026 年 MSTR 發生什麼事,幾乎只需要看這一條線。</p>
+    </div>
+  </div>
+  <div class="card scroller"><div id="stack-chart"></div></div>
+  <div class="legend" id="stack-legend"></div>
+  <div class="grid2" style="margin-top:26px">
+    <div>
+      <h3 style="margin-bottom:10px">五個系列的差別</h3>
+      <div class="scroller"><table class="mini"><thead><tr>
+        <th>系列</th><th>定價日</th><th class="n">IPO 規模</th><th class="n">股利</th><th>順位</th><th>特性</th>
+      </tr></thead><tbody id="ipo-tbl"></tbody></table></div>
+    </div>
+    <div>
+      <h3 style="margin-bottom:10px">為什麼優先股融資的買幣是「假成長」</h3>
+      <p style="font-size:.94rem;color:var(--ink-2)">用優先股募資去買 BTC,每股帳面 BTC(Gross BPS)會上升 —— 看起來公司在替股東累積比特幣。但同一筆交易也等量增加了排在普通股前面的求償權,<strong>扣掉之後普通股一枚都沒多拿到</strong>。這就是 phantom growth。</p>
+      <p style="font-size:.94rem;color:var(--ink-2)">分辨方法很簡單:看 Gross BPS 與 Net BPS 的落差。2026-08-13 這個落差是 <span class="num" id="phantom">—</span> sats／股,佔 Gross 的 <span class="num" id="phantom-pct">—</span>。</p>
+      <div class="note"><b>什麼情況才是真的成長:</b>以高於 1.0x 淨值的價格增發<strong>普通股</strong>買幣、以折價回購優先股、或可轉債轉股讓求償權消失。2026 下半年公司正在做第二種 —— 賣幣去折價回購 STRC。</div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="sec-num">04</div>
+    <div>
+      <p class="eyebrow">核心問題</p>
+      <h2>這一段跌幅,是槓桿變大還是溢價收窄?</h2>
+      <p class="lede">把恆等式取對數,四項就變成可加。任選一段期間,股價的漲跌可以精確歸因到四個來源,加總必然等於總變化。</p>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:22px">
+    <span style="font-size:.8rem;color:var(--ink-3)">期間</span>
+    <div class="seg" id="period-seg"></div>
+  </div>
+
+  <div class="card scroller"><div id="waterfall2"></div></div>
+
+  <div class="grid3" style="margin-top:20px" id="attrib-tiles"></div>
+
+  <div style="margin-top:44px">
+    <h3 style="margin-bottom:6px">四個因子的累積軌跡</h3>
+    <p style="font-size:.9rem;color:var(--ink-3);margin-bottom:18px">以 2024-12-31 為基期,每條線是該因子對股價的累積乘數。四條線相乘 = 黑線(MSTR 實際股價倍數)。線在上方代表推升股價,在下方代表拖累。</p>
+    <div class="card scroller"><div id="factor-chart"></div></div>
+    <div class="legend" id="factor-legend"></div>
+  </div>
+
+  <div class="note key" style="margin-top:30px" id="verdict"></div>
+</section>
+
+<section>
+  <div class="sec-head">
+    <div class="sec-num">05</div>
+    <div>
+      <p class="eyebrow">反過來算</p>
+      <h2>給定 BTC 價格與 STRC 規模,MSTR 該值多少</h2>
+      <p class="lede">把恆等式倒過來用。調整三個輸入,看資本結構如何把 BTC 價格轉換成股價 —— 以及求償權在什麼價位會把普通股完全吃掉。</p>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div style="display:flex;flex-direction:column;gap:22px">
+        <div class="ctl">
+          <div class="ctl-top"><span class="ctl-lab">BTC 價格</span><span class="ctl-val" id="v-btc">—</span></div>
+          <input type="range" id="s-btc" min="15000" max="200000" step="500" value="64279" aria-label="BTC 價格">
+        </div>
+        <div class="ctl">
+          <div class="ctl-top"><span class="ctl-lab">STRC 清算優先權</span><span class="ctl-val" id="v-strc">—</span></div>
+          <input type="range" id="s-strc" min="0" max="25" step="0.25" value="10.34" aria-label="STRC 清算優先權(十億美元)">
+          <div style="font-size:.75rem;color:var(--ink-3)">其餘求償權固定:可轉債 $6.75B + 其他四系列優先股 $4.90B</div>
+        </div>
+        <div class="ctl">
+          <div class="ctl-top"><span class="ctl-lab">目標 mNAV</span><span class="ctl-val" id="v-mnav">—</span></div>
+          <input type="range" id="s-mnav" min="0.3" max="3" step="0.01" value="1" aria-label="目標 mNAV">
+        </div>
+        <div>
+          <div style="font-size:.82rem;color:var(--ink-2);margin-bottom:8px">mNAV 基準</div>
+          <div class="seg" id="basis-seg">
+            <button type="button" data-b="cebe" aria-pressed="true">CEBE(扣求償權)</button>
+            <button type="button" data-b="basic" aria-pressed="false">basic(不扣)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="k" style="font-size:.75rem;color:var(--ink-3);margin-bottom:6px">隱含 MSTR 股價</div>
+        <div style="font-family:var(--mono);font-size:2.85rem;color:var(--equity);
+             font-variant-numeric:tabular-nums;letter-spacing:-.03em;line-height:1.1" id="calc-price">—</div>
+        <div style="font-size:.83rem;color:var(--ink-3);margin-top:8px" id="calc-sub">—</div>
+      </div>
+      <div class="grid3" style="grid-template-columns:1fr 1fr">
+        <div class="tile"><div class="k">每股殘值</div><div class="v" id="calc-ps">—</div><div class="d">扣求償權後</div></div>
+        <div class="tile"><div class="k">求償權佔比</div><div class="v" id="calc-cp">—</div><div class="d">佔 BTC 總市值</div></div>
+        <div class="tile"><div class="k">槓桿倍數</div><div class="v" id="calc-amp">—</div><div class="d">BTC 動 1% → 殘值</div></div>
+        <div class="tile"><div class="k">歸零價</div><div class="v" id="calc-be">—</div><div class="d">普通股殘值 = 0</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card scroller" style="margin-top:20px"><div id="curve-chart"></div></div>
+  <figcaption>曲線是在目前設定下,MSTR 股價隨 BTC 價格的變化。它<strong>不通過原點</strong> —— 在歸零價以左完全沒有值。優先股規模越大,曲線越往右平移、斜率越陡,這就是槓桿:下檔更早歸零,上檔漲得更快。</figcaption>
+</section>
