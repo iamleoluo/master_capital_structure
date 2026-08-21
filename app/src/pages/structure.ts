@@ -1,4 +1,4 @@
-import { daily, N } from "../data";
+import { daily, meta, N } from "../data";
 import { explorer } from "../components/explorer";
 import { btc as fmtBtc, pct } from "../lib/format";
 import { rangeIndices } from "../lib/range";
@@ -37,9 +37,9 @@ export const structurePage: PageFn = (root) => {
       </div>
 
       <div class="grid3" style="margin-bottom:14px">
-        <div class="tile"><div class="k">帳面每股持幣(公司報的)</div>
+        <div class="tile"><div class="k">帳面每股持幣(basic 股數)</div>
           <div class="v" style="color:var(--good)">${sign(dGross)}</div>
-          <div class="d">${Math.round(daily.bps[a]!).toLocaleString()} → ${Math.round(daily.bps[b]!).toLocaleString()} sats<br>總持幣 ÷ 股數,不扣求償權</div></div>
+          <div class="d">${Math.round(daily.bps[a]!).toLocaleString()} → ${Math.round(daily.bps[b]!).toLocaleString()} sats<br>總持幣 ÷ basic 股數,不扣求償權、不算可轉債稀釋</div></div>
         <div class="tile" style="border-left:3px solid var(--equity)">
           <div class="k">實際每股持幣(CEBE)</div>
           <div class="v" style="color:var(--bad)">${sign(dPerShare)}</div>
@@ -69,10 +69,10 @@ export const structurePage: PageFn = (root) => {
         頂端帶子的厚度就是 CEBE。
       </p>
 
-      <div class="grid3" style="margin-bottom:26px">
-        <div class="tile"><div class="k">帳面每股(gross BPS)</div>
+      <div class="grid3" style="margin-bottom:10px">
+        <div class="tile"><div class="k">帳面每股(basic 股數)</div>
           <div class="v">${Math.round(grossNow).toLocaleString()}</div>
-          <div class="d">sats。公司對外揭露的口徑</div></div>
+          <div class="d">sats。總持幣 ÷ basic 股數,不含可轉債稀釋</div></div>
         <div class="tile"><div class="k">求償權吃掉</div>
           <div class="v" style="color:var(--bad)">−${Math.round(eatenNow).toLocaleString()}</div>
           <div class="d">sats,佔帳面的 ${pct(eatenNow / grossNow)}</div></div>
@@ -81,6 +81,16 @@ export const structurePage: PageFn = (root) => {
           <div class="v" style="color:var(--equity)">${Math.round(cebeNow).toLocaleString()}</div>
           <div class="d">sats。這才是股東手上真正的量</div></div>
       </div>
+
+      <div class="note" style="margin-bottom:26px">
+        <b>公司官方揭露的 Gross BPS 其實更低。</b>
+        上面「帳面每股」用的是 basic 股數,沒算進可轉債假設轉股的稀釋。
+        公司最新一期 FWP 用「假設稀釋股數」(${(meta.fwp.assumed / 1e6).toFixed(1)}M,
+        比 basic 多 ${((meta.fwp.assumed - meta.fwp.basic) / 1e6).toFixed(1)}M 股)算出來的官方 Gross BPS 是
+        <b>${meta.fwp.gross_bps.toLocaleString()} sats</b> —— 比上面 basic 口徑的
+        ${Math.round(grossNow).toLocaleString()} sats 低 ${pct(1 - meta.fwp.gross_bps / grossNow)}。
+        這個「假設稀釋股數」只有官方在敏感度表裡揭露這一個數字,沒有歷史序列,
+        所以「每股持幣」圖上只標成單點,不畫成整條線。</div>
 
       <div id="explorer"></div>
 

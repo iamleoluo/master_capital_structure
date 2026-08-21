@@ -115,11 +115,23 @@ export function drawPerShare(el: HTMLElement, h = 190, range?: [number, number])
     `<path d="${path(pts(cebe, y))}" fill="none" stroke="var(--equity)" stroke-width="1.8"/>`,
     text(f.x(lo) + 4, yBtc(daily.btc[lo]!) - 5, "BTC 價格(參考)", { size: 9, anchor: "start", fill: "var(--btc)", opacity: 0.7 }),
     text(f.x(lo) + 4, yMstr(daily.mstr[lo]!) + 12, "MSTR 股價(參考)", { size: 9, anchor: "start", fill: "var(--senti)", opacity: 0.7 }),
-    text(CW - PAD_R, y(daily.bps[hi]!) + 13, "帳面", { size: 10, anchor: "end", fill: "var(--c3)", weight: 600 }),
+    text(CW - PAD_R, y(daily.bps[hi]!) + 13, "帳面(basic 股數)", { size: 10, anchor: "end", fill: "var(--c3)", weight: 600 }),
     text(CW - PAD_R, y(cebe[hi]!) - 6, "CEBE", { size: 10, anchor: "end", fill: "var(--equity)", weight: 600 }),
   ];
+
+  // 官方揭露的 Gross BPS(用假設稀釋股數,而非 basic 股數)—— 只有最新一期
+  // FWP 敏感度表這一個真實錨點,沒有歷史序列,所以畫成單點,不是連續線,
+  // 避免假裝有一條「官方歷史曲線」其實是編出來的。
+  if (N - 1 >= lo && N - 1 <= hi) {
+    const fx = f.x(N - 1), fy = y(meta.fwp.gross_bps);
+    parts.push(`<circle cx="${fx.toFixed(1)}" cy="${fy.toFixed(1)}" r="4" fill="var(--paper)" stroke="var(--c1)" stroke-width="2"/>`);
+    parts.push(text(fx - 8, fy - 9, `官方 Gross BPS ${meta.fwp.gross_bps.toLocaleString()}(假設稀釋股數)`,
+      { size: 9, anchor: "end", fill: "var(--c1)", weight: 600 }));
+  }
+
   el.innerHTML = svg(CW, h, parts.join(""),
-    "帳面每股持幣(gross BPS)vs 實際每股持幣(CEBE),對數座標,單位 sats;虛線為 BTC 與 MSTR 價格參考");
+    "帳面每股持幣(basic 股數)vs 實際每股持幣(CEBE),對數座標,單位 sats;虛線為 BTC 與 MSTR 價格參考;" +
+    "圓點為官方揭露的 Gross BPS(假設稀釋股數口徑,僅最新一期 FWP 有此數字)");
   return { y, yBtc, yMstr };
 }
 
