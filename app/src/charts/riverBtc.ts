@@ -14,8 +14,8 @@
 import { daily, meta, N } from "../data";
 import type { SeriesLabel } from "../lib/crosshair";
 import { axisX, breakLines, CW, frame, gridY, PAD_R } from "../lib/frame";
-import { btc as fmtBtc } from "../lib/format";
-import { linear } from "../lib/scale";
+import { btc as fmtBtc, usd0 } from "../lib/format";
+import { extent, linear } from "../lib/scale";
 import { band, path, svg, text } from "../lib/svg";
 
 const LAYERS: Array<{ key: keyof typeof daily; label: string; color: string }> = [
@@ -29,6 +29,7 @@ const LAYERS: Array<{ key: keyof typeof daily; label: string; color: string }> =
 export interface RiverBtcGeo {
   netDebt: number[]; layerTops: number[][]; claimsTop: number[]; held: number[];
   y: ReturnType<typeof linear>;
+  yBtc: ReturnType<typeof linear>;
   perShare: boolean;
 }
 
@@ -62,7 +63,7 @@ export function computeRiverBtc(perShare = false): RiverBtcGeo {
     scaledHeld.push(held[i]! * k);
   }
   return { netDebt, layerTops, claimsTop, held: scaledHeld,
-           y: linear([0, 1], [0, 1]), perShare };
+           y: linear([0, 1], [0, 1]), yBtc: linear([0, 1], [0, 1]), perShare };
 }
 
 export function drawRiverBtc(el: HTMLElement, h = 300, perShare = false, range?: [number, number]): RiverBtcGeo {
@@ -72,6 +73,11 @@ export function drawRiverBtc(el: HTMLElement, h = 300, perShare = false, range?:
   const maxV = Math.max(...g.held.slice(lo, hi + 1)) * 1.06;
   const y = linear([0, maxV], [f.plotBottom, f.plotTop]);
   g.y = y;
+
+  // BTC 價格參考線,獨立尺度(只看走勢與轉折,精確數值靠游標讀)。
+  const [blo, bhi] = extent(daily.btc.slice(lo, hi + 1), 0.85, 1.15);
+  const yBtc = linear([blo, bhi], [f.plotBottom, f.plotTop]);
+  g.yBtc = yBtc;
 
   const px = (i: number) => f.x(i);
   const parts: string[] = [];
@@ -106,6 +112,13 @@ export function drawRiverBtc(el: HTMLElement, h = 300, perShare = false, range?:
 
   parts.push(breakLines(f, meta.breaks));
 
+  // BTC 價格參考線 —— 標籤放左側起點,避免跟右側原有的堆疊標籤擠在一起
+  const btcPts: Array<[number, number]> = [];
+  for (let i = lo; i <= hi; i++) btcPts.push([px(i), yBtc(daily.btc[i]!)]);
+  parts.push(`<path d="${path(btcPts)}" fill="none" stroke="var(--btc)" stroke-width="1.2" stroke-dasharray="3,3" opacity=".4"/>`);
+  parts.push(text(px(lo) + 4, yBtc(daily.btc[lo]!) - 5, "BTC 價格(參考)",
+    { size: 9, anchor: "start", fill: "var(--btc)", opacity: 0.7 }));
+
   const last = hi;
   parts.push(text(CW - PAD_R, y(g.held[last]!) - 7, perShare ? "帳面每股" : "總持有量",
     { size: 10, anchor: "end", weight: 600 }));
@@ -115,8 +128,8 @@ export function drawRiverBtc(el: HTMLElement, h = 300, perShare = false, range?:
 
   el.innerHTML = svg(CW, h, parts.join(""),
     perShare
-      ? "以每股 sats 計價的資本結構河流圖,求償權堆疊在下,普通股每股殘量在上"
-      : "以 BTC 顆數計價的資本結構河流圖,求償權堆疊在下,普通股殘量在上,總和等於總持有量");
+      ? "以每股 sats 計價的資本結構河流圖,求償權堆疊在下,普通股每股殘量在上,虛線為 BTC 價格參考"
+      : "以 BTC 顆數計價的資本結構河流圖,求償權堆疊在下,普通股殘量在上,總和等於總持有量,虛線為 BTC 價格參考");
   return g;
 }
 
@@ -132,6 +145,8 @@ export function riverBtcLabels(g: RiverBtcGeo, i: number): SeriesLabel[] {
       color: "var(--equity)", y: g.y((g.claimsTop[i]! + g.held[i]!) / 2) },
     { label: "求償權", value: fmt(g.claimsTop[i]!),
       color: "var(--c2)", y: g.y(g.claimsTop[i]! / 2) },
+    { label: "BTC 價格", value: usd0(daily.btc[i]!),
+      color: "var(--btc)", y: g.yBtc(daily.btc[i]!) },
   ];
 }
 

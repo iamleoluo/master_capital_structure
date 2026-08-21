@@ -82,36 +82,54 @@ export function mnavLabels(g: Geo, i: number): SeriesLabel[] {
 // --------------------------------------------------------------- 每股 BTC(帳面 vs CEBE)
 const cebePerShare = (i: number): number => (daily.common_btc[i]! / (daily.shares[i]! * 1e6)) * 1e8;
 
-export function drawPerShare(el: HTMLElement, h = 190, range?: [number, number]): Geo {
+export interface PerShareGeo {
+  y: ReturnType<typeof log>; yBtc: ReturnType<typeof log>; yMstr: ReturnType<typeof log>;
+}
+
+export function drawPerShare(el: HTMLElement, h = 190, range?: [number, number]): PerShareGeo {
   const [lo, hi] = range ?? [0, N - 1];
   const f = frame(h, 16, 24, range);
   const cebe = daily.date.map((_, i) => cebePerShare(i));
   const [ylo, yhi] = extent(daily.bps.slice(lo, hi + 1).concat(cebe.slice(lo, hi + 1)), 0.9, 1.1);
   const y = log([ylo, yhi], [f.plotBottom, f.plotTop]);
-  const pts = (arr: number[]) => {
+
+  // BTC/MSTR 價格只是參考線,各自獨立的對數尺度(單位、量級都不一樣,
+  // 疊在同一張圖上只看得出走勢方向與轉折,精確數值靠游標讀)。
+  const [blo, bhi] = extent(daily.btc.slice(lo, hi + 1), 0.85, 1.15);
+  const yBtc = log([blo, bhi], [f.plotBottom, f.plotTop]);
+  const [mlo, mhi] = extent(daily.mstr.slice(lo, hi + 1), 0.85, 1.15);
+  const yMstr = log([mlo, mhi], [f.plotBottom, f.plotTop]);
+
+  const pts = (arr: number[], scale: ReturnType<typeof log>) => {
     const out: Array<[number, number]> = [];
-    for (let i = lo; i <= hi; i++) out.push([f.x(i), y(arr[i]!)]);
+    for (let i = lo; i <= hi; i++) out.push([f.x(i), scale(arr[i]!)]);
     return out;
   };
 
   const parts = [
     axisX(f),
     breakLines(f, meta.breaks),
-    `<path d="${path(pts(daily.bps))}" fill="none" stroke="var(--c3)" stroke-width="1.5" opacity=".85"/>`,
-    `<path d="${path(pts(cebe))}" fill="none" stroke="var(--equity)" stroke-width="1.8"/>`,
+    `<path d="${path(pts(daily.btc, yBtc))}" fill="none" stroke="var(--btc)" stroke-width="1.2" stroke-dasharray="3,3" opacity=".4"/>`,
+    `<path d="${path(pts(daily.mstr, yMstr))}" fill="none" stroke="var(--senti)" stroke-width="1.2" stroke-dasharray="3,3" opacity=".4"/>`,
+    `<path d="${path(pts(daily.bps, y))}" fill="none" stroke="var(--c3)" stroke-width="1.5" opacity=".85"/>`,
+    `<path d="${path(pts(cebe, y))}" fill="none" stroke="var(--equity)" stroke-width="1.8"/>`,
+    text(f.x(lo) + 4, yBtc(daily.btc[lo]!) - 5, "BTC 價格(參考)", { size: 9, anchor: "start", fill: "var(--btc)", opacity: 0.7 }),
+    text(f.x(lo) + 4, yMstr(daily.mstr[lo]!) + 12, "MSTR 股價(參考)", { size: 9, anchor: "start", fill: "var(--senti)", opacity: 0.7 }),
     text(CW - PAD_R, y(daily.bps[hi]!) + 13, "帳面", { size: 10, anchor: "end", fill: "var(--c3)", weight: 600 }),
     text(CW - PAD_R, y(cebe[hi]!) - 6, "CEBE", { size: 10, anchor: "end", fill: "var(--equity)", weight: 600 }),
   ];
   el.innerHTML = svg(CW, h, parts.join(""),
-    "帳面每股持幣(gross BPS)vs 實際每股持幣(CEBE),對數座標,單位 sats");
-  return { y };
+    "帳面每股持幣(gross BPS)vs 實際每股持幣(CEBE),對數座標,單位 sats;虛線為 BTC 與 MSTR 價格參考");
+  return { y, yBtc, yMstr };
 }
 
-export function perShareLabels(g: Geo, i: number): SeriesLabel[] {
+export function perShareLabels(g: PerShareGeo, i: number): SeriesLabel[] {
   const cebe = cebePerShare(i);
   return [
     { label: "CEBE 每股", value: sats(cebe), color: "var(--equity)", y: g.y(cebe) },
     { label: "帳面每股", value: sats(daily.bps[i]!), color: "var(--c3)", y: g.y(daily.bps[i]!) },
+    { label: "BTC 價格", value: usd0(daily.btc[i]!), color: "var(--btc)", y: g.yBtc(daily.btc[i]!) },
+    { label: "MSTR 股價", value: usd(daily.mstr[i]!), color: "var(--senti)", y: g.yMstr(daily.mstr[i]!) },
   ];
 }
 
