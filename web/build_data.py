@@ -167,8 +167,12 @@ def build_weekly() -> list:
 # ---------------------------------------------------------------------------
 
 def build_meta() -> dict:
-    fwp = D.fwp_snapshot()
-    p = D.PARAMS_2026_08_13
+    # 前端顯示的官方錨點一律用**最新一份** FWP(2026-08-24)。
+    # 舊的 08-13 那份留在 data.py 與 tests/ 裡當回歸錨點,不對外顯示 ——
+    # 兩份的口徑不同(優先股 notional、股數、USD 加回項都變了),混用會出錯。
+    fwp = D.fwp_snapshot_2026_08_24()
+    p = D.PARAMS_2026_08_24
+    btc_px, mstr_px = D.FWP_2026_08_24_BTC_PRICE, D.FWP_2026_08_24_MSTR_PRICE
     return {
         "ipos": [{"t": i.ticker, "name": i.name, "d": i.pricing_date.isoformat(),
                   "lp": round(i.ipo_liquidation_pref / 1e9, 3), "rate": i.dividend_rate_pct,
@@ -178,51 +182,93 @@ def build_meta() -> dict:
                     "detail": b.detail, "hard": b.breaks_timeseries}
                    for b in D.POLICY_BREAKS],
         "fwp": {
-            "held": p["btc_held"], "btc": D.FWP_BTC_PRICE, "price": D.FWP_MSTR_PRICE,
+            "held": p["btc_held"], "btc": btc_px, "price": mstr_px,
             "fdso": p["fdso"], "basic": fwp.shares_basic,
-            "assumed": D.FWP_SHARES_ASSUMED_DILUTED,
+            "assumed": D.FWP_2026_08_24_SHARES_ASSUMED_DILUTED,
             "debt": p["debt_otm_notional"] / 1e9,
             "reserve": p["usd_reserve"] / 1e9,
             "pref": {k: round(v / 1e9, 4) for k, v in fwp.preferred_by_ticker.items()},
             "gross_bps": round(C.gross_bps_sats(fwp.btc_held, fwp.shares_assumed_diluted)),
             "net_bps": round(C.net_bps_sats(
-                C.net_reserve_per_share_from(fwp, D.FWP_BTC_PRICE, D.FWP_MSTR_PRICE),
-                D.FWP_BTC_PRICE)),
+                C.net_reserve_per_share_from(fwp, btc_px, mstr_px), btc_px)),
+            "date": "2026-08-24",
         },
         "sens": [{"btc": b, "off": o,
                   "got": round(C.net_reserve_per_share(b, **p), 4)}
-                 for b, o in D.FWP_SENSITIVITY_TABLE],
+                 for b, o in D.FWP_2026_08_24_SENSITIVITY_TABLE],
         "be": [{"k": k, "v": round(v)} for k, v in sorted(
-            C.break_even_all_bases(fwp, D.FWP_MSTR_PRICE).items(),
+            C.break_even_all_bases(fwp, mstr_px).items(),
             key=lambda kv: kv[1])],
         "anchors": {
             "btc_held": [[a[0].isoformat(), a[1]] for a in I.btc_held_anchors()],
             "shares": [[a[0].isoformat(), a[1]] for a in I.shares_basic_anchors()],
             "debt": [[a[0].isoformat(), a[1]] for a in I.debt_anchors()],
         },
-        "findings": [
-            {"t": "BTC 持有量其實每週都在 8-K 裡,只是換了格式",
-             "b": "早期是 prose 敘述,2025-03-31 之後改成「BTC Update」表格。單一關鍵字搜尋"
-                  "會漏掉格式切換,導致誤判為「公司不再揭露」。修正後解出 90 個真實週觀測點,"
-                  "平均間隔 8.7 天。"},
-            {"t": "§5.9 的 2026-07-05 求償權數字自相矛盾",
-             "b": "同列的 claims% 38.3%、BPS 227,057、CEBE 140,200 三者一致於 $19.63B 與 "
-                  "371.6M 股,不是標示的 ~$21,000M。採用 $19.63B。"},
-            {"t": "股數分母有三個,不是兩個",
-             "b": "官方 Gross BPS 用 423.8M assumed diluted、Net BPS 用 398.2M FDSO,"
-                  "而對照表的「basic 基準」用的是第三個:394.2M basic shares,差 7%。"},
-            {"t": "$543 是盤中高點,不是收盤價",
-             "b": "2024-11-21 收盤為 $397.28。用盤中高點對收盤價比較,會把壓縮幅度誇大約 37%。"},
-            {"t": "融資來源:明示與推得要分開看",
-             "b": "76 個有買賣的週次中,41 週在 8-K 敘述句明確寫出動用了哪些 ATM。"
-                  "其餘只寫「under the ATM」,但同一份文件的 ATM 表格已逐券種列出當週淨募資,"
-                  "有錢進來的券種即為資金來源 —— 這樣可再補 18 週,涵蓋率從 54% 提升到 78%。"
-                  "表格中以「推得」標記,與敘述句明示者區分。仍有 2 週兩種來源都沒有資料。"},
-            {"t": "優先股分系列仍是季頻",
-             "b": "STRF/STRK/STRD/STRE 各自只有 3 個錨點(IPO + 2026-06-30),中間為線性推估。"
-                  "四者合計約佔優先股總額的 32%,誤差有限但不是零。"},
-        ],
+        "findings": _findings(),
     }
+
+
+def _findings() -> list:
+    """資料品質頁的 findings。數字一律從實際資料算,避免寫死之後悄悄過時。"""
+    holdings = _load_raw("btc_holdings_weekly.json")
+    days = [dt.date.fromisoformat(d) for d, _ in holdings]
+    gaps = [(days[i + 1] - days[i]).days for i in range(len(days) - 1)]
+
+    # 口徑與前端 accumulationStats() 一致:分母只算真的有進出幣的週次,
+    # 分子看 funding 欄位本身(明示 vs 由 ATM 表推得),不看 source_kind ——
+    # source_kind 會把「賣幣週」獨立成一類,即使那一週其實有指名資金來源。
+    weekly = build_weekly()
+    act = [w for w in weekly if w["delta"]]
+    stated = [w for w in act if w["funding"] and not w["funding_derived"]]
+    derived = [w for w in act if w["funding"] and w["funding_derived"]]
+    uncovered = len(act) - len(stated) - len(derived)
+    named_pct = len(stated) / len(act) * 100
+    covered_pct = (len(stated) + len(derived)) / len(act) * 100
+
+    rep = _load_raw("repurchase_weekly.json") if os.path.exists(
+        os.path.join(RAW, "repurchase_weekly.json")) else []
+    rep_sh = sum(r["by_security"].get("STRC", {}).get("shares", 0.0) for r in rep)
+    rep_cost = sum(r["by_security"].get("STRC", {}).get("cost_m", 0.0) for r in rep)
+
+    p = D.PARAMS_2026_08_24
+    assumed = D.FWP_2026_08_24_SHARES_ASSUMED_DILUTED
+    basic = D.fwp_snapshot_2026_08_24().shares_basic
+
+    return [
+        {"t": "公司已經從「發優先股」轉成「買回優先股」",
+         "b": f"2026-07-27 起 8-K 多出一張 Shares Repurchased 表,2026-09-08 起原本的 "
+              f"ATM Program Summary 表整張消失。至今已回購 STRC {rep_sh:,.0f} 股、"
+              f"成本 ${rep_cost/1000:.2f}B,均價 ${rep_cost*1e6/rep_sh:.2f}(低於 $100 面額"
+              f"{(1 - rep_cost*1e6/rep_sh/100)*100:.1f}%)。折價買回會永久消滅清算優先權,"
+              f"是少數會讓 CEBE 真正上升的動作 —— 不納入模型的話求償權會被高估約 "
+              f"${rep_sh*100/1e9:.2f}B。"},
+        {"t": "BTC 持有量其實每週都在 8-K 裡,只是換了格式",
+         "b": f"早期是 prose 敘述,2025-03-31 之後改成「BTC Update」表格,2026-08 又出現"
+              f"「BTC Purchased /(Sold)」買賣合併欄(正負號要看括號,不能看表頭字樣)。"
+              f"單一關鍵字搜尋會漏掉格式切換,導致誤判為「公司不再揭露」。目前解出 "
+              f"{len(holdings)} 個真實週觀測點,平均間隔 {sum(gaps)/len(gaps):.1f} 天。"},
+        {"t": "股數分母有三個,不是兩個",
+         "b": f"官方 Gross BPS 用 {assumed/1e6:.1f}M assumed diluted、Net BPS 用 "
+              f"{p['fdso']/1e6:.1f}M FDSO,而本站圖表的「basic 基準」用的是第三個:"
+              f"{basic/1e6:.1f}M basic shares,assumed 比 basic 多 "
+              f"{(assumed/basic-1)*100:.0f}%。三者不可混用。"},
+        {"t": "§5.9 的 2026-07-05 求償權數字自相矛盾",
+         "b": "同列的 claims% 38.3%、BPS 227,057、CEBE 140,200 三者一致於 $19.63B 與 "
+              "371.6M 股,不是標示的 ~$21,000M。採用 $19.63B。"},
+        {"t": "$543 是盤中高點,不是收盤價",
+         "b": "2024-11-21 收盤為 $397.28。用盤中高點對收盤價比較,會把壓縮幅度誇大約 37%。"},
+        {"t": "融資來源:明示與推得要分開看",
+         "b": f"{len(act)} 個有買賣的週次中,{len(stated)} 週在 8-K 敘述句明確寫出動用了"
+              f"哪些 ATM({named_pct:.0f}%)。其餘只寫「under the ATM」,但同一份文件的 ATM "
+              f"表格已逐券種列出當週淨募資,有錢進來的券種即為資金來源 —— 這樣可再補 "
+              f"{len(derived)} 週,涵蓋率提升到 {covered_pct:.0f}%。表格中以「推得」標記,"
+              f"與敘述句明示者區分。仍有 {uncovered} 週兩種來源都沒有資料。"},
+        {"t": "優先股股數已是逐週,但尾段是外推",
+         "b": "STRF/STRC/STRK/STRD 用 ATM 表的逐週賣股數當形狀、再用已知季末股數校正,"
+              "解析度從 3-5 個季度錨點提升到每週一點。但最後一個已知精確股數"
+              "(STRC 為 2026-07-24)之後沒有可對齊的申報值,只能用逐週發行減回購外推;"
+              "STRE 沒有 ATM,維持單點。"},
+    ]
 
 
 def main() -> int:
@@ -242,10 +288,16 @@ def main() -> int:
     print(f"meta  : {len(meta['findings'])} findings, "
           f"{len(meta['ipos'])} IPOs, {len(meta['sens'])} 敏感度列")
 
-    # 黃金測試:管線不能悄悄改掉官方錨點
-    got = C.net_reserve_per_share(D.FWP_BTC_PRICE, **D.PARAMS_2026_08_13)
-    assert abs(got - 92.11) < 0.02, f"FWP 每股淨值回歸: {got}"
-    print(f"\n✓ 黃金錨點 BTC ${D.FWP_BTC_PRICE:,.0f} → ${got:.4f}/股(官方 $92.11)")
+    # 黃金測試:管線不能悄悄改掉官方錨點。兩份 FWP 都釘住 ——
+    # 舊的那份是歷史回歸基準,新的那份是前端實際顯示的口徑。
+    old = C.net_reserve_per_share(D.FWP_BTC_PRICE, **D.PARAMS_2026_08_13)
+    assert abs(old - 92.11) < 0.02, f"2026-08-13 FWP 每股淨值回歸: {old}"
+    print(f"\n✓ 黃金錨點(2026-08-13)BTC ${D.FWP_BTC_PRICE:,.0f} → ${old:.4f}/股(官方 $92.11)")
+
+    new = C.net_reserve_per_share(D.FWP_2026_08_24_BTC_PRICE, **D.PARAMS_2026_08_24)
+    assert abs(new - 118.31) < 0.02, f"2026-08-24 FWP 每股淨值回歸: {new}"
+    print(f"✓ 黃金錨點(2026-08-24)BTC ${D.FWP_2026_08_24_BTC_PRICE:,.0f} → "
+          f"${new:.4f}/股(官方 $118.31)")
     return 0
 
 

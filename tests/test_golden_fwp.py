@@ -251,3 +251,62 @@ def test_round_trip_price_and_btc(fwp):
             back = C.implied_btc_price(cs, px, target, basis) if basis is not C.PriceBasis.BASIC \
                 else px * cs.shares_basic / (target * cs.btc_held)
             assert back == pytest.approx(btc, rel=1e-6), f"{basis} @ {target}x"
+
+
+# ---------------------------------------------------------------------------
+# 2026-08-24 FWP —— 較新的一份官方敏感度表(同樣是 Tier 1 黃金錨點)
+#
+# 這一份與 08-13 那份最大的差別是優先股 notional 掉了 $273M($15.239B →
+# $14.966B),對應 STRC 從 7 月底開始的折價回購。兩份都釘住,任何一份被
+# 改壞都會立刻爆掉。
+# ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("btc_price,official", D.FWP_2026_08_24_SENSITIVITY_TABLE)
+def test_fwp_2026_08_24_sensitivity_table(btc_price, official):
+    got = C.net_reserve_per_share(btc_price, **D.PARAMS_2026_08_24)
+    assert _within(got, official), (
+        f"BTC ${btc_price:,}: official ${official}, got ${got:.4f} "
+        f"({(got - official) / official * 1e4:+.2f}bp)"
+    )
+
+
+def test_fwp_2026_08_24_gross_bps():
+    """Gross BPS 的分母是 assumed diluted,不是 FDSO —— 換錯就會差 6%。"""
+    got = C.gross_bps_sats(D.PARAMS_2026_08_24["btc_held"],
+                           D.FWP_2026_08_24_SHARES_ASSUMED_DILUTED)
+    official = D.FWP_2026_08_24_DERIVED_METRICS["gross_bps_sats"]
+    assert abs(got - official) / official <= 1e-3, f"official {official}, got {got:.0f}"
+
+
+def test_fwp_2026_08_24_net_reserve_total():
+    """Net Reserve 總額 = BTC Reserve + USD Assets − 債 − 優先股。"""
+    p = D.PARAMS_2026_08_24
+    # params 的 usd_reserve 已經是 USD Assets(Reserve + Cash),這裡順便確認拆分一致
+    assert abs(p["usd_reserve"]
+               - (D.FWP_2026_08_24_USD_RESERVE + D.FWP_2026_08_24_USD_CASH)) < 1e7
+    got = (p["btc_held"] * D.FWP_2026_08_24_BTC_PRICE + p["usd_reserve"]
+           - p["debt_otm_notional"] - p["pref_otm_notional"])
+    official = D.FWP_2026_08_24_DERIVED_METRICS["net_reserve_usd"]
+    assert abs(got - official) / official <= 2e-4, (
+        f"official ${official/1e9:.3f}B, got ${got/1e9:.3f}B")
+
+
+def test_fwp_2026_08_24_amplification():
+    """放大倍數 = BTC Reserve / Net Reserve。"""
+    p = D.PARAMS_2026_08_24
+    btc_reserve = p["btc_held"] * D.FWP_2026_08_24_BTC_PRICE
+    net_reserve = D.FWP_2026_08_24_DERIVED_METRICS["net_reserve_usd"]
+    got = btc_reserve / net_reserve
+    assert abs(got - D.FWP_2026_08_24_DERIVED_METRICS["amplification"]) <= 0.005
+
+
+def test_preferred_notional_fell_between_the_two_fwps():
+    """回歸測試:兩份 FWP 之間優先股 notional 必須是**下降**的。
+
+    這是 STRC 折價回購留下的痕跡。若哪天有人把新 FWP 的參數抄錯成上升,
+    整個 CEBE 會往錯的方向跑,這裡先擋下來。
+    """
+    old = D.PARAMS_2026_08_13["pref_otm_notional"]
+    new = D.PARAMS_2026_08_24["pref_otm_notional"]
+    assert new < old, f"優先股 notional 應下降:{old/1e9:.3f}B → {new/1e9:.3f}B"
+    assert 0.2e9 < (old - new) < 0.4e9, "降幅應在 $200M–$400M 之間(對應約 280 萬股回購)"

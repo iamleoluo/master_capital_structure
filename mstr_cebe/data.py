@@ -230,6 +230,9 @@ SHARE_COUNTS: Tuple[ShareCount, ...] = (
     ShareCount(date(2026, 7, 24), 364.6 * M, 19.64 * M, 384.2 * M, None, "8-K", False),
     ShareCount(date(2026, 8, 10), None, None, 394_204_253, 398_220_309,
                "FWP 反解(basic 由市值 $38.368B ÷ $97.33 反解)", True),
+    ShareCount(date(2026, 8, 21), None, None, 415_932_914, 419_900_000,
+               "2026-08-24 FWP 反解(basic 由市值 $49.600B ÷ $119.25;"
+               "FDSO 文件寫 ~419.9M,由 Net BPS 反推)", True),
 )
 
 WEIGHTED_AVG_DILUTED: Tuple[Tuple[str, float], ...] = (
@@ -790,6 +793,64 @@ FWP_SHARES_ASSUMED_DILUTED = 423.838 * M     # §8.2 Gross BPS 的分母,與 FDS
 FWP_MSTR_PRICE = 97.33
 FWP_BTC_PRICE = 64_279.0
 
+# ---------------------------------------------------------------------------
+# 2026-08-24 FWP(較新的一份,市場資料為 8/21 收盤、持幣為 8/23)
+#
+# 與 08-13 那份的差異值得留意:
+#   優先股 notional  $15.239B → $14.966B   ← STRC 回購開始消滅清算優先權
+#   basic 股數       394.2M   → 415.9M     ← 普通股 ATM 大量增發
+#   assumed diluted  423.8M   → 445.6M     ← 由 Gross BPS 反解
+#   Gross BPS        198,289  → 188,628 sats
+# 舊的 08-13 參數與敏感度表保留不動 —— 那是黃金回歸測試的對象,不該隨新資料變動。
+# ---------------------------------------------------------------------------
+PARAMS_2026_08_24 = {
+    "btc_held": 840_447,
+    # ⚠️ 這一份的官方公式加回的是 **USD Assets**(Reserve $5.10B + Cash $1.59B),
+    #    不是只有 USD Reserve —— 08-13 那份加回的是單一的 $4.650B。兩份揭露
+    #    口徑不同,各自照自己的公式對,不要互相套用。
+    "usd_reserve": 6.69 * B,
+    "debt_otm_notional": 6.754 * B,
+    "pref_otm_notional": 14.966 * B,
+    # FWP 只寫 "~419.9M",此值為反解(讓六列敏感度的最大絕對誤差最小,$0.009)。
+    # 逐列反解落在 419.974M–420.065M(差 2.2bp),不存在能逐分重現全部六列的
+    # 單一值 —— 與 08-13 那份同樣的成因:輸入只揭露到 $1M 精度。
+    "fdso": 419_988_970,
+}
+FWP_2026_08_24_ACCESSION = "d431748dfwp"
+FWP_2026_08_24_SHARES_ASSUMED_DILUTED = 445.6 * M   # 由 Gross BPS 188,628 sats 反解
+FWP_2026_08_24_MSTR_PRICE = 119.25
+FWP_2026_08_24_BTC_PRICE = 77_004.0
+FWP_2026_08_24_USD_RESERVE = 5.10 * B     # 指定用於優先股股息與債息
+FWP_2026_08_24_USD_CASH = 1.59 * B        # 一般用途流動性
+
+# 官方敏感度表(6 列,實測全部對到 0.02% 以內)
+FWP_2026_08_24_SENSITIVITY_TABLE: Tuple[Tuple[float, float], ...] = (
+    (40_000, 44.25),
+    (50_000, 64.26),
+    (75_000, 114.30),
+    (77_004, 118.31),
+    (100_000, 164.33),
+    (150_000, 264.39),
+)
+
+FWP_2026_08_24_DERIVED_METRICS = {
+    "gross_bps_sats": 188_628,
+    "net_bps_sats": 153_637,
+    "gross_bps_usd": 145.25,
+    "net_bps_usd": 118.31,
+    "mnav_company": 1.01,
+    "amplification": 1.30,
+    "market_cap_usd": 49.600 * B,
+    "enterprise_value_usd": 64.635 * B,
+    "net_reserve_usd": 49.683 * B,
+    "btc_arr_breakeven_pct": 2.63,
+    "btc_arr_floor_pct": -15.64,
+    "btc_arr_hurdle_pct": 10.74,
+    "vol_30d_pct": 71,
+    "vol_1y_pct": 76,
+}
+FWP_2026_08_24_ANNUAL_OBLIGATIONS = 1.703 * B
+
 # §6.1 黃金測試:官方敏感度表
 FWP_SENSITIVITY_TABLE: Tuple[Tuple[float, float], ...] = (
     (40_000, 40.87),
@@ -991,7 +1052,51 @@ def capital_structure_timeline() -> List[CapitalStructure]:
         ))
 
     out.append(fwp_snapshot())
+    out.append(fwp_snapshot_2026_08_24())
     return sorted(out, key=lambda c: c.as_of)
+
+
+def _split_preferred(total_usd: float) -> Tuple[PreferredSeries, ...]:
+    """把優先股總額按 2026-06-30 的分系列比例拆開(僅供堆疊圖,不影響總額)。"""
+    q2 = next(pb for pb in PREFERRED_BALANCES if pb.as_of == date(2026, 6, 30))
+    series = {"STRK": q2.strk, "STRF": q2.strf, "STRD": q2.strd,
+              "STRC": q2.strc, "STRE": q2.stre_usd}
+    total = sum(series.values())
+    return tuple(
+        PreferredSeries(
+            ticker=t,
+            liquidation_preference_usd=v / total * total_usd,
+            rank=SENIORITY_RANK.get(t, 99),
+            convertible=(t == "STRK"),
+            currency="EUR" if t == "STRE" else "USD",
+            is_estimated=True,
+        )
+        for t, v in series.items()
+    )
+
+
+def fwp_snapshot_2026_08_24() -> CapitalStructure:
+    """2026-08-24 FWP 快照(Tier 1)—— 目前最新的一份官方口徑。"""
+    p = PARAMS_2026_08_24
+    return CapitalStructure(
+        as_of=date(2026, 8, 24),
+        btc_held=p["btc_held"],
+        debt_notional_usd=p["debt_otm_notional"],
+        preferreds=_split_preferred(p["pref_otm_notional"]),
+        convertibles=(),
+        usd_reserve_usd=p["usd_reserve"],
+        cash_and_equiv_usd=FWP_2026_08_24_USD_CASH,
+        shares_basic=415_932_914,
+        shares_fdso=p["fdso"],
+        shares_assumed_diluted=FWP_2026_08_24_SHARES_ASSUMED_DILUTED,
+        annual_obligations_usd=FWP_2026_08_24_ANNUAL_OBLIGATIONS,
+        source_tier=1,
+        source_ref=f"Form FWP {FWP_2026_08_24_ACCESSION}",
+        is_estimated=False,
+        note=("Tier 1。市場資料為 2026-08-21 收盤、持幣與 USD Assets 為 08-23;"
+              "分系列優先股按 2026-06-30 比例拆分(推估,僅供堆疊圖);"
+              "shares_basic 由市值 $49.600B ÷ $119.25 反解"),
+    )
 
 
 def fwp_snapshot() -> CapitalStructure:

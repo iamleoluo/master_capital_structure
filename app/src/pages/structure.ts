@@ -57,8 +57,8 @@ export const structurePage: PageFn = (root) => {
         公司多買了 ${fmtBtc(daily.held[b]! - daily.held[a]!)} 顆幣,帳面每股持幣因此 ${sign(dGross)};
         但求償權在幣計價下膨脹、股數又增加了 ${sign(dShares)},
         兩者夾殺之下,股東實際能分到的每股比特幣是 <b>${sign(dPerShare)}</b>。
-        總量看起來只是「原地踏步」(${sign(dCommon)}),但那是還沒除以股數 ——
-        分母變大了三成,個別股東的處境比總量更差。
+        普通股分到的<b>總量</b>是 ${sign(dCommon)},但那是還沒除以股數 ——
+        分母同期變大了 ${sign(dShares)},所以個別股東的處境比總量難看得多。
       </div>
 
       <h2 style="margin-bottom:8px">CEBE 是什麼</h2>

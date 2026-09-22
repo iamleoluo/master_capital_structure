@@ -70,10 +70,28 @@ def _merge(*series: Sequence[Tuple[date, float]]) -> List[Tuple[date, float]]:
 # 各欄位的錨點清單:合併 data.py 手工整理的 Tier 1 點 + 新抓的 XBRL 季度點
 # ---------------------------------------------------------------------------
 
+_BTC_WEEKLY_PATH = Path(__file__).resolve().parent.parent / "web" / "raw" / "btc_holdings_weekly.json"
+
+
+@lru_cache(maxsize=1)
+def _btc_weekly_cache() -> List[Tuple[date, float]]:
+    """逐週 8-K 持有量觀測點,直接讀爬蟲的輸出(mstr_cebe.fetch_8k_btc)。
+
+    data.py 的 WEEKLY_BTC_HELD 是當初抄下來的快照,重抓 8-K 不會更新它 ——
+    只讀那份的話,每次重跑管線日頻序列的持幣量都會停在舊值(實測:8-K 已經
+    報到 846,000 顆,日頻序列卻還是 840,447)。檔案不在時回退到 data.py 的
+    硬編碼版本,離線也能跑。
+    """
+    if not _BTC_WEEKLY_PATH.exists():
+        return [(d, float(v)) for d, v in D.WEEKLY_BTC_HELD]
+    raw = json.loads(_BTC_WEEKLY_PATH.read_text(encoding="utf-8"))
+    return [(date.fromisoformat(d), float(v)) for d, v in raw]
+
+
 def btc_held_anchors() -> List[Tuple[date, float]]:
-    """§5.7b 的逐週 8-K 觀測點(90 個,平均間隔 8.7 天)當主力,
+    """§5.7b 的逐週 8-K 觀測點當主力,
     XBRL 季度數字與舊的 spec 點位當補充(只在週資料沒有覆蓋的日期生效)。"""
-    weekly = [(d, float(v)) for d, v in D.WEEKLY_BTC_HELD]
+    weekly = _btc_weekly_cache()
     spec = [(d, v) for d, v, _ in D.BTC_HELD]
     return _merge(spec, D.XBRL_BTC_HELD, weekly)   # 週資料優先權最高(最後合併覆蓋)
 

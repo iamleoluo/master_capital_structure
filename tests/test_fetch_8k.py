@@ -19,6 +19,7 @@ from pathlib import Path
 import pytest
 
 from mstr_cebe.fetch_8k_atm import parse_atm_table
+from mstr_cebe.fetch_8k_repurchase import parse_repurchase_table
 from mstr_cebe.fetch_8k_btc import (
     _cell_num,
     _parse_prose_format,
@@ -241,3 +242,41 @@ def test_prose_pattern_does_not_cross_paragraphs():
     assert len(matches) == 1
     assert matches[0][0] == "September 19, 2024"
     assert matches[0][1] == "252,220"
+
+
+# ---------------------------------------------------------------------------
+# 股票回購表(2026-07-27 起出現;2026-09-08 起 ATM 表消失只剩這張)
+# ---------------------------------------------------------------------------
+
+def test_repurchase_table_parsed():
+    """fixture 是 2026-09-08 申報的 8-K,當週回購 STRC 1,810,885 股 / $176.3M。"""
+    recs = parse_repurchase_table(load("repurchase_2026.htm"))
+    assert len(recs) == 1
+    r = recs[0]
+    assert r["week_start"] == "2026-08-31"
+    assert r["week_end"] == "2026-09-07"
+    assert r["by_security"]["STRC"]["shares"] == pytest.approx(1_810_885)
+    assert r["by_security"]["STRC"]["cost_m"] == pytest.approx(176.3)
+    # 該週沒買的券種要是 0,不是 None,也不是漏掉
+    for t in ("STRF", "STRK", "STRD", "MSTR"):
+        assert r["by_security"][t]["shares"] == 0.0
+
+
+def test_repurchase_total_row_is_split_across_two_rows():
+    """版型細節:Total 的標籤與數值分屬兩個 <tr>,只看同一列會抓不到總計。"""
+    r = parse_repurchase_table(load("repurchase_2026.htm"))[0]
+    assert r["total_shares"] == pytest.approx(1_810_885)
+    assert r["total_cost_m"] == pytest.approx(176.3)
+
+
+def test_repurchase_parser_ignores_atm_issuance_table():
+    """回購表與 ATM 發行表方向相反,絕不能互相誤判 —— 誤判會讓求償權往反方向跑。
+
+    2025-09-08 那份只有 ATM 表(Shares Sold),回購解析器必須回空。
+    """
+    assert parse_repurchase_table(load("atm_2025_btc_table.htm")) == []
+
+
+def test_atm_parser_ignores_repurchase_table():
+    """反向:只有回購表的那份,ATM 解析器也必須回空。"""
+    assert parse_atm_table(load("repurchase_2026.htm")) == []

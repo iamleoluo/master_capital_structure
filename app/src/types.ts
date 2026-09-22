@@ -70,6 +70,8 @@ export interface Meta {
     assumed: number; debt: number; reserve: number;
     pref: Record<string, number>;
     gross_bps: number; net_bps: number;
+    /** 這組官方數字出自哪一份 FWP */
+    date: string;
   };
   sens: { btc: number; off: number; got: number }[];
   be: { k: string; v: number }[];

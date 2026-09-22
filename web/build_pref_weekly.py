@@ -36,7 +36,7 @@ KNOWN: dict[str, list[tuple[str, float]]] = {
 }
 
 
-def build(atm: list[dict], sec: str) -> list[list]:
+def build(atm: list[dict], sec: str, repurchase: list[dict] | None = None) -> list[list]:
     known = sorted(KNOWN[sec])
     weekly = sorted(
         (w["week_end"], w["by_security"].get(sec, {}).get("shares") or 0.0)
@@ -62,14 +62,36 @@ def build(atm: list[dict], sec: str) -> list[list]:
         if not out or out[-1][0] != d1 or abs(out[-1][1] - s1) > 0.5:
             out.append((d1, float(s1)))
 
+    # ---- 最後一個已知錨點之後的尾段 ----
+    # 這段沒有精確股數可對齊,只能用逐週淨變動外推:發行(ATM)加、回購減。
+    # 2026 下半年起公司從發優先股轉為買回優先股(ATM 表整張從 8-K 消失,
+    # 換成 Shares Repurchased 表),不接這段的話 STRC 會一路停在 104.6M,
+    # 求償權被高估約 $11.7 億。
+    last_date, last_shares = known[-1][0], float(known[-1][1])
+    rep_by_week = {
+        w["week_end"]: (w["by_security"].get(sec, {}).get("shares") or 0.0)
+        for w in (repurchase or [])
+    }
+    tail_weeks = sorted(
+        {d for d, _ in weekly if d > last_date} | {d for d in rep_by_week if d > last_date}
+    )
+    issued = dict(weekly)
+    cum = last_shares
+    for d in tail_weeks:
+        cum += (issued.get(d) or 0.0) - rep_by_week.get(d, 0.0)
+        out.append((d, cum))
+
     return [[d, v] for d, v in out]
 
 
 def main() -> None:
     atm = json.load(open(os.path.join(RAW, "atm_weekly.json"), encoding="utf-8"))
+    rep_path = os.path.join(RAW, "repurchase_weekly.json")
+    repurchase = (json.load(open(rep_path, encoding="utf-8"))
+                  if os.path.exists(rep_path) else [])
     result = {}
     for sec in SECS:
-        pts = build(atm, sec)
+        pts = build(atm, sec, repurchase)
         gaps = [
             (dt.date.fromisoformat(pts[i + 1][0]) - dt.date.fromisoformat(pts[i][0])).days
             for i in range(len(pts) - 1)
