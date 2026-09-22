@@ -1,13 +1,13 @@
-import { daily, indexOfDate, N } from "../data";
+import { chronicle, daily, N } from "../data";
 import { explorer } from "../components/explorer";
 import { btc as fmtBtc, pct } from "../lib/format";
 import type { PageFn } from "../router";
 
 export const overviewPage: PageFn = (root) => {
   const i = N - 1;
-  const first = indexOfDate("2024-12-31");
   const commonShare = daily.common_btc[i]! / daily.held[i]!;
-  const commonShare0 = daily.common_btc[first]! / daily.held[first]!;
+  const latest = chronicle[chronicle.length - 1];
+  const m = latest?.metrics;
 
   root.innerHTML = `
     <div class="wrap">
@@ -15,10 +15,30 @@ export const overviewPage: PageFn = (root) => {
         <p class="eyebrow">總覽</p>
         <h1>一家公司,兩層股東</h1>
         <p class="lede">MSTR 買了 ${fmtBtc(daily.held[i]!)} 顆比特幣,但這些幣不全是普通股股東的。
-          優先股與可轉債排在前面,先切走固定金額的一塊,剩下的才輪到普通股。
-          兩年前普通股還能分到 ${pct(commonShare0)},現在只剩 ${pct(commonShare)}。
+          優先股與可轉債排在前面,先切走固定金額的一塊,剩下的才輪到普通股 ——
+          目前普通股分到的是其中 ${pct(commonShare)}。
           下面的時間軸可以拖到任何一天,看當天的股價是怎麼被拆出來的。</p>
       </div>
+
+      ${latest && m ? `
+      <a class="latest-era" href="#/chronicle">
+        <div class="latest-era-top">
+          <span class="eyebrow" style="margin:0">目前階段</span>
+          ${latest.ongoing ? `<span class="badge live"><i class="dot"></i>進行中</span>` : ""}
+        </div>
+        <div class="latest-era-title">${latest.title}</div>
+        <div class="latest-era-sub">${latest.subtitle}</div>
+        <div class="latest-era-stats">
+          <span><i>自 ${latest.start}</i> 求償權
+            <b class="${(m.claims.pct ?? 0) < 0 ? "up" : "down"}">${
+              m.claims.pct == null ? "—" : (m.claims.pct >= 0 ? "+" : "") + m.claims.pct.toFixed(1) + "%"}</b></span>
+          <span>CEBE 每股
+            <b class="${(m.cebe.pct ?? 0) >= 0 ? "up" : "down"}">${
+              m.cebe.pct == null ? "—" : (m.cebe.pct >= 0 ? "+" : "") + m.cebe.pct.toFixed(1) + "%"}</b></span>
+          <span>持幣
+            <b>${m.held.pct == null ? "—" : (m.held.pct >= 0 ? "+" : "") + m.held.pct.toFixed(1) + "%"}</b></span>
+        </div>
+      </a>` : ""}
 
       <div id="explorer"></div>
 
@@ -42,12 +62,14 @@ export const overviewPage: PageFn = (root) => {
             <a href="#/accumulation">持幣與融資</a> ——
             它到底買了多少幣、每一批是拿哪個 ATM 的錢買的,逐週原始資料。</p>
           <p style="font-size:.9rem;color:var(--ink-2);margin-bottom:10px">
+            <a href="#/chronicle">大事記</a> ——
+            公司在不同階段用的是完全不同的資本工具,對股東的後果也完全相反。</p>
+          <p style="font-size:.9rem;color:var(--ink-2);margin-bottom:10px">
             <a href="#/structure">資本結構</a> ——
-            把縱軸換成「幣的顆數」,會看到一件用美元看不出來的事:
-            公司一直在買幣,普通股分到的量卻幾乎沒動。</p>
+            誰排在誰前面、CEBE 怎麼算,以及公司能動用哪些工具去改變它。</p>
           <p style="font-size:.9rem;color:var(--ink-2);margin:0">
             <a href="#/pricing">槓桿與定價</a> ——
-            但那不代表白買。BTC 漲回來的時候,每股含幣量會自己長回來。</p>
+            求償權固定在美元,所以每股含幣量是一個對 BTC 有槓桿的部位。</p>
         </div>
       </div>
     </div>`;

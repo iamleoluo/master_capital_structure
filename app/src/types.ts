@@ -62,8 +62,47 @@ export interface PolicyBreak {
   d: string; title: string; detail: string; hard: boolean;
 }
 
+/** 期初 → 期末 + 變化率。pct 在期初為 0 時是 null。 */
+export interface Delta { from: number; to: number; pct: number | null; }
+
+export interface ToolSpec {
+  id: string; label: string;
+  claims: string; shares: string; btc: string; cebe: string; note: string;
+}
+
+/** 大事記的一則。敘述是人工撰寫,數字全部由管線重算。 */
+export interface Era {
+  id: string; title: string; subtitle: string;
+  start: string; end: string | null; ongoing: boolean;
+  trigger: string; body: string[]; watch: string;
+  /** 對應 daily.date 的索引區間(含頭尾),圖表直接吃 */
+  range: [number, number];
+  days: number;
+  /** 人工標註的主要手法 */
+  tools: string[];
+  /** 由資料判定實際有動作的工具 */
+  toolsActive: string[];
+  metrics: {
+    btcPrice: Delta; held: Delta; claims: Delta; pref: Delta; shares: Delta;
+    cebe: Delta; grossBps: Delta; mnavCebe: Delta; mstrPrice: Delta;
+    strcPrice: (Delta & { low: number; lowDate: string }) | null;
+  };
+  flows: {
+    prefRaisedM: number; commonRaisedM: number;
+    prefRepurchasedShares: number; prefRepurchasedM: number;
+    btcBought: number; btcSold: number;
+  };
+  events: { d: string; label: string; kind: "policy" | "ipo" }[];
+  /** 只有進行中的那一則會有:各回購計畫的剩餘授權(百萬美元) */
+  remainingAuthorityM?: Record<string, number>;
+}
+
 export interface Meta {
   ipos: Ipo[];
+  /** 資本結構工具箱 —— 公司能動用的完整槓桿清單 */
+  toolkit: ToolSpec[];
+  /** 管線偵測到的結構變化提醒 */
+  watch: string[];
   breaks: PolicyBreak[];
   fwp: {
     held: number; btc: number; price: number; fdso: number; basic: number;

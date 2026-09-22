@@ -4,6 +4,7 @@ import { startRouter, type Route } from "./router";
 
 const routes: Route[] = [
   { path: "/", title: "總覽", page: async () => (await import("./pages/overview")).overviewPage },
+  { path: "/chronicle", title: "大事記", page: async () => (await import("./pages/chronicle")).chroniclePage },
   { path: "/accumulation", title: "持幣與融資", page: async () => (await import("./pages/accumulation")).accumulationPage },
   { path: "/structure", title: "資本結構", page: async () => (await import("./pages/structure")).structurePage },
   { path: "/pricing", title: "槓桿與定價", page: async () => (await import("./pages/pricing")).pricingPage },

@@ -46,7 +46,36 @@ from .fetch_8k_atm import (
     list_candidates,
 )
 
-__all__ = ["parse_repurchase_table", "fetch_all", "SECURITIES"]
+__all__ = ["parse_repurchase_table", "parse_remaining_authority", "fetch_all",
+           "SECURITIES"]
+
+# 表格註腳:「$875.1 million aggregate purchase price of Strategy's preferred stock
+# remains available under its digital credit securities repurchase program.」
+#
+# 這個「剩餘授權」是當期最重要的前瞻數字,而且會自己說話 —— 實測 2026-08-31 剩
+# $364.8M(原始 $1.0B 快用完),2026-09-08 卻跳回 $1.19B,代表董事會在那之間加碼了
+# 約 $1.0B。寫死在文案裡看不出這件事,所以一起解析出來。
+_AUTHORITY_PAT = re.compile(
+    r'\$([\d.]+)\s*(million|billion)\s+aggregate purchase price of\s+'
+    # 申報文件用的是彎引號 U+2019,不是 ASCII 直引號 —— 兩種都要吃
+    r"(?:Strategy['’]?s\s+)?(preferred stock|MSTR Stock)\s+remains available",
+    re.IGNORECASE)
+
+_AUTHORITY_KEY = {"preferred stock": "preferred", "mstr stock": "mstr"}
+
+
+def parse_remaining_authority(html: str) -> Dict[str, float]:
+    """回傳各回購計畫的剩餘授權金額(百萬美元)。沒寫的就不出現在 dict 裡。"""
+    text = re.sub(r"\s+", " ", BeautifulSoup(html, "html.parser")
+                  .get_text(" ", strip=True))
+    out: Dict[str, float] = {}
+    for amount, unit, which in _AUTHORITY_PAT.findall(text):
+        key = _AUTHORITY_KEY.get(which.lower())
+        if not key:
+            continue
+        v = float(amount) * (1000.0 if unit.lower() == "billion" else 1.0)
+        out[key] = v
+    return out
 
 
 def parse_repurchase_table(html: str) -> List[Dict]:
@@ -130,8 +159,10 @@ def fetch_all(start: dt.date = dt.date(2026, 1, 1),
             if verbose:
                 print(f"  [跳過] {filed}: {exc}", file=sys.stderr)
             continue
+        authority = parse_remaining_authority(html)
         for rec in parse_repurchase_table(html):
             rec["filed"] = filed
+            rec["remaining_authority_m"] = authority
             merged[rec["week_end"]] = rec
         if verbose and n % 25 == 0:
             print(f"  {n}/{len(candidates)}...", file=sys.stderr)

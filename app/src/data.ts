@@ -2,11 +2,14 @@
 import dailyJson from "../data/daily.json";
 import weeklyJson from "../data/weekly.json";
 import metaJson from "../data/meta.json";
-import type { Daily, Meta, Week } from "./types";
+import chronicleJson from "../data/chronicle.json";
+import type { Daily, Era, Meta, Week } from "./types";
 
 export const daily = dailyJson as unknown as Daily;
 export const weekly = weeklyJson as unknown as Week[];
 export const meta = metaJson as unknown as Meta;
+/** 大事記,依時間正序;前端顯示時倒序(最新在上)。 */
+export const chronicle = chronicleJson as unknown as Era[];
 
 export const N = daily.date.length;
 

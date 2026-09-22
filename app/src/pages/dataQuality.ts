@@ -58,7 +58,19 @@ export const dataQualityPage: PageFn = (root) => {
         STRF/STRK/STRD 的股數已用 ATM 表重建成逐週序列,STRE 沒有 ATM 只有單點;
         可轉債與現金來自季度 XBRL,本來就只有季頻,是目前插值距離的主要來源。</p>
 
-      <h3 style="margin-bottom:14px">建置期發現的問題</h3>
+      <h3 style="margin-bottom:12px">結構變化偵測</h3>
+      <p style="font-size:.86rem;color:var(--ink-2);margin-bottom:12px">
+        分期是編輯判斷,不是演算法切出來的 —— 但「該不該重新檢視分期」可以自動提醒。
+        每次跑資料管線時會比對目前狀態與<a href="#/chronicle">當期</a>起點,
+        在求償權變動超過 5%、優先股穿越面額($100)、或當期已經持續超過半年時列出提示。
+      </p>
+      ${meta.watch.length ? `
+        <ul class="watch-list">
+          ${meta.watch.map((w) => `<li>${w}</li>`).join("")}
+        </ul>` : `
+        <p class="note" style="margin-top:0">目前沒有觸發任何提示。</p>`}
+
+      <h3 style="margin:30px 0 14px">建置期發現的問題</h3>
       <div class="grid2">
         ${meta.findings.map((f) => `
           <div class="card"><h3 style="font-size:1rem;margin-bottom:7px">${f.t}</h3>

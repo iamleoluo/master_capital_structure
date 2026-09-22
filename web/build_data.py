@@ -163,6 +163,140 @@ def build_weekly() -> list:
 
 
 # ---------------------------------------------------------------------------
+# chronicle.json —— 資本結構大事記
+#
+# 階段的標題與敘述是人工撰寫的(mstr_cebe/chronicle.py),但每一個數字都在這裡
+# 從 daily.json 與原始週資料重算。所以資料一更新,每一則的數字就跟著更新。
+# ---------------------------------------------------------------------------
+
+def _pair(series: list, lo: int, hi: int, nd: int = 0) -> dict:
+    """期初 → 期末 + 變化率。變化率在期初為 0 時回 None,不硬算。"""
+    a, b = float(series[lo]), float(series[hi])
+    pct = ((b / a - 1) * 100) if a else None
+    return {"from": round(a, nd), "to": round(b, nd),
+            "pct": round(pct, 1) if pct is not None else None}
+
+
+def _era_window(daily: dict, era) -> tuple:
+    """把 era 的日期區間對到 daily.date 的索引(含頭尾)。"""
+    dates = daily["date"]
+    start = era.start.isoformat()
+    end = era.end.isoformat() if era.end else dates[-1]
+    lo = next((i for i, d in enumerate(dates) if d >= start), 0)
+    hi = max(lo, max((i for i, d in enumerate(dates) if d <= end), default=lo))
+    return lo, hi
+
+
+def build_chronicle(daily: dict, weekly: list) -> list:
+    from mstr_cebe import chronicle as CH      # noqa: E402
+
+    atm = _load_raw("atm_weekly.json")
+    rep = (_load_raw("repurchase_weekly.json")
+           if os.path.exists(os.path.join(RAW, "repurchase_weekly.json")) else [])
+    pref_px = _load_raw("preferred_prices.json")
+
+    claims = [round(daily["debt"][i] + daily["pref_total"][i] - daily["cash"][i], 4)
+              for i in range(len(daily["date"]))]
+    cebe = [round(daily["common_btc"][i] / (daily["shares"][i] * 1e6) * 1e8, 1)
+            for i in range(len(daily["date"]))]
+
+    out = []
+    for era in CH.ERAS:
+        lo, hi = _era_window(daily, era)
+        a, b = daily["date"][lo], daily["date"][hi]
+
+        in_window = [w for w in weekly if a <= w["week_end"] <= b]
+        atm_w = [x for x in atm if a <= x["week_end"] <= b]
+        rep_w = [x for x in rep if a <= x["week_end"] <= b]
+
+        pref_raised = sum((v.get("net_proceeds_m") or 0.0)
+                          for x in atm_w for s, v in x["by_security"].items()
+                          if s != "MSTR")
+        common_raised = sum((x["by_security"].get("MSTR", {}).get("net_proceeds_m") or 0.0)
+                            for x in atm_w)
+        rep_shares = sum(v.get("shares", 0.0) for x in rep_w
+                         for s, v in x["by_security"].items() if s != "MSTR")
+        rep_cost = sum(v.get("cost_m", 0.0) for x in rep_w
+                       for s, v in x["by_security"].items() if s != "MSTR")
+        common_rep = sum(x["by_security"].get("MSTR", {}).get("shares", 0.0)
+                         for x in rep_w)
+        bought = sum(w["delta"] for w in in_window if (w["delta"] or 0) > 0)
+        sold = -sum(w["delta"] for w in in_window if (w["delta"] or 0) < 0)
+
+        # 工具是否真的動用,一律由資料判定,不採信 chronicle.py 的人工標註
+        debt_delta = daily["debt"][hi] - daily["debt"][lo]
+        active = {
+            "common_atm": common_raised > 0,
+            "preferred_issue": pref_raised > 0,
+            "convert_issue": debt_delta > 0.05,
+            "btc_sale": sold > 0,
+            "preferred_buyback": rep_shares > 0,
+            "common_buyback": common_rep > 0,
+            "convert_buyback": debt_delta < -0.05,
+        }
+
+        strc = sorted((d, v) for d, v in pref_px.get("STRC", {}).items() if a <= d <= b)
+
+        out.append({
+            "id": era.id, "title": era.title, "subtitle": era.subtitle,
+            "start": a, "end": None if era.end is None else b,
+            "ongoing": era.end is None,
+            "trigger": era.trigger, "body": list(era.body), "watch": era.watch,
+            "range": [lo, hi],
+            # 日曆天,不是交易日 —— 讀者看日期區間時預期的是日曆天
+            "days": (dt.date.fromisoformat(b) - dt.date.fromisoformat(a)).days + 1,
+            "tools": list(era.tools),
+            "toolsActive": [k for k, v in active.items() if v],
+            "metrics": {
+                "btcPrice": _pair(daily["btc"], lo, hi),
+                "held": _pair(daily["held"], lo, hi),
+                "claims": _pair(claims, lo, hi, 2),
+                "pref": _pair(daily["pref_total"], lo, hi, 2),
+                "shares": _pair(daily["shares"], lo, hi, 1),
+                "cebe": _pair(cebe, lo, hi),
+                "grossBps": _pair(daily["bps"], lo, hi),
+                "mnavCebe": _pair(daily["mnav_cebe"], lo, hi, 2),
+                "mstrPrice": _pair(daily["mstr"], lo, hi, 2),
+                "strcPrice": ({"from": strc[0][1], "to": strc[-1][1],
+                               "pct": round((strc[-1][1] / strc[0][1] - 1) * 100, 1),
+                               "low": min(v for _, v in strc),
+                               "lowDate": min(strc, key=lambda x: x[1])[0]}
+                              if len(strc) > 1 else None),
+            },
+            "flows": {
+                "prefRaisedM": round(pref_raised, 1),
+                "commonRaisedM": round(common_raised, 1),
+                "prefRepurchasedShares": round(rep_shares),
+                "prefRepurchasedM": round(rep_cost, 1),
+                "btcBought": round(bought), "btcSold": round(sold),
+            },
+            "events": (
+                [{"d": x.as_of.isoformat(), "label": x.title, "kind": "policy"}
+                 for x in D.POLICY_BREAKS if a <= x.as_of.isoformat() <= b]
+                + [{"d": i.pricing_date.isoformat(),
+                    "label": f"{i.ticker} 上市(${i.ipo_liquidation_pref / 1e9:.2f}B)",
+                    "kind": "ipo"}
+                   for i in D.PREFERRED_IPOS if a <= i.pricing_date.isoformat() <= b]
+            ),
+        })
+
+    # 最新一期的回購剩餘授權(前瞻數字,寫死在文案裡會過時)
+    if rep and out:
+        last_auth = next((x.get("remaining_authority_m") for x in reversed(rep)
+                          if x.get("remaining_authority_m")), None)
+        if last_auth:
+            out[-1]["remainingAuthorityM"] = last_auth
+
+    return out
+
+
+def build_toolkit() -> list:
+    from mstr_cebe import chronicle as CH      # noqa: E402
+    return [{"id": t.id, "label": t.label, "claims": t.claims, "shares": t.shares,
+             "btc": t.btc, "cebe": t.cebe, "note": t.note} for t in CH.TOOLS]
+
+
+# ---------------------------------------------------------------------------
 # meta.json
 # ---------------------------------------------------------------------------
 
@@ -271,11 +405,68 @@ def _findings() -> list:
     ]
 
 
+# ---------------------------------------------------------------------------
+# 變化偵測 —— 讓「每次更新都重新檢視結構」有實際機制,而不是靠人記得
+# ---------------------------------------------------------------------------
+
+def structural_watch(daily: dict, chronicle: list) -> list:
+    """比對目前狀態與當前階段的起點,回報值得注意的結構變化。
+
+    這不是自動開新主題(那是編輯判斷),而是提醒維護者「可能該開新主題了」。
+    """
+    notes = []
+    if not chronicle:
+        return notes
+    cur = chronicle[-1]
+    lo, hi = cur["range"]
+    dates = daily["date"]
+
+    m = cur["metrics"]
+    if m["claims"]["pct"] is not None and abs(m["claims"]["pct"]) >= 5:
+        notes.append(
+            f"本期({cur['title']})淨求償權已變動 {m['claims']['pct']:+.1f}%"
+            f"(${m['claims']['from']:.2f}B → ${m['claims']['to']:.2f}B)")
+
+    # 優先股價格穿越面額:信用狀況換檔的訊號
+    pref_px = _load_raw("preferred_prices.json")
+    for t, series in pref_px.items():
+        win = sorted((d, v) for d, v in series.items()
+                     if dates[lo] <= d <= dates[hi])
+        if len(win) < 2:
+            continue
+        below = [d for d, v in win if v < 100]
+        above = [d for d, v in win if v >= 100]
+        if below and above:
+            notes.append(
+                f"{t} 在本期內穿越面額($100):最低 ${min(v for _, v in win):.2f}、"
+                f"最新 ${win[-1][1]:.2f}")
+
+    # 最後一期還開著、而且已經跑了很久 —— 提醒重新檢視分期是否還成立
+    if cur["ongoing"] and cur["days"] > 180:
+        notes.append(
+            f"本期已持續 {cur['days']} 天,值得重新檢視是否該切出新階段")
+
+    # 工具箱的啟用組合與人工標註不一致
+    declared, actual = set(cur["tools"]), set(cur["toolsActive"])
+    if declared - actual:
+        notes.append(f"chronicle.py 標註了但資料上沒有動作的工具:"
+                     f"{', '.join(sorted(declared - actual))}")
+    if actual - declared:
+        notes.append(f"資料上有動作但 chronicle.py 沒標註的工具:"
+                     f"{', '.join(sorted(actual - declared))}")
+
+    return notes
+
+
 def main() -> int:
     os.makedirs(OUT, exist_ok=True)
     daily, weekly, meta = build_daily(), build_weekly(), build_meta()
+    chronicle = build_chronicle(daily, weekly)
+    meta["toolkit"] = build_toolkit()
+    meta["watch"] = structural_watch(daily, chronicle)
 
-    for name, payload in (("daily", daily), ("weekly", weekly), ("meta", meta)):
+    for name, payload in (("daily", daily), ("weekly", weekly),
+                          ("meta", meta), ("chronicle", chronicle)):
         path = os.path.join(OUT, f"{name}.json")
         with open(path, "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
@@ -287,6 +478,19 @@ def main() -> int:
           f"{sum(1 for w in weekly if w['delta'])} 週有買賣")
     print(f"meta  : {len(meta['findings'])} findings, "
           f"{len(meta['ipos'])} IPOs, {len(meta['sens'])} 敏感度列")
+
+    print(f"\n大事記: {len(chronicle)} 個階段")
+    for e in chronicle:
+        m = e["metrics"]
+        tail = "進行中" if e["ongoing"] else e["end"]
+        print(f"  {e['start']} → {tail:<12} {e['title']:<8} "
+              f"持幣 {m['held']['pct']:+6.1f}%  求償權 {m['claims']['pct']:+6.1f}%  "
+              f"CEBE {m['cebe']['pct']:+6.1f}%")
+
+    if meta["watch"]:
+        print("\n⚠️  結構變化提醒(考慮是否該開新主題):")
+        for w in meta["watch"]:
+            print(f"  • {w}")
 
     # 黃金測試:管線不能悄悄改掉官方錨點。兩份 FWP 都釘住 ——
     # 舊的那份是歷史回歸基準,新的那份是前端實際顯示的口徑。
