@@ -178,13 +178,19 @@ def _pair(series: list, lo: int, hi: int, nd: int = 0) -> dict:
 
 
 def _era_window(daily: dict, era) -> tuple:
-    """把 era 的日期區間對到 daily.date 的索引(含頭尾)。"""
+    """回傳 (日線索引 lo, hi, 宣告起日, 宣告迄日)。
+
+    ⚠️ 日線索引會被對齊到交易日,週資料**不能**用對齊後的日期去篩 ——
+    宣告的迄日若落在週末(例如 2026-05-31),對齊後會變成 05-29,那一週的
+    week_end=2026-05-31 就會同時被前後兩期排除、整週憑空消失。
+    實測就是這樣讓「信用壓力」期的賣幣量變成 0 顆。週資料一律用宣告日期篩。
+    """
     dates = daily["date"]
     start = era.start.isoformat()
     end = era.end.isoformat() if era.end else dates[-1]
     lo = next((i for i, d in enumerate(dates) if d >= start), 0)
     hi = max(lo, max((i for i, d in enumerate(dates) if d <= end), default=lo))
-    return lo, hi
+    return lo, hi, start, end
 
 
 def build_chronicle(daily: dict, weekly: list) -> list:
@@ -202,12 +208,13 @@ def build_chronicle(daily: dict, weekly: list) -> list:
 
     out = []
     for era in CH.ERAS:
-        lo, hi = _era_window(daily, era)
+        lo, hi, wa, wb = _era_window(daily, era)
         a, b = daily["date"][lo], daily["date"][hi]
 
-        in_window = [w for w in weekly if a <= w["week_end"] <= b]
-        atm_w = [x for x in atm if a <= x["week_end"] <= b]
-        rep_w = [x for x in rep if a <= x["week_end"] <= b]
+        # 週資料用宣告日期(wa/wb),不是對齊後的交易日(a/b)—— 見 _era_window
+        in_window = [w for w in weekly if wa <= w["week_end"] <= wb]
+        atm_w = [x for x in atm if wa <= x["week_end"] <= wb]
+        rep_w = [x for x in rep if wa <= x["week_end"] <= wb]
 
         pref_raised = sum((v.get("net_proceeds_m") or 0.0)
                           for x in atm_w for s, v in x["by_security"].items()
@@ -235,7 +242,7 @@ def build_chronicle(daily: dict, weekly: list) -> list:
             "convert_buyback": debt_delta < -0.05,
         }
 
-        strc = sorted((d, v) for d, v in pref_px.get("STRC", {}).items() if a <= d <= b)
+        strc = sorted((d, v) for d, v in pref_px.get("STRC", {}).items() if wa <= d <= wb)
 
         out.append({
             "id": era.id, "title": era.title, "subtitle": era.subtitle,
@@ -294,6 +301,44 @@ def build_toolkit() -> list:
     from mstr_cebe import chronicle as CH      # noqa: E402
     return [{"id": t.id, "label": t.label, "claims": t.claims, "shares": t.shares,
              "btc": t.btc, "cebe": t.cebe, "note": t.note} for t in CH.TOOLS]
+
+
+def build_program(daily: dict, weekly: list) -> dict:
+    """大事記最上面的整體框架:長期論述 + 全期數字。
+
+    全期數字存在的理由是擋住「用三五個月論斷這套結構」——
+    單一階段永遠只是這台機器的某一個轉速。
+    """
+    from mstr_cebe import chronicle as CH      # noqa: E402
+
+    n = len(daily["date"])
+    lo, hi = 0, n - 1
+    cebe = [daily["common_btc"][i] / (daily["shares"][i] * 1e6) * 1e8
+            for i in range(n)]
+    claims = [daily["debt"][i] + daily["pref_total"][i] - daily["cash"][i]
+              for i in range(n)]
+
+    sold = sum(-w["delta"] for w in weekly if (w["delta"] or 0) < 0)
+    bought = sum(w["delta"] for w in weekly if (w["delta"] or 0) > 0)
+
+    return {
+        "lede": CH.PROGRAM.lede,
+        "principles": [{"t": t, "b": b} for t, b in CH.PROGRAM.principles],
+        "span": [daily["date"][lo], daily["date"][hi]],
+        "metrics": {
+            "cebe": _pair(cebe, lo, hi),
+            "held": _pair(daily["held"], lo, hi),
+            "btcPrice": _pair(daily["btc"], lo, hi),
+            "mstrPrice": _pair(daily["mstr"], lo, hi, 2),
+            "claims": _pair(claims, lo, hi, 2),
+        },
+        # 「賣幣求生」這個說法能不能成立,就看這兩個數字
+        "btcSoldEver": round(sold),
+        "btcBoughtEver": round(bought),
+        "soldPctOfHoldings": round(sold / daily["held"][hi] * 100, 2),
+        "reserveYears": round(D.PARAMS_2026_08_24["usd_reserve"]
+                              / D.FWP_2026_08_24_ANNUAL_OBLIGATIONS, 1),
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -463,6 +508,7 @@ def main() -> int:
     daily, weekly, meta = build_daily(), build_weekly(), build_meta()
     chronicle = build_chronicle(daily, weekly)
     meta["toolkit"] = build_toolkit()
+    meta["program"] = build_program(daily, weekly)
     meta["watch"] = structural_watch(daily, chronicle)
 
     for name, payload in (("daily", daily), ("weekly", weekly),

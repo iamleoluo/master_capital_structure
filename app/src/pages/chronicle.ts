@@ -2,7 +2,7 @@
  *
  *  敘述是人工撰寫的(mstr_cebe/chronicle.py),但每個數字都由管線在每次更新時
  *  從 daily.json 重算,所以資料一更新這一頁就跟著更新,不會出現文字與圖表打架。 */
-import { chronicle } from "../data";
+import { chronicle, meta } from "../data";
 import { drawEraStrip, eraColor } from "../charts/eraStrip";
 import { drawPerShare, drawRiverUsd } from "../charts/timeseries";
 import { drawRiverBtc } from "../charts/riverBtc";
@@ -116,6 +116,45 @@ const CHART_CAPTION: Record<string, string> = {
   riverUsd: "美元計價 —— 求償權堆疊加上 MSTR 市值,虛線是 BTC 總市值",
 };
 
+/** 全期數字 —— 放在最前面,擋住「用三五個月論斷這套結構」。 */
+function programPanel(): string {
+  const p = meta.program;
+  const m = p.metrics;
+  const cell = (label: string, d: Delta, fmt: (v: number) => string,
+                pol: Polarity = "upGood") => `
+    <div class="tile">
+      <div class="k">${label}</div>
+      <div class="v ${toneOf(d.pct, pol)}">${sign(d.pct)}</div>
+      <div class="d">${fmt(d.from)} → ${fmt(d.to)}</div>
+    </div>`;
+  const sats = (v: number) => Math.round(v).toLocaleString("en-US");
+
+  return `
+    <div class="program">
+      <div class="program-span">全期 ${p.span[0]} → ${p.span[1]}</div>
+      <div class="grid3" style="margin-bottom:14px">
+        ${cell("CEBE 每股含幣量", m.cebe, sats)}
+        ${cell("BTC 價格", m.btcPrice, usd0)}
+        ${cell("總持幣", m.held, (v) => fmtBtc(v) + " 顆")}
+        ${cell("淨求償權", m.claims, (v) => `$${v.toFixed(2)}B`, "neutral")}
+      </div>
+      <p class="program-key">
+        兩年多下來,<b>普通股每股分到的比特幣成長 ${sign(m.cebe.pct)},
+        比同期 BTC 本身的 ${sign(m.btcPrice.pct)} 還高</b> ——
+        這是整套結構到底有沒有替普通股股東做事的答案。
+        任何單一階段都只是這台機器的某一個轉速。
+      </p>
+      <p class="lede" style="margin:0">${p.lede}</p>
+      <div class="grid2" style="margin-top:18px">
+        ${p.principles.map((x) => `
+          <div class="principle">
+            <h3>${x.t}</h3>
+            <p>${x.b}</p>
+          </div>`).join("")}
+      </div>
+    </div>`;
+}
+
 export const chroniclePage: PageFn = (root) => {
   const eras = [...chronicle].reverse();   // 最新在上,像新聞欄位
 
@@ -123,14 +162,16 @@ export const chroniclePage: PageFn = (root) => {
     <div class="wrap">
       <div class="page-head">
         <p class="eyebrow">大事記</p>
-        <h1>公司換過幾套工具</h1>
-        <p class="lede">同樣是「買比特幣的公司」,在不同階段用的是完全不同的資本工具,
-          對普通股股東的後果也完全不同。這一頁把兩年多切成幾個階段,
-          每一段記錄它動用了什麼、結構被改成什麼樣子。
-          <b>敘述是人工寫的,但所有數字都在每次資料更新時重算。</b></p>
+        <h1>一套工具,四種市況</h1>
+        <p class="lede">這不是一家被事件推著走的公司。五檔優先股的條款在發行當天就設定好了,
+          市況決定的是<b>哪一根槓桿在當下划算</b>,不是公司有哪些槓桿。
+          下面把兩年多切成幾個階段,每一段記錄它選了什麼、為什麼是那把工具、
+          結構被改成什麼樣子。<b>敘述是人工寫的,但所有數字都在每次資料更新時重算。</b></p>
       </div>
 
-      <div class="card flush" style="padding:14px 18px 6px;margin-bottom:26px">
+      ${programPanel()}
+
+      <div class="card flush" style="padding:14px 18px 6px;margin:26px 0">
         <div id="era-strip" class="era-strip"></div>
       </div>
 

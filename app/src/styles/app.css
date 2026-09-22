@@ -227,3 +227,17 @@ table.era-metrics td.chg.flat{color:var(--ink-3)}
 .watch-list li{background:var(--surface);border:1px solid var(--line);
   border-left:3px solid var(--senti);border-radius:4px;padding:10px 14px;margin-bottom:8px;
   color:var(--ink-2)}
+
+/* 大事記的整體框架區 */
+.program{background:var(--surface);border:1px solid var(--line);border-radius:4px;
+  padding:20px 22px;margin-bottom:8px}
+.program-span{font-family:var(--mono);font-size:.72rem;color:var(--ink-3);
+  letter-spacing:.06em;margin-bottom:12px}
+.program .tile .v{font-size:1.4rem}
+.program .tile .v.up{color:var(--good)}
+.program .tile .v.down{color:var(--bad)}
+.program .tile .v.flat{color:var(--ink)}
+.program-key{font-size:.95rem;color:var(--ink-2);border-left:2px solid var(--equity);
+  padding-left:16px;margin:16px 0 18px}
+.principle h3{font-size:.95rem;margin-bottom:5px}
+.principle p{font-size:.86rem;color:var(--ink-2);line-height:1.7;margin:0}

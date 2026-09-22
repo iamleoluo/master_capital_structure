@@ -101,6 +101,17 @@ export interface Meta {
   ipos: Ipo[];
   /** 資本結構工具箱 —— 公司能動用的完整槓桿清單 */
   toolkit: ToolSpec[];
+  /** 大事記最上面的整體框架:長期論述 + 全期數字 */
+  program: {
+    lede: string;
+    principles: { t: string; b: string }[];
+    span: [string, string];
+    metrics: {
+      cebe: Delta; held: Delta; btcPrice: Delta; mstrPrice: Delta; claims: Delta;
+    };
+    btcSoldEver: number; btcBoughtEver: number;
+    soldPctOfHoldings: number; reserveYears: number;
+  };
   /** 管線偵測到的結構變化提醒 */
   watch: string[];
   breaks: PolicyBreak[];
