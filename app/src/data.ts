@@ -3,13 +3,16 @@ import dailyJson from "../data/daily.json";
 import weeklyJson from "../data/weekly.json";
 import metaJson from "../data/meta.json";
 import chronicleJson from "../data/chronicle.json";
-import type { Daily, Era, Meta, Week } from "./types";
+import strategyJson from "../data/strategy.json";
+import type { Daily, Era, Meta, Strategy, Week } from "./types";
 
 export const daily = dailyJson as unknown as Daily;
 export const weekly = weeklyJson as unknown as Week[];
 export const meta = metaJson as unknown as Meta;
 /** 大事記,依時間正序;前端顯示時倒序(最新在上)。 */
 export const chronicle = chronicleJson as unknown as Era[];
+/** 策略歸因,rows 以 daily.date 的索引對齊 */
+export const strategy = strategyJson as unknown as Strategy;
 
 export const N = daily.date.length;
 

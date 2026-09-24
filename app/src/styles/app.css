@@ -241,3 +241,27 @@ table.era-metrics td.chg.flat{color:var(--ink-3)}
   padding-left:16px;margin:16px 0 18px}
 .principle h3{font-size:.95rem;margin-bottom:5px}
 .principle p{font-size:.86rem;color:var(--ink-2);line-height:1.7;margin:0}
+
+/* ---------- 策略分析 ---------- */
+.preset-row{display:flex;gap:6px;flex-wrap:wrap}
+.scrub-ends{display:flex;justify-content:space-between;font-size:.72rem;
+  color:var(--ink-3);margin-top:2px}
+.scrub-ends span:nth-child(2){color:var(--equity);font-weight:600}
+
+.layer-list{display:flex;flex-direction:column;gap:14px}
+.layer{background:var(--surface);border:1px solid var(--line);border-radius:4px;
+  padding:12px 14px}
+.layer.total{background:transparent;border-style:dashed}
+.layer-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.layer-name{font-size:.88rem;display:inline-flex;align-items:center;gap:7px}
+.layer-vals{display:inline-flex;align-items:baseline;gap:8px;white-space:nowrap}
+.layer-vals b{font-family:var(--mono);font-size:1.05rem;font-variant-numeric:tabular-nums}
+.layer-vals b.up{color:var(--good)}
+.layer-vals b.down{color:var(--bad)}
+.layer-share{font-size:.72rem;color:var(--ink-3)}
+.layer-bar{height:6px;background:var(--surface-2);border-radius:3px;overflow:hidden;
+  margin-top:9px}
+.layer-bar i{display:block;height:100%;border-radius:3px}
+.layer-note{font-size:.74rem;color:var(--ink-3);margin-top:7px}
+.passive-tag{font-size:.66rem;background:var(--surface-2);color:var(--ink-3);
+  border-radius:20px;padding:1px 7px;margin-left:4px}

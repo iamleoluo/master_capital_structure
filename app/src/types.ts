@@ -97,6 +97,30 @@ export interface Era {
   remainingAuthorityM?: Record<string, number>;
 }
 
+/** 策略歸因的單一起始日結果(終點恆為最新一天)。 */
+export interface StrategyRow {
+  cebe0: number;
+  /** 四因子 Shapley,加總 = ΔCEBE */
+  f: { held: number; claims: number; price: number; shares: number };
+  /** 主動 = 持幣+求償權+股數;被動 = 幣價讓求償權縮水 */
+  active: number; passive: number;
+  /** 反事實:結構凍結、只讓幣價走 */
+  cf: number; vsCf: number;
+  /** 三層乘法恆等式的對數拆解,三者加總 = log(股價比) */
+  layers: { mnav: number; cebe: number; btc: number };
+  /** 總變化太小時佔比會失真,此旗標為 false 時改顯示各層自身漲跌 */
+  stable: boolean;
+  mstrRet: number; btcRet: number;
+  bought: number; sold: number;
+}
+
+export interface Strategy {
+  end: string;
+  cebeNow: number;
+  rows: (StrategyRow | null)[];
+  presets: { id: string; label: string; date: string }[];
+}
+
 export interface Meta {
   ipos: Ipo[];
   /** 資本結構工具箱 —— 公司能動用的完整槓桿清單 */

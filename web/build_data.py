@@ -303,6 +303,83 @@ def build_toolkit() -> list:
              "btc": t.btc, "cebe": t.cebe, "note": t.note} for t in CH.TOOLS]
 
 
+def build_strategy(daily: dict, weekly: list, chronicle: list) -> dict:
+    """策略歸因 —— 對<b>每一個</b>可能的起始日都算好,讓前端能任意拉動起點。
+
+    全部在這裡算完的理由跟其他頁一樣:前端不做金融計算。Shapley 與對數拆解
+    有 tests/test_attribution.py 守著加總恆等,不該在 TS 裡重寫一份。
+
+    payload 是 1-D 的(終點恆為最新一天),四捨五入後約數十 KB,可以接受。
+    """
+    from mstr_cebe import attribution as A      # noqa: E402
+
+    n = len(daily["date"])
+    end = n - 1
+
+    def st(i):
+        return {
+            "held": float(daily["held"][i]),
+            "claims": (daily["debt"][i] + daily["pref_total"][i]
+                       - daily["cash"][i]) * 1e9,
+            "price": float(daily["btc"][i]),
+            "shares": daily["shares"][i] * 1e6,
+        }
+
+    end_st = st(end)
+    end_cebe = A.cebe_of(end_st)
+
+    rows = []
+    for i in range(end + 1):
+        a = st(i)
+        try:
+            c0 = A.cebe_of(a)
+        except ValueError:
+            rows.append(None)
+            continue
+        parts = A.shapley_cebe(a, end_st)
+        cf = A.counterfactual_cebe(a, end_st["price"])
+        layers = A.price_layers(
+            daily["mnav_cebe"][i], c0, daily["btc"][i],
+            daily["mnav_cebe"][end], end_cebe, daily["btc"][end])
+        flows = A.flows_between(weekly, daily["date"][i], daily["date"][end])
+
+        # 總變化太小的時候,「各層佔幾%」會被放大到沒有意義(分母趨近零),
+        # 甚至出現 −100% 這種讀起來像錯誤的數字。標記起來讓前端改用
+        # 「各層自己漲跌多少」來呈現,而不是硬給佔比。
+        total_log = sum(layers.values())
+        stable = abs(total_log) >= 0.05          # 約等於總報酬 ±5%
+
+        rows.append({
+            "cebe0": round(c0),
+            # Shapley:四項加總 = ΔCEBE
+            "f": {k: round(v) for k, v in parts.items()},
+            # 主動 = 公司做的三件事合計;被動 = 幣價讓求償權縮水,不需作為
+            "active": round(parts["held"] + parts["claims"] + parts["shares"]),
+            "passive": round(parts["price"]),
+            # 反事實:結構凍結在起點,只讓幣價走
+            "cf": round(cf),
+            "vsCf": round(end_cebe - cf),
+            # 三層價格歸因:存對數變化量,佔比由前端相除(純算術,不是金融計算)
+            "layers": {k: round(v, 4) for k, v in layers.items()},
+            "stable": stable,
+            "mstrRet": round((daily["mstr"][end] / daily["mstr"][i] - 1) * 100, 1),
+            "btcRet": round((daily["btc"][end] / daily["btc"][i] - 1) * 100, 1),
+            "bought": round(flows["btcBought"]), "sold": round(flows["btcSold"]),
+        })
+
+    return {
+        "end": daily["date"][end],
+        "cebeNow": round(end_cebe),      # 所有列共用的終點,不必每列重複
+        "rows": rows,
+        # 預設起點候選:各階段起點 + 第一次賣幣
+        "presets": (
+            [{"id": e["id"], "label": e["title"], "date": e["start"]}
+             for e in chronicle]
+            + [{"id": "first-sale", "label": "第一次賣幣", "date": "2026-05-31"}]
+        ),
+    }
+
+
 def build_program(daily: dict, weekly: list) -> dict:
     """大事記最上面的整體框架:長期論述 + 全期數字。
 
@@ -509,10 +586,12 @@ def main() -> int:
     chronicle = build_chronicle(daily, weekly)
     meta["toolkit"] = build_toolkit()
     meta["program"] = build_program(daily, weekly)
+    strategy = build_strategy(daily, weekly, chronicle)
     meta["watch"] = structural_watch(daily, chronicle)
 
     for name, payload in (("daily", daily), ("weekly", weekly),
-                          ("meta", meta), ("chronicle", chronicle)):
+                          ("meta", meta), ("chronicle", chronicle),
+                          ("strategy", strategy)):
         path = os.path.join(OUT, f"{name}.json")
         with open(path, "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))

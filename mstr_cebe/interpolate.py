@@ -101,8 +101,41 @@ def debt_anchors() -> List[Tuple[date, float]]:
     return _merge(D.XBRL_DEBT)
 
 
+_RESERVE_PATH = Path(__file__).resolve().parent.parent / "web" / "raw" / "reserve_weekly.json"
+
+
+@lru_cache(maxsize=1)
+def _reserve_weekly_cache() -> List[Tuple[date, float]]:
+    """8-K 每週揭露的 USD 流動性(見 mstr_cebe.fetch_8k_reserve)。
+
+    只有 XBRL 季頻的話,2026 下半年靠普通股 ATM 募到、放進 USD Reserve 的
+    約 $44 億完全看不見 —— 求償權會被高估同樣的金額,CEBE 被低估,
+    做資本操作歸因時只看得到增發稀釋、看不到換回來的資產。
+
+    兩種揭露版型的處理:
+      Reserve + Cash 都有 → 用兩者相加(這就是公司自己口徑的 USD Assets)
+      只有 Reserve      → Reserve 只是總流動性的**下限**(它是管理層指定用途的
+                          一部分),所以取它與 XBRL 插值的較大值。寧可低估現金、
+                          高估求償權,也不要反過來把 CEBE 灌水。
+    """
+    if not _RESERVE_PATH.exists():
+        return []
+    raw = json.loads(_RESERVE_PATH.read_text(encoding="utf-8"))
+    xbrl = _merge(D.XBRL_CASH)
+    out: List[Tuple[date, float]] = []
+    for r in raw:
+        d = date.fromisoformat(r["as_of"])
+        if r.get("usd_cash") is not None:
+            out.append((d, float(r["usd_reserve"]) + float(r["usd_cash"])))
+        else:
+            base = interpolate_series(xbrl, d).value if xbrl else 0.0
+            out.append((d, max(float(r["usd_reserve"]), base)))
+    return out
+
+
 def cash_anchors() -> List[Tuple[date, float]]:
-    return _merge(D.XBRL_CASH)
+    """XBRL 季頻打底,8-K 的每週揭露覆蓋上去(較新、較密、是公司自己的口徑)。"""
+    return _merge(D.XBRL_CASH, _reserve_weekly_cache())
 
 
 def shares_basic_anchors() -> List[Tuple[date, float]]:
