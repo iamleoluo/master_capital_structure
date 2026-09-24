@@ -7,3 +7,6 @@ app/node_modules/
 app/dist/
 app/dist-artifact/
 files/
+
+# archify visual-check 的瀏覽器證據(每次重跑都會變,不進版控)
+diagrams/*.visual-check.*

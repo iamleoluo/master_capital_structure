@@ -1,0 +1,305 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "MSTR 資本結構分析 — 資料管線",
+    "output": "diagrams/data-pipeline.html",
+    "viewBox": [
+      1080,
+      500
+    ],
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "filings",
+        "label": "申報文件路徑",
+        "focus": [
+          "sec8k",
+          "parse8k",
+          "rawcache"
+        ],
+        "note": "8-K 逐週揭露怎麼被解析成可用的週錨點。"
+      },
+      {
+        "id": "anchors",
+        "label": "錨點與插值",
+        "focus": [
+          "xbrl",
+          "rawcache",
+          "pricedb",
+          "series"
+        ],
+        "note": "週錨點、季錨點與每日價格在這裡合成單一日序列。"
+      },
+      {
+        "id": "compute",
+        "label": "計算與輸出",
+        "focus": [
+          "series",
+          "compute",
+          "bundle",
+          "app"
+        ],
+        "note": "歸因與大事記算完後凍結成五份 JSON,前端不做金融計算。"
+      }
+    ]
+  },
+  "stages": [
+    {
+      "label": "來源"
+    },
+    {
+      "label": "抓取與解析"
+    },
+    {
+      "label": "快取"
+    },
+    {
+      "label": "日序列"
+    },
+    {
+      "label": "計算與輸出"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "sec8k",
+      "type": "external",
+      "label": "SEC 8-K",
+      "sublabel": "逐週揭露",
+      "stage": 0,
+      "row": 0,
+      "tag": "EDGAR"
+    },
+    {
+      "id": "xbrl",
+      "type": "external",
+      "label": "SEC XBRL / FWP",
+      "sublabel": "季頻 + 官方錨點",
+      "stage": 0,
+      "row": 1,
+      "tag": "EDGAR",
+      "width": 136
+    },
+    {
+      "id": "market",
+      "type": "external",
+      "label": "Binance / Yahoo",
+      "sublabel": "日線 OHLC",
+      "stage": 0,
+      "row": 2,
+      "tag": "API",
+      "width": 136
+    },
+    {
+      "id": "parse8k",
+      "type": "backend",
+      "label": "8-K 解析器",
+      "sublabel": "fetch_8k_*.py",
+      "stage": 1,
+      "row": 0,
+      "tag": "版型漂移"
+    },
+    {
+      "id": "prices",
+      "type": "backend",
+      "label": "價格抓取",
+      "sublabel": "fetch.py",
+      "stage": 1,
+      "row": 2,
+      "tag": "split 檢查"
+    },
+    {
+      "id": "rawcache",
+      "type": "database",
+      "label": "原始快取",
+      "sublabel": "web/raw/*.json",
+      "stage": 2,
+      "row": 0,
+      "tag": "7 檔"
+    },
+    {
+      "id": "pricedb",
+      "type": "database",
+      "label": "市場資料庫",
+      "sublabel": "mstr_cebe.sqlite",
+      "stage": 2,
+      "row": 2,
+      "tag": "OHLC"
+    },
+    {
+      "id": "series",
+      "type": "backend",
+      "label": "日序列組裝",
+      "sublabel": "interpolate.py",
+      "stage": 3,
+      "row": 1,
+      "tag": "559 天"
+    },
+    {
+      "id": "compute",
+      "type": "backend",
+      "label": "歸因與大事記",
+      "sublabel": "attribution.py / chronicle.py",
+      "stage": 4,
+      "row": 0,
+      "tag": "加總恆等",
+      "width": 168
+    },
+    {
+      "id": "bundle",
+      "type": "database",
+      "label": "五份 JSON",
+      "sublabel": "app/data/",
+      "stage": 4,
+      "row": 1,
+      "tag": "build_data.py"
+    },
+    {
+      "id": "app",
+      "type": "frontend",
+      "label": "前端七頁",
+      "sublabel": "Vite + TypeScript",
+      "stage": 4,
+      "row": 2,
+      "tag": "不做金融計算"
+    }
+  ],
+  "flows": [
+    {
+      "id": "f-filings",
+      "from": "sec8k",
+      "to": "parse8k",
+      "label": "8-K HTML",
+      "classification": "四種版型",
+      "variant": "emphasis"
+    },
+    {
+      "id": "f-quotes",
+      "from": "market",
+      "to": "prices",
+      "label": "日線報價",
+      "classification": "BTC + 6 檔股票"
+    },
+    {
+      "id": "f-parsed",
+      "from": "parse8k",
+      "to": "rawcache",
+      "label": "持幣・ATM・回購・儲備",
+      "classification": "實測值",
+      "variant": "emphasis",
+      "labelAt": [
+        423,
+        200
+      ]
+    },
+    {
+      "id": "f-stored",
+      "from": "prices",
+      "to": "pricedb",
+      "label": "收盤與 OHLC",
+      "classification": "實測值"
+    },
+    {
+      "id": "f-weekly",
+      "from": "rawcache",
+      "to": "series",
+      "label": "週錨點",
+      "classification": "8-K 揭露日",
+      "variant": "emphasis"
+    },
+    {
+      "id": "f-quarterly",
+      "from": "xbrl",
+      "to": "series",
+      "label": "季錨點:現金・債務・股數",
+      "classification": "錨點間線性插值",
+      "variant": "dashed"
+    },
+    {
+      "id": "f-prices",
+      "from": "pricedb",
+      "to": "series",
+      "label": "每日幣價與股價",
+      "classification": "無插值"
+    },
+    {
+      "id": "f-structure",
+      "from": "series",
+      "to": "compute",
+      "label": "逐日結構序列",
+      "classification": "持幣・求償權・股數",
+      "variant": "emphasis"
+    },
+    {
+      "id": "f-daily",
+      "from": "series",
+      "to": "bundle",
+      "label": "daily・weekly",
+      "classification": "凍結為靜態",
+      "fromSide": "right",
+      "toSide": "left",
+      "route": "straight",
+      "labelDy": 26
+    },
+    {
+      "id": "f-layers",
+      "from": "compute",
+      "to": "bundle",
+      "label": "四層歸因・逐筆操作",
+      "classification": "對數 + sats",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "straight",
+      "labelAt": [
+        960,
+        214
+      ]
+    },
+    {
+      "id": "f-serve",
+      "from": "bundle",
+      "to": "app",
+      "label": "五份 JSON",
+      "classification": "建置時載入",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "route": "straight",
+      "labelAt": [
+        960,
+        328
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "計算全部在建置期完成",
+      "items": [
+        "前端只做排版與算術,金融計算一律在 Python 端算好並凍結成 JSON",
+        "歸因的加總恆等式在 build 時逐列斷言,對不上就讓建置失敗",
+        "兩個官方 FWP 錨點($92.11 / $118.31)是管線的黃金測試"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "哪裡是實測,哪裡是插值",
+      "items": [
+        "持幣、ATM 募資、回購、USD 儲備來自 8-K,是逐週實測值",
+        "現金、債務、股數只有季度 XBRL 錨點,錨點之間線性插值",
+        "幣價與股價是每日實測,完全不插值"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "為什麼要留原始快取",
+      "items": [
+        "8-K 的表格版型換過四次,解析器必須能回頭重跑舊檔",
+        "快取讓重新解析不必重打 SEC,也讓版型迴歸有固定樣本",
+        "raw 與 daily 分離,插值邏輯改動時不會污染實測值"
+      ]
+    }
+  ]
+}
