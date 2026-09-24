@@ -118,11 +118,12 @@ export interface StrategyRow {
     raisedM: number; discountM: number; carryM: number;
     prefParM: number; prefProceedsM: number; debtM: number; residualM: number;
   };
-  /** 逐日鏈結:行情 vs 決策(決策用當下幣價評價,無後見之明) */
+  /** 逐日鏈結:行情 vs 決策(決策用當下幣價評價,無後見之明),單位 sats／股 */
   split: { market: number; decision: number };
+  /** 同一個拆解但在對數空間,兩項相加 = layers.cebe */
+  splitLog: { market: number; decision: number };
   /** Gross BPS(公司的 BTC Yield):公式無幣價項 */
   bps0: number;
-  /** 兩因子對數拆解,加總 = log(BPS 比) */
   /** 資金流揭露是否完整到足以下結論(殘差 ≤ 總變化的 25%) */
   opsOk: boolean;
 }

@@ -1,8 +1,9 @@
 /** 績效歸因 —— 一次比特幣行情裡,股東拿到的報酬各有多少來自哪一層。
  *
  *  兩層拆解,都在 Python 算好(mstr_cebe/attribution.py,有加總恆等的測試):
- *    1. 股價 = 幣價 × 實得每股含幣量 × 市場溢價  → 對數拆解,三層各佔多少
- *    2. 實得每股含幣量的變化 = 八種操作各自的貢獻 → Shapley
+ *    1. 股價 = 幣價 × 實得每股含幣量 × 市場溢價  → 對數拆解,各層佔多少。
+ *       中間那層再用逐日鏈結切成「公司決策」與「求償權縮放」,一共四層。
+ *    2. 公司決策那一塊 = 八種操作各自的貢獻 → Shapley
  *
  *  核心是逐日鏈結:每一天先讓幣價動(行情)、再讓結構動並用當天幣價評價(決策),
  *  所以每個決策只用它發生當下能知道的價格評價,不含後見之明。
@@ -19,17 +20,33 @@ const sats = (v: number) => Math.round(v).toLocaleString("en-US");
 const signed = (v: number) => (v >= 0 ? "+" : "") + sats(v);
 const pct1 = (v: number) => (v >= 0 ? "+" : "") + v.toFixed(1) + "%";
 
-const LAYER_LABEL: Record<string, string> = {
-  btc: "比特幣價格", cebe: "實得每股含幣量", mnav: "市場溢價(mNAV)",
+/** 四層,依「公司控制得了嗎」排序:中間那層是唯一的決策。
+ *  原本中間只有一層「實得每股含幣量」,但它同時裝了公司的操作與
+ *  求償權被幣價縮放這兩件完全不同的事 —— 那正是這一頁要分開的東西,
+ *  所以在對數空間再切一刀(splitLog),兩塊相加仍等於原本那一層。 */
+const LAYER_ORDER = ["btc", "decision", "claims", "mnav"] as const;
+type LayerKey = (typeof LAYER_ORDER)[number];
+
+const LAYER_LABEL: Record<LayerKey, string> = {
+  btc: "比特幣價格",
+  decision: "公司決策",
+  claims: "求償權縮放",
+  mnav: "市場溢價(mNAV)",
 };
-const LAYER_NOTE: Record<string, string> = {
-  btc: "底層資產本身漲跌,跟公司做了什麼無關",
-  cebe: "公司的資本操作 + 求償權在幣計價下的縮放",
-  mnav: "市場願意付的倍數,情緒與流動性",
+const LAYER_NOTE: Record<LayerKey, string> = {
+  btc: "底層資產本身漲跌。公司做什麼都改變不了它",
+  decision: "增發、回購、買賣幣、付息 —— 唯一真正由公司決定的一層,"
+    + "而且每筆都用它發生當下的幣價評價,不含後見之明",
+  claims: "求償權面額鎖死在美元,幣價一漲它在幣計價下就自己縮小,"
+    + "每股含幣量不用多買一顆就上升。這是槓桿的被動效果,不是決策",
+  mnav: "市場願意付幾倍,情緒與流動性。公司只能間接影響",
 };
-const LAYER_COLOR: Record<string, string> = {
-  btc: "var(--btc)", cebe: "var(--equity)", mnav: "var(--senti)",
+const LAYER_COLOR: Record<LayerKey, string> = {
+  btc: "var(--btc)", decision: "var(--equity)",
+  claims: "var(--c3)", mnav: "var(--senti)",
 };
+/** 只有「公司決策」是公司控制得了的,其餘三層都不是。 */
+const CONTROLLED: LayerKey = "decision";
 
 const OP_LABEL: Record<string, string> = {
   price: "幣價讓求償權縮水",
@@ -52,16 +69,28 @@ const OP_NOTE: Record<string, string> = {
   other: "債務贖回、營運支出、STRE 匯率、股數插值誤差、ATM 入帳時間差",
 };
 
+/** 這一頁只看第一次賣幣之後。
+ *
+ *  在那之前公司只進不出,「決策」幾乎只有增發與買幣兩種動作,
+ *  而且 2026-06 以前的 8-K 沒有 ATM／回購／USD Reserve 欄位,
+ *  拆到操作層級會有四分之一以上擠進殘差。真正值得問「做得好不好」的,
+ *  是開始有取捨之後的這一段。長期的全貌在大事記,那裡看的是兩年多。 */
+const WINDOW_START = "2026-05-31";        // 第一次賣幣
+
 export const strategyPage: PageFn = (root) => {
-  let idx = indexOfDate("2026-06-29");   // 預設起點:框架公布日
+  const minIdx = indexOfDate(WINDOW_START);
+  let idx = minIdx;
 
   root.innerHTML = `
     <div class="wrap">
       <div class="page-head">
         <p class="eyebrow">策略分析</p>
         <h1>這波漲幅,有多少是公司做出來的</h1>
-        <p class="lede">選一個起點,看到今天為止股東拿到的報酬怎麼分層:
-          哪些來自比特幣本身、哪些來自市場願意付的溢價、哪些真的來自公司的資本操作。
+        <p class="lede">從<b>第一次賣幣</b>(${WINDOW_START})起算 —— 那是這家公司第一次
+          必須在「繼續累積」與「守住結構」之間做取捨,在那之前沒有什麼好歸因的。
+          選一個起點,看到今天為止股東拿到的報酬怎麼分層:哪些來自比特幣本身、
+          哪些來自求償權被幣價縮放、哪些來自市場情緒,
+          以及<b>哪些真的是公司做出來的</b>。
           拆法見<a href="#/structure">資本結構</a>頁的定義區。</p>
       </div>
 
@@ -69,9 +98,9 @@ export const strategyPage: PageFn = (root) => {
         <div class="preset-row" id="presets"></div>
         <div style="margin-top:14px">
           <input type="range" class="date-scrub" id="start-scrub"
-                 min="0" max="${N - 1}" value="${idx}" aria-label="選擇起始日" />
+                 min="${minIdx}" max="${N - 1}" value="${idx}" aria-label="選擇起始日" />
           <div class="scrub-ends">
-            <span class="mono">${daily.date[0]}</span>
+            <span class="mono">${daily.date[minIdx]}</span>
             <span class="mono" id="start-label"></span>
             <span class="mono">${strategy.end}</span>
           </div>
@@ -83,8 +112,11 @@ export const strategyPage: PageFn = (root) => {
       <h2 style="margin:34px 0 6px">第一層:報酬來自哪裡</h2>
       <p class="lede" style="margin-bottom:16px">
         股價可以精確拆成三個相乘的因子 —— ${tex("P = m \\times E/10^{8} \\times p")}。
-        取對數之後就變成相加,所以下面的貢獻度沒有殘差、也不需要決定誰先算。
-        式子的推導見<a href="#/structure">資本結構</a>頁。
+        取對數之後就變成相加,所以貢獻度沒有殘差、也不需要決定誰先算。
+        但中間那個 ${tex("E")} 同時裝了兩件完全不同的事:<b>公司做的操作</b>,
+        以及<b>求償權被幣價縮放</b>。所以這裡再用逐日鏈結把它切開,一共四層 ——
+        <b>只有「公司決策」那一層是公司控制得了的</b>。
+        兩道拆解的推導都見<a href="#/structure">資本結構</a>頁。
       </p>
       <div id="layers"></div>
 
@@ -128,9 +160,11 @@ export const strategyPage: PageFn = (root) => {
   const el = (id: string) => root.querySelector<HTMLElement>("#" + id)!;
 
   // ---- 起點預設鈕 ----
-  el("presets").innerHTML = strategy.presets.map((p) =>
-    `<button type="button" class="range-btn" data-preset="${p.date}">${p.label}</button>`
-  ).join("");
+  el("presets").innerHTML = strategy.presets
+    .filter((p) => p.date >= WINDOW_START)
+    .map((p) =>
+      `<button type="button" class="range-btn" data-preset="${p.date}">${p.label}</button>`)
+    .join("");
 
   function row(): StrategyRow | null {
     return strategy.rows[idx] ?? null;
@@ -177,25 +211,51 @@ export const strategyPage: PageFn = (root) => {
   }
 
   function paintLayers(r: StrategyRow): void {
-    const total = r.layers.btc + r.layers.cebe + r.layers.mnav;
-    const order = (["btc", "cebe", "mnav"] as const);
-    const max = Math.max(...order.map((k) => Math.abs(r.layers[k])), 1e-9);
+    // 中間那層拆成兩塊:splitLog 的兩項相加恰好等於 r.layers.cebe(build 時有斷言)
+    const logOf: Record<LayerKey, number> = {
+      btc: r.layers.btc,
+      decision: r.splitLog.decision,
+      claims: r.splitLog.market,
+      mnav: r.layers.mnav,
+    };
+    const total = LAYER_ORDER.reduce((a, k) => a + logOf[k], 0);
+    const max = Math.max(...LAYER_ORDER.map((k) => Math.abs(logOf[k])), 1e-9);
+
+    // 「公司做出來的」佔總報酬多少 —— 這一頁的標題問的就是這個
+    const byCompany = logOf[CONTROLLED];
+    const notCompany = total - byCompany;
 
     el("layers").innerHTML = `
       ${r.stable ? "" : `<div class="note warn" style="margin-top:0">
         這個區間的總報酬太接近零(${pct1(r.mstrRet)}),
         再去算「各層佔百分之幾」會被分母放大成沒有意義的數字 ——
         所以下面只顯示每一層自己的漲跌幅,不給佔比。</div>`}
+
+      <div class="split-row">
+        <div class="split-cell ${byCompany >= 0 ? "good" : "bad"}">
+          <div class="k">公司決策做出來的</div>
+          <div class="v">${pct1((Math.exp(byCompany) - 1) * 100)}</div>
+          <div class="d">${r.stable
+            ? `佔總報酬 ${((byCompany / total) * 100).toFixed(0)}%` : "對股價的貢獻"}</div></div>
+        <div class="split-cell muted">
+          <div class="k">行情與情緒給的</div>
+          <div class="v">${pct1((Math.exp(notCompany) - 1) * 100)}</div>
+          <div class="d">幣價 + 求償權縮放 + mNAV,公司控制不了</div></div>
+      </div>
+
       <div class="layer-list">
-        ${order.map((k) => {
-          const v = r.layers[k];
+        ${LAYER_ORDER.map((k) => {
+          const v = logOf[k];
           const own = (Math.exp(v) - 1) * 100;
           const share = total !== 0 ? (v / total) * 100 : 0;
           const w = (Math.abs(v) / max) * 100;
           return `
             <div class="layer">
               <div class="layer-head">
-                <span class="layer-name"><i class="swatch" style="background:${LAYER_COLOR[k]}"></i>${LAYER_LABEL[k]}</span>
+                <span class="layer-name"><i class="swatch" style="background:${LAYER_COLOR[k]}"></i>${
+                  LAYER_LABEL[k]}${k === CONTROLLED
+                    ? ' <span class="passive-tag">公司</span>'
+                    : ' <span class="passive-tag">被動</span>'}</span>
                 <span class="layer-vals">
                   <b class="${own >= 0 ? "up" : "down"}">${pct1(own)}</b>
                   ${r.stable ? `<span class="layer-share">佔 ${share.toFixed(0)}%</span>` : ""}
@@ -219,14 +279,15 @@ export const strategyPage: PageFn = (root) => {
     if (!r.opsOk) {
       el("ops").innerHTML = `
         <div class="note warn" style="margin-top:0">
-          <b>這個起點太早,資金流資料不足以拆到操作層級。</b>
-          按操作拆解需要 8-K 完整揭露每週的 ATM 募資、回購金額與 USD Reserve 餘額 ——
-          這些欄位要到 2026 年中才齊全。更早的區間對不起來的部分會全部擠進「殘差」
-          (目前 ${sats(Math.abs(r.ops.other))} sats,已超過總變化的四分之一),
-          那時候再去讀個別操作的數字沒有意義。
+          <b>這個起點的殘差佔比太高,不適合拆到操作層級。</b>
+          這段區間實得每股含幣量只變動 ${signed(delta)} sats,
+          而未建模殘差就有 ${sats(Math.abs(r.ops.other))} sats
+          (佔 ${Math.round((Math.abs(r.ops.other) / Math.max(Math.abs(delta), 1)) * 100)}%,
+          門檻是 25%)。殘差裝的是債務贖回、營運支出、STRE 匯率與股數插值誤差 ——
+          這些金額大致固定,區間內真正的操作變化越小,它們的佔比就被放大得越誇張。
           <br><br>
-          把起點拉到 <b>2026-06</b> 之後就會顯示。上面的三層拆解與決策/行情不依賴資金流資料,
-          任何區間都有效。
+          把起點往後拉幾天就會顯示。<b>上面的四層拆解不受影響</b> ——
+          它只用得到幣價、股數、持幣與求償權,不依賴逐筆資金流揭露,任何區間都成立。
         </div>`;
       return;
     }
@@ -295,9 +356,10 @@ export const strategyPage: PageFn = (root) => {
   }
 
   const scrub = root.querySelector<HTMLInputElement>("#start-scrub")!;
+  const clamp = (v: number) => Math.min(Math.max(v, minIdx), N - 5);
   const onScrub = () => {
     // 起點不能貼到終點,否則區間長度為零、拆解沒有意義
-    idx = Math.min(+scrub.value, N - 5);
+    idx = clamp(+scrub.value);
     paint();
   };
   scrub.addEventListener("input", onScrub);
@@ -305,7 +367,7 @@ export const strategyPage: PageFn = (root) => {
   const onPreset = (ev: Event) => {
     const d = (ev.target as HTMLElement)?.getAttribute?.("data-preset");
     if (!d) return;
-    idx = Math.min(indexOfDate(d), N - 5);
+    idx = clamp(indexOfDate(d));
     paint();
   };
   el("presets").addEventListener("click", onPreset);

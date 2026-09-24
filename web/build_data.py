@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import math
 import os
 import sys
 
@@ -199,12 +200,20 @@ def _chain_increments(daily: dict) -> tuple:
     每一天先讓幣價走(結構凍結)= 行情,再讓結構走(用當天幣價評價)= 決策。
     決策只用它當下能知道的價格評價,所以不含後見之明 ——
     這是與「兩端同代入期末幣價」最關鍵的差別。
+
+    同時算兩種單位:
+      sats  —— 給頭條用,「每股多拿到幾顆聰」是讀者直覺看得懂的
+      對數  —— 給三層歸因用。股價恆等式取對數之後三層是相加的,
+               每股含幣量那一層要再切成決策／行情,也必須在對數空間切,
+               否則切出來的兩塊加起來不等於那一層本身。
     """
     from mstr_cebe import attribution as A      # noqa: E402
 
     n = len(daily["date"])
     mkt = [0.0] * n
     dec = [0.0] * n
+    mktL = [0.0] * n
+    decL = [0.0] * n
     for t in range(1, n):
         h0 = daily["held"][t - 1]
         c0 = (daily["debt"][t - 1] + daily["pref_total"][t - 1]
@@ -221,12 +230,21 @@ def _chain_increments(daily: dict) -> tuple:
         after = A.cebe_sats(h1, c1, p1, s1)     # 結構再動,用今天的 p1
         mkt[t] = moved - before
         dec[t] = after - moved
+        # 實測每股含幣量最低也有 8.3 萬 sats,離零很遠,取對數是安全的;
+        # 真的碰到非正值就讓那一天不貢獻,寧可對不起來被下面的斷言抓到
+        if before > 0 and moved > 0 and after > 0:
+            mktL[t] = math.log(moved) - math.log(before)
+            decL[t] = math.log(after) - math.log(moved)
+
     # 前綴和:區間 (lo, hi] 的貢獻 = pre[hi] - pre[lo]
     pm, pd = [0.0] * n, [0.0] * n
+    pmL, pdL = [0.0] * n, [0.0] * n
     for t in range(1, n):
         pm[t] = pm[t - 1] + mkt[t]
         pd[t] = pd[t - 1] + dec[t]
-    return pm, pd
+        pmL[t] = pmL[t - 1] + mktL[t]
+        pdL[t] = pdL[t - 1] + decL[t]
+    return pm, pd, pmL, pdL
 
 
 def build_chronicle(daily: dict, weekly: list) -> list:
@@ -237,7 +255,7 @@ def build_chronicle(daily: dict, weekly: list) -> list:
            if os.path.exists(os.path.join(RAW, "repurchase_weekly.json")) else [])
     pref_px = _load_raw("preferred_prices.json")
 
-    pm, pd = _chain_increments(daily)
+    pm, pd, pmL, pdL = _chain_increments(daily)
     claims = [round(daily["debt"][i] + daily["pref_total"][i] - daily["cash"][i], 4)
               for i in range(len(daily["date"]))]
     cebe = [round(daily["common_btc"][i] / (daily["shares"][i] * 1e6) * 1e8, 1)
@@ -368,7 +386,7 @@ def build_strategy(daily: dict, weekly: list, chronicle: list) -> dict:
 
     end_st = st(end)
     end_cebe = A.cebe_of(end_st)
-    pm, pd = _chain_increments(daily)
+    pm, pd, pmL, pdL = _chain_increments(daily)
 
     atm = _load_raw("atm_weekly.json")
     rep = (_load_raw("repurchase_weekly.json")
@@ -436,6 +454,10 @@ def build_strategy(daily: dict, weekly: list, chronicle: list) -> dict:
         # 總變化太小的時候,「各層佔幾%」會被放大到沒有意義(分母趨近零),
         # 甚至出現 −100% 這種讀起來像錯誤的數字。標記起來讓前端改用
         # 「各層自己漲跌多少」來呈現,而不是硬給佔比。
+        # 恆等式:決策 + 行情 = 每股含幣量那一層的對數變化。差到 1e-7 就是有 bug
+        gap = abs((pmL[end] - pmL[i]) + (pdL[end] - pdL[i]) - layers["cebe"])
+        assert gap < 1e-7, f"{daily['date'][i]} 對數鏈結對不上 layers.cebe:{gap}"
+
         total_log = sum(layers.values())
         stable = abs(total_log) >= 0.05          # 約等於總報酬 ±5%
 
@@ -456,6 +478,10 @@ def build_strategy(daily: dict, weekly: list, chronicle: list) -> dict:
             # Gross BPS(公司的 BTC Yield):公式裡沒有幣價,天生不受幣價污染
             "split": {"market": round(pm[end] - pm[i]),
                       "decision": round(pd[end] - pd[i])},
+            # 同一個拆解,但在對數空間 —— 三層歸因要把「每股含幣量」那一層
+            # 再切成決策／行情時用這個,兩塊相加恰好等於 layers["cebe"]
+            "splitLog": {"market": round(pmL[end] - pmL[i], 4),
+                         "decision": round(pdL[end] - pdL[i], 4)},
             "bps0": round(daily["bps"][i], 1),
             "opsOk": bool(abs(op_parts.get("other", 0.0))
                           <= 0.25 * max(abs(end_cebe - c0), 1.0)),
@@ -494,7 +520,7 @@ def build_program(daily: dict, weekly: list) -> dict:
     sold = sum(-w["delta"] for w in weekly if (w["delta"] or 0) < 0)
     bought = sum(w["delta"] for w in weekly if (w["delta"] or 0) > 0)
 
-    pm, pd = _chain_increments(daily)
+    pm, pd, pmL, pdL = _chain_increments(daily)
 
     return {
         "lede": CH.PROGRAM.lede,
