@@ -8,15 +8,10 @@
  *  其他頁需要時以超連結指回來,不重述。 */
 import { chronicle, daily, meta, N } from "../data";
 import { explorer } from "../components/explorer";
+import { symbolTable } from "../components/symbols";
 import { bn, pct } from "../lib/format";
 import { eqCard, tex, texBlock } from "../lib/math";
 import type { PageFn } from "../router";
-
-/** 符號表的一列。 */
-const sym = (s: string, name: string, unit: string, def: string) => `
-  <div class="symbol">${tex(s)}
-    <div class="symbol-def"><b>${name}</b><span class="symbol-unit">${unit}</span><br>${def}</div>
-  </div>`;
 
 export const structurePage: PageFn = (root) => {
   const i = N - 1;
@@ -69,16 +64,7 @@ export const structurePage: PageFn = (root) => {
       <p class="lede" style="margin-bottom:18px">
         底下所有式子都用這幾個符號,全站一致。
       </p>
-      <div class="symbols">
-        ${sym("H", "總持幣", "BTC", "公司帳上全部的比特幣,8-K 逐週揭露")}
-        ${sym("S", "在外股數", "股", "普通股 basic 股數,不含可轉債假設轉股")}
-        ${sym("C", "求償權", "USD", "排在普通股前面、面額鎖死在美元的部分")}
-        ${sym("p", "比特幣價格", "USD", "當下的幣價")}
-        ${sym("B", "帳面每股含幣量", "sats", "Gross BPS,也就是公司的 BTC Yield")}
-        ${sym("E", "實得每股含幣量", "sats", "CEBE,扣掉求償權後每股真正對應到的幣")}
-        ${sym("m", "市場溢價", "倍", "mNAV,市場願意付幾倍的每股公允值")}
-        ${sym("P", "MSTR 股價", "USD", "普通股的市場價格")}
-      </div>
+      ${symbolTable(["H", "S", "C", "p", "B", "E", "m", "P"])}
 
       <h2 style="margin-bottom:8px">求償權是什麼</h2>
       <p class="lede" style="margin-bottom:16px">

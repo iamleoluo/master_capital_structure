@@ -307,6 +307,17 @@ table.era-metrics td.chg.flat{color:var(--ink-3)}
 .subnav a.active{background:var(--surface-2);color:var(--ink);font-weight:600;
   box-shadow:inset 0 -2px 0 var(--equity)}
 
+/* 兩個每股指標的定義,並排 */
+.pershare-defs{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:0 0 4px}
+.pershare-def{background:var(--surface-2);border:1px solid var(--line);
+  border-radius:4px;padding:13px 15px;min-width:0}
+.pershare-def.key{border-left:3px solid var(--equity)}
+.pershare-lab{font-size:.8rem;font-weight:600;margin-bottom:6px}
+.pershare-lab span{display:block;font-weight:400;font-size:.72rem;
+  color:var(--ink-3);margin-top:2px}
+.pershare-def .katex-display{margin:0;overflow-x:auto;overflow-y:hidden}
+@media(max-width:720px){.pershare-defs{grid-template-columns:1fr}}
+
 /* 組合操作 */
 .combos{display:flex;flex-direction:column;gap:14px;margin:0 0 16px}
 .combo{background:var(--surface);border:1px solid var(--line);

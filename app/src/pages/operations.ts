@@ -12,6 +12,7 @@
  *    5. 怎麼評價        —— 逐日鏈結,接到績效歸因頁 */
 import { chronicle } from "../data";
 import { toolkitAlgebra, toolkitTable } from "../components/toolkit";
+import { perShareDefs, symbolTable } from "../components/symbols";
 import { eqCard, tex, texAlign } from "../lib/math";
 import type { PageFn } from "../router";
 
@@ -40,7 +41,24 @@ export const operationsPage: PageFn = (root) => {
           公司在各個時期實際用了哪幾把,見<a href="#/chronicle">大事記</a>。</p>
       </div>
 
-      <div class="note key" style="margin-bottom:30px">
+      <h2 style="margin-bottom:6px">先把符號定好</h2>
+      <p class="lede" style="margin-bottom:16px">
+        這一頁全部是代數,所以符號放在最前面,不用跳頁去查。
+        上排是<b>結構量</b>(這家公司現在長什麼樣),下排是<b>操作量</b>
+        (這一筆動作有多大)。完整推導與河流圖見
+        <a href="#/structure/model">求償權與殘值</a>。
+      </p>
+      ${symbolTable(["H", "S", "C", "p", "m", "P"])}
+      <p class="lede" style="margin:18px 0 14px">
+        底下每一條式子都在問同一件事:這個動作讓這兩個指標往哪邊走?
+      </p>
+      ${perShareDefs()}
+      <p class="lede" style="margin:20px 0 14px">
+        操作量則描述單筆動作的大小:
+      </p>
+      ${symbolTable(["c", "F", "n", "x", "d"])}
+
+      <div class="note key" style="margin:30px 0">
         <b>目前在哪一段?</b>
         <a href="#/chronicle">${latest ? latest.title : "—"}</a>
         ${latest ? `—— ${latest.subtitle}。${latest.ongoing ? "進行中" : ""}` : ""}
@@ -73,9 +91,8 @@ export const operationsPage: PageFn = (root) => {
 
       <h2 style="margin:38px 0 8px">每一把工具的代數</h2>
       <p class="lede" style="margin-bottom:16px">
-        以下用 ${tex("c")} 表示這筆操作動用的美元、${tex("F")} 標的面額、
-        ${tex("n")} 股數變動、${tex("P")} 每股成交價、${tex("x")} 幣的顆數。
-        <b>兩欄請橫著讀</b>:不一致的地方就是重點。
+        <b>兩欄請橫著讀</b>:同一個動作對 ${tex("B")} 與 ${tex("E")} 的效果
+        常常是相反的,不一致的地方就是這家公司最常被誤讀的地方。
       </p>
       ${toolkitAlgebra()}
 
