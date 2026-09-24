@@ -572,7 +572,7 @@ def build_program(daily: dict, weekly: list) -> dict:
 # meta.json
 # ---------------------------------------------------------------------------
 
-def build_meta() -> dict:
+def build_meta(daily: dict) -> dict:
     # 前端顯示的官方錨點一律用**最新一份** FWP(2026-08-24)。
     # 舊的 08-13 那份留在 data.py 與 tests/ 裡當回歸錨點,不對外顯示 ——
     # 兩份的口徑不同(優先股 notional、股數、USD 加回項都變了),混用會出錯。
@@ -610,11 +610,45 @@ def build_meta() -> dict:
             "shares": [[a[0].isoformat(), a[1]] for a in I.shares_basic_anchors()],
             "debt": [[a[0].isoformat(), a[1]] for a in I.debt_anchors()],
         },
-        "findings": _findings(),
+        "findings": _findings(daily),
     }
 
 
-def _findings() -> list:
+_PREF = ("strf", "strc", "strk", "strd", "stre")
+
+
+def _par_vs_market(daily: dict, i: int) -> dict:
+    """優先股按面額扣 vs 按市價扣,對 CEBE 與 CEBE mNAV 的差別。
+
+    本站(與 CEBETRACKER)一律按<b>面額</b>扣,理由是清算優先權在法律上就是
+    那個金額。但市場把優先股標在面額以下時,面額口徑就會高估求償權 ——
+    於是低估實得每股、高估 CEBE mNAV。這裡把兩種口徑都算出來當作已知偏差。
+
+    STRE 沒有公開報價,保守地按面額計入(當成零會反過來低估求償權)。
+    可轉債同樣沒有市價,兩種口徑都按面額 —— 所以下面的差距是<b>下限</b>。
+    """
+    px = daily["btc"][i]
+    shares = daily["shares"][i] * 1e6
+    par = sum(daily[f"{k}_lp"][i] for k in _PREF) * 1e9
+    mkt = sum(daily[f"{k}_lp"][i] * 1e9
+              * ((daily[f"{k}_price"][i] / 100) if daily[f"{k}_price"][i] else 1.0)
+              for k in _PREF)
+    base = (daily["debt"][i] - daily["cash"][i]) * 1e9        # 兩種口徑相同的部分
+    e_par = (daily["held"][i] - (base + par) / px) / shares * 1e8
+    e_mkt = (daily["held"][i] - (base + mkt) / px) / shares * 1e8
+    mcap = daily["mstr"][i] * shares
+    return {
+        "date": daily["date"][i],
+        "par_b": par / 1e9, "mkt_b": mkt / 1e9,
+        # 第一檔優先股發行之前 par = 0,那些日子沒有這個偏差可談
+        "pct_of_par": (mkt / par * 100) if par > 0 else 100.0,
+        "e_par": e_par, "e_mkt": e_mkt,
+        "mnav_par": mcap / (e_par / 1e8 * shares * px),
+        "mnav_mkt": mcap / (e_mkt / 1e8 * shares * px),
+    }
+
+
+def _findings(daily: dict) -> list:
     """資料品質頁的 findings。數字一律從實際資料算,避免寫死之後悄悄過時。"""
     holdings = _load_raw("btc_holdings_weekly.json")
     days = [dt.date.fromisoformat(d) for d, _ in holdings]
@@ -640,7 +674,41 @@ def _findings() -> list:
     assumed = D.FWP_2026_08_24_SHARES_ASSUMED_DILUTED
     basic = D.fwp_snapshot_2026_08_24().shares_basic
 
+    n = len(daily["date"])
+    now = _par_vs_market(daily, n - 1)
+    # 折價最深的那一天,用來說明這個偏差最大能有多大
+    have_pref = [i for i in range(n)
+                 if sum(daily[f"{k}_lp"][i] for k in _PREF) > 0]
+    series = [_par_vs_market(daily, i) for i in have_pref]
+    worst = min(series, key=lambda x: x["pct_of_par"])
+    # 兩種口徑跨過 1.0 的日子:面額口徑看起來有溢價,市價口徑其實沒有。
+    # 這才是這個偏差真正會誤導人的情況,所以獨立挑出來講。
+    flips = [x for x in series if x["mnav_par"] >= 1.0 > x["mnav_mkt"]]
+    flip = max(flips, key=lambda x: x["mnav_par"] - x["mnav_mkt"]) if flips else None
+
     return [
+        {"t": "求償權按面額扣,優先股跌破面額時會低估實得每股",
+         "b": f"本站與 CEBETRACKER 一致,把優先股按 $100 <b>面額</b>扣掉 —— "
+              f"清算優先權在法律上就是那個金額。但市場把優先股標在面額以下時,"
+              f"面額口徑就高估了求償權,於是<b>低估實得每股、高估 CEBE mNAV</b>。"
+              f"目前優先股面額 ${now['par_b']:.2f}B、市值 ${now['mkt_b']:.2f}B"
+              f"(市場只認 {now['pct_of_par']:.0f}%),實得每股 "
+              f"{now['e_par']:,.0f} → {now['e_mkt']:,.0f} sats、"
+              f"CEBE mNAV {now['mnav_par']:.3f}x → {now['mnav_mkt']:.3f}x。"
+              f"折價最深是 {worst['date']}(市場只認 {worst['pct_of_par']:.0f}%),"
+              f"那天兩種口徑的 CEBE mNAV 差 "
+              f"{worst['mnav_par']:.3f}x 對 {worst['mnav_mkt']:.3f}x。"
+              + (f"期間有 {len(flips)} 個交易日<b>兩種口徑跨過 1.0</b> —— "
+                 f"面額口徑看起來有溢價,市價口徑其實沒有;"
+                 f"差距最大的 {flip['date']} 是 {flip['mnav_par']:.3f}x 對 "
+                 f"{flip['mnav_mkt']:.3f}x。這是這個偏差最會誤導人的地方。"
+                 if flip else "期間沒有出現兩種口徑跨過 1.0 的日子。")
+              + "<br><br>"
+              "連帶影響歸因:「折價回購加分」這個結論<b>成立的前提是面額口徑</b>。"
+              "按市價看,公司付的就是當下的公允價格,並沒有賺到價差。"
+              "兩種口徑回答的是不同問題(清算價值 vs 市場價值),本站選面額 —— "
+              "但要知道它偏在哪一邊。可轉債沒有市價,兩種口徑都按面額,"
+              "所以上面的差距是<b>下限</b>;STRE 沒有報價,同樣保守地按面額計入。"},
         {"t": "公司已經從「發優先股」轉成「買回優先股」",
          "b": f"2026-07-27 起 8-K 多出一張 Shares Repurchased 表,2026-09-08 起原本的 "
               f"ATM Program Summary 表整張消失。至今已回購 STRC {rep_sh:,.0f} 股、"
@@ -732,7 +800,8 @@ def structural_watch(daily: dict, chronicle: list) -> list:
 
 def main() -> int:
     os.makedirs(OUT, exist_ok=True)
-    daily, weekly, meta = build_daily(), build_weekly(), build_meta()
+    daily = build_daily()
+    weekly, meta = build_weekly(), build_meta(daily)
     chronicle = build_chronicle(daily, weekly)
     meta["toolkit"] = build_toolkit()
     meta["program"] = build_program(daily, weekly)
