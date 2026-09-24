@@ -53,24 +53,59 @@ class Tool:
     btc: str           # 對持幣的影響
     cebe: str          # 對 CEBE 的淨效果
     note: str
+    # 代數(LaTeX,前端用 KaTeX 排)。符號與資本結構頁的符號表一致:
+    #   H 總持幣、S 股數、C 求償權、p 幣價、B 帳面每股、E 實得每股、m mNAV
+    #   c 這筆操作動用的美元、F 標的面額、n 股數變動、P 每股成交價、x 幣的顆數
+    # 兩欄刻意並排:同一個動作對兩個指標的效果常常是相反的,
+    # 那個相反就是 phantom growth 在代數上的樣子。
+    bps: str = ""      # 對帳面每股 B = H/S 的效果(式子裡沒有 p、沒有 C)
+    eq: str = ""       # 對實得每股 E = (H − C/p)/S 的效果
 
 
 TOOLS: Tuple[Tool, ...] = (
     Tool("common_atm", "普通股 ATM 增發", "—", "↑", "↑",
          "mNAV > 1 才加分",
-         "用高於每股淨值的價格賣股票買幣,溢價的部分留給既有股東"),
+         "用高於每股淨值的價格賣股票買幣,溢價的部分留給既有股東。"
+         "注意兩個門檻不一樣:B 要贏過帳面每股,E 只要贏過實得每股 —— "
+         "而 B 永遠大於 E,所以增發可能對 E 加分、同時對 B 減分",
+         bps=r"\Delta B > 0 \iff \frac{P}{p}\times 10^{8} > B",
+         eq=r"\Delta E > 0 \iff \frac{P}{p}\times 10^{8} > E \iff m > 1"),
     Tool("preferred_issue", "優先股發行", "↑", "—", "↑", "稀釋",
-         "募到的錢買幣,但等量增加排在前面的固定美元求償權 —— phantom growth 的來源"),
+         "募到 c 拿去買幣,但掛上面額 F 的清算優先權。"
+         "B 只看到幣變多了,E 看得到那筆幣是借來的 —— "
+         "<b>這兩行並排就是 phantom growth 的定義</b>",
+         bps=r"\Delta B = \frac{c}{p\,S}\times 10^{8} > 0",
+         eq=r"\Delta E = \frac{c - F}{p\,S}\times 10^{8} \le 0"),
     Tool("convert_issue", "可轉債發行", "↑", "—", "↑", "稀釋",
-         "同樣增加求償權,但價內時會轉成股票、求償權自動消失"),
+         "與優先股同形;平價發行時 c = F,對 E 恰好中性。"
+         "差別在價內時會轉成股票,求償權自動消失",
+         bps=r"\Delta B = \frac{c}{p\,S}\times 10^{8} > 0",
+         eq=r"\Delta E = \frac{c - F}{p\,S}\times 10^{8} \le 0"),
     Tool("btc_sale", "賣幣", "—", "—", "↓", "看用途",
-         "支應優先股股息是純流出;支應折價回購則是把幣換成更少的求償權"),
+         "按市價賣 x 顆換回 xp 現金,現金抵減求償權 —— 對 E 恰好中性,"
+         "但 B 直接少一塊。真正決定好壞的是那筆現金拿去做什麼",
+         bps=r"\Delta B = -\frac{x}{S}\times 10^{8} < 0",
+         eq=r"\Delta E = \frac{-x + xp/p}{S}\times 10^{8} = 0"),
     Tool("preferred_buyback", "優先股回購", "↓", "—", "↓", "折價買回 = 加分",
-         "永久消滅清算優先權。買價低於面額時,消滅的求償權大於付出的現金"),
+         "永久消滅清算優先權。買價低於面額時,消滅的求償權大於付出的現金 —— "
+         "而 B 完全看不到這件事,因為它的式子裡沒有求償權",
+         bps=r"\Delta B = 0",
+         eq=r"\Delta E = \frac{F - c}{p\,S}\times 10^{8} > 0 \quad (c < F)"),
     Tool("common_buyback", "普通股回購", "—", "↓", "↓", "低於淨值才加分",
-         "mNAV > 1 時買回自家股票是毀滅價值的,這也是授權掛著沒動用的原因"),
+         "股數變少、持幣不變,所以 B <b>必定上升</b>;但 mNAV > 1 時 E 是下降的。"
+         "兩個指標在這裡直接打架,這也是授權掛著沒動用的原因",
+         bps=r"\Delta B = H\left(\frac{1}{S-n} - \frac{1}{S}\right)"
+             r"\times 10^{8} > 0",
+         eq=r"\Delta E > 0 \iff \frac{P}{p}\times 10^{8} < E \iff m < 1"),
     Tool("convert_buyback", "可轉債回購 / 轉股", "↓", "轉股時 ↑", "↓", "加分",
-         "回購直接減少求償權;轉股則是把債權變成股權,求償權消失但股數增加"),
+         "回購是折價買回,與優先股同形。轉股則是把面額 F 的債權換成 n 股:"
+         "求償權整筆消失,但沒有多出任何一顆幣,所以 B 被稀釋",
+         bps=r"\text{回購 } \Delta B = 0;\quad"
+             r"\text{轉股 } \Delta B = H\left(\frac{1}{S+n} - \frac{1}{S}\right)"
+             r"\times 10^{8} < 0",
+         eq=r"\text{回購 } \Delta E = \frac{F - c}{p\,S}\times 10^{8};\quad"
+            r"\text{轉股 } \Delta E = \frac{H - (C-F)/p}{S+n}"
+            r"\times 10^{8} - E"),
 )
 
 TOOLS_BY_ID: Dict[str, Tool] = {t.id: t for t in TOOLS}

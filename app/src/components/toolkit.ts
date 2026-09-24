@@ -4,6 +4,7 @@
  *  徽章版給大事記的每一則用,標示該階段實際動用了哪幾把。
  *  兩者共用 meta.toolkit,所以不會出現清單對不上的情況。 */
 import { meta } from "../data";
+import { texBlock } from "../lib/math";
 
 const CEBE_TONE: Record<string, string> = {
   "折價買回 = 加分": "good",
@@ -14,6 +15,35 @@ const CEBE_TONE: Record<string, string> = {
 
 function tone(cebe: string): string {
   return CEBE_TONE[cebe] ?? "neutral";
+}
+
+/** 每一把工具的代數:同一個動作對兩個每股指標的效果並排。
+ *
+ *  這才是工具箱真正在講的事 —— 箭頭只說了方向,代數說了「在什麼條件下」。
+ *  兩欄常常相反:發優先股買幣讓 B 上升、E 下降,那就是 phantom growth;
+ *  折價回購讓 E 上升、B 完全沒感覺,因為 B 的式子裡根本沒有求償權。 */
+export function toolkitAlgebra(): string {
+  return `
+    <div class="tool-algebra">
+      ${meta.toolkit.map((t) => `
+        <div class="tool-eq">
+          <div class="tool-eq-head">
+            <b>${t.label}</b>
+            <span class="tool-tag ${tone(t.cebe)}">${t.cebe}</span>
+          </div>
+          <div class="tool-eq-cols">
+            <div class="tool-eq-col">
+              <div class="tool-eq-lab">對帳面每股 <span>B = H / S</span></div>
+              ${texBlock(t.bps)}
+            </div>
+            <div class="tool-eq-col key">
+              <div class="tool-eq-lab">對實得每股 <span>E = (H − C/p) / S</span></div>
+              ${texBlock(t.eq)}
+            </div>
+          </div>
+          <p class="tool-eq-note">${t.note}</p>
+        </div>`).join("")}
+    </div>`;
 }
 
 /** 常設的工具箱表格。 */

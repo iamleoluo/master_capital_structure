@@ -225,6 +225,26 @@ def build_operations(*, raised: float, discount: float, obligations: float,
 #     log(BPS₁/BPS₀) = log(持幣₁/持幣₀) − log(股數₁/股數₀)
 # ---------------------------------------------------------------------------
 
+def gross_bps_ops(held0: float, shares0: float,
+                  held1: float, shares1: float) -> Dict[str, float]:
+    """ΔB 拆成「持幣效果」與「股數效果」,單位 sats／股。
+
+    B = H/S 只有兩個驅動因子,兩因子的 Shapley 就是取兩種順序的平均,
+    展開後中間項對消,加總精確等於 ΔB —— 不需要抽樣,也沒有殘差:
+
+        持幣效果 = ½ (H₁ − H₀) (1/S₀ + 1/S₁)
+        股數效果 = ½ (H₀ + H₁) (1/S₁ − 1/S₀)
+
+    這個拆解的意義在於它<b>完全沒有幣價項</b>,所以不管幣價怎麼走都不會污染。
+    代價是它也看不見求償權:發優先股募來的錢去買幣,持幣效果一樣是正的。
+    """
+    inv0, inv1 = 1.0 / shares0, 1.0 / shares1
+    return {
+        "held": 0.5 * (held1 - held0) * (inv0 + inv1) * 1e8,
+        "shares": 0.5 * (held0 + held1) * (inv1 - inv0) * 1e8,
+    }
+
+
 def gross_bps_layers(held0: float, shares0: float,
                      held1: float, shares1: float) -> Dict[str, float]:
     """兩個因子的對數拆解:持幣效果與股數效果,兩者加總 = log(BPS 比)。"""

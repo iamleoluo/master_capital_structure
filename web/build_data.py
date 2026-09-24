@@ -381,7 +381,8 @@ def build_chronicle(daily: dict, weekly: list) -> list:
 def build_toolkit() -> list:
     from mstr_cebe import chronicle as CH      # noqa: E402
     return [{"id": t.id, "label": t.label, "claims": t.claims, "shares": t.shares,
-             "btc": t.btc, "cebe": t.cebe, "note": t.note} for t in CH.TOOLS]
+             "btc": t.btc, "cebe": t.cebe, "note": t.note,
+             "bps": t.bps, "eq": t.eq} for t in CH.TOOLS]
 
 
 def build_strategy(daily: dict, weekly: list, chronicle: list) -> dict:
@@ -499,6 +500,12 @@ def build_strategy(daily: dict, weekly: list, chronicle: list) -> dict:
             "splitLog": {"market": round(pmL[end] - pmL[i], 4),
                          "decision": round(pdL[end] - pdL[i], 4)},
             "bps0": round(daily["bps"][i], 1),
+            # ΔB 的兩因子拆解(sats／股)。B = H/S 沒有幣價項也沒有求償權項,
+            # 所以它是「不受行情污染」的那一把尺 —— 前端拿來與 ops 並排,
+            # 讓同一筆操作對兩個指標的效果可以橫著比。
+            "bpsOps": {k: round(v) for k, v in A.gross_bps_ops(
+                daily["held"][i], daily["shares"][i] * 1e6,
+                daily["held"][end], daily["shares"][end] * 1e6).items()},
             "opsOk": bool(abs(op_parts.get("other", 0.0))
                           <= 0.25 * max(abs(end_cebe - c0), 1.0)),
         })

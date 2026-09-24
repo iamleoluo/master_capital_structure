@@ -235,3 +235,26 @@ def test_chain_linked_removes_hindsight_that_fixed_price_embeds():
 
     assert chained["decision"] > 0, "當下高於淨值的增發,鏈結口徑應判為加分"
     assert fixed < chained["decision"], "固定期末幣價應該比鏈結更不利於增發"
+
+
+def test_gross_bps_ops_sums_to_delta_b():
+    """兩因子拆解必須精確加總回 ΔB —— 這是恆等式,不是近似。"""
+    h0, s0, h1, s1 = 600_000.0, 250e6, 846_000.0, 416e6
+    parts = A.gross_bps_ops(h0, s0, h1, s1)
+    delta = (h1 / s1 - h0 / s0) * 1e8
+    assert abs(sum(parts.values()) - delta) < 1e-6
+
+
+def test_gross_bps_ops_is_blind_to_price_and_claims():
+    """B 的式子裡沒有幣價也沒有求償權,所以兩者怎麼變都不影響這個拆解。"""
+    a = A.gross_bps_ops(600_000.0, 250e6, 846_000.0, 416e6)
+    b = A.gross_bps_ops(600_000.0, 250e6, 846_000.0, 416e6)
+    assert a == b
+
+
+def test_gross_bps_ops_signs():
+    """只買幣不增發 → 持幣效果為正、股數效果為零;只增發 → 反之。"""
+    only_buy = A.gross_bps_ops(600_000.0, 250e6, 700_000.0, 250e6)
+    assert only_buy["held"] > 0 and abs(only_buy["shares"]) < 1e-9
+    only_issue = A.gross_bps_ops(600_000.0, 250e6, 600_000.0, 300e6)
+    assert only_issue["shares"] < 0 and abs(only_issue["held"]) < 1e-9

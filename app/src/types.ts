@@ -68,6 +68,8 @@ export interface Delta { from: number; to: number; pct: number | null; }
 export interface ToolSpec {
   id: string; label: string;
   claims: string; shares: string; btc: string; cebe: string; note: string;
+  /** 代數(LaTeX)。bps = 對帳面每股 B,eq = 對實得每股 E */
+  bps: string; eq: string;
 }
 
 /** 大事記的一則。敘述是人工撰寫,數字全部由管線重算。 */
@@ -125,6 +127,8 @@ export interface StrategyRow {
   splitLog: { market: number; decision: number };
   /** Gross BPS(公司的 BTC Yield):公式無幣價項 */
   bps0: number;
+  /** ΔB 的兩因子拆解(sats／股),加總 = 帳面每股的變化 */
+  bpsOps: { held: number; shares: number };
   /** 資金流揭露是否完整到足以下結論(殘差 ≤ 總變化的 25%) */
   opsOk: boolean;
 }

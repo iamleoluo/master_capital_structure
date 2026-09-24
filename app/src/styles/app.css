@@ -297,6 +297,35 @@ table.era-metrics td.chg.flat{color:var(--ink-3)}
 .split-cell.good .v{color:var(--good)}
 .split-cell.bad .v{color:var(--bad)}
 .split-cell .d{font-size:.72rem;color:var(--ink-3);margin-top:5px;line-height:1.55}
+/* B vs E 對照表 */
+table.ruler td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
+table.ruler td.n.up{color:var(--good)}
+table.ruler td.n.down{color:var(--bad)}
+table.ruler td.n.zero{color:var(--ink-3)}
+.zero-why{display:block;font-size:.68rem;color:var(--ink-3);
+  font-weight:400;margin-top:2px;white-space:normal;max-width:16em;
+  margin-left:auto}
+table.ruler tr.total td{border-top:1px solid var(--line-2);
+  background:var(--surface-2)}
+table.ruler tr.subtotal td{border-top:1px solid var(--line);
+  color:var(--ink-2);font-size:.86em}
+
+/* 工具箱的代數:同一個動作對 B 與 E 的效果並排 */
+.tool-algebra{display:flex;flex-direction:column;gap:2px;margin:0 0 18px}
+.tool-eq{padding:16px 0;border-bottom:1px solid var(--line)}
+.tool-eq:last-child{border-bottom:0}
+.tool-eq-head{display:flex;align-items:center;gap:10px;margin-bottom:11px;
+  font-size:.94rem}
+.tool-eq-cols{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tool-eq-col{background:var(--surface-2);border:1px solid var(--line);
+  border-radius:4px;padding:11px 13px;min-width:0}
+.tool-eq-col.key{border-left:3px solid var(--equity)}
+.tool-eq-lab{font-size:.72rem;color:var(--ink-3);margin-bottom:7px}
+.tool-eq-lab span{font-family:var(--mono);font-size:.68rem;opacity:.75}
+.tool-eq-col .katex-display{margin:0;font-size:.94em}
+.tool-eq-note{font-size:.83rem;color:var(--ink-2);line-height:1.7;margin:10px 0 0}
+@media(max-width:720px){.tool-eq-cols{grid-template-columns:1fr}}
+
 .era-sats-note{font-size:.84rem;color:var(--ink-2);line-height:1.7;
   margin:14px 0 0;padding-left:14px;border-left:2px solid var(--line-2)}
 .layer-share{white-space:nowrap}

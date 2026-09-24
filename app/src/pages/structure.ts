@@ -8,7 +8,7 @@
  *  其他頁需要時以超連結指回來,不重述。 */
 import { chronicle, daily, meta, N } from "../data";
 import { explorer } from "../components/explorer";
-import { toolkitTable } from "../components/toolkit";
+import { toolkitAlgebra, toolkitTable } from "../components/toolkit";
 import { bn, pct } from "../lib/format";
 import { eqCard, tex, texAlign, texBlock } from "../lib/math";
 import type { PageFn } from "../router";
@@ -17,13 +17,6 @@ import type { PageFn } from "../router";
 const sym = (s: string, name: string, unit: string, def: string) => `
   <div class="symbol">${tex(s)}
     <div class="symbol-def"><b>${name}</b><span class="symbol-unit">${unit}</span><br>${def}</div>
-  </div>`;
-
-/** 操作代數的一列:左邊是操作名稱,右邊是它對每股含幣量做了什麼。 */
-const opRow = (name: string, tag: string, eq: string) => `
-  <div class="eq-row">
-    <div class="eq-row-name">${name}<span class="tag">${tag}</span></div>
-    ${texBlock(eq)}
   </div>`;
 
 export const structurePage: PageFn = (root) => {
@@ -192,19 +185,15 @@ export const structurePage: PageFn = (root) => {
       </p>
       ${toolkitTable()}
 
-      <h3 style="margin:30px 0 6px">每一種操作的代數</h3>
-      <p class="lede" style="margin-bottom:14px">
-        上表的「加分／減分」不是判斷,是算出來的。以下用 ${tex("c")} 表示這筆操作
-        動用的美元金額,${tex("F")} 表示買回標的的面額。
+      <h3 style="margin:32px 0 6px">每一把工具的代數</h3>
+      <p class="lede" style="margin-bottom:16px">
+        上表的箭頭只說了方向,代數才說得出「在什麼條件下」。以下用 ${tex("c")} 表示
+        這筆操作動用的美元、${tex("F")} 標的面額、${tex("n")} 股數變動、
+        ${tex("P")} 每股成交價、${tex("x")} 幣的顆數。
+        <b>兩欄請橫著讀</b>:同一個動作對兩個指標的效果常常是相反的,
+        那個相反就是 phantom growth 的全部內容。
       </p>
-      <div class="eq-rows">
-        ${opRow("用現金買幣", "淨效果恰好是零",
-          "\\Delta\\!\\left(H - \\frac{C}{p}\\right) = \\frac{c}{p} - \\frac{c}{p} = 0")}
-        ${opRow("折價回購求償權", "只有折價的部分進得來",
-          "\\Delta E = \\frac{F - c}{p\\,S}\\times 10^{8} > 0 \\quad (c < F)")}
-        ${opRow("股息與債息", "結構上必然為負",
-          "\\Delta E = -\\frac{c}{p\\,S}\\times 10^{8} < 0")}
-      </div>
+      ${toolkitAlgebra()}
 
       <div class="eq-card" style="border-left:3px solid var(--equity)">
         <p class="eq-note" style="border-top:0;padding-top:0;margin:0 0 14px">

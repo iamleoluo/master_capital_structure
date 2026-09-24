@@ -31,6 +31,25 @@ const OP_LABEL: Record<string, string> = {
   carry: "股息與債息",
   other: "未建模殘差",
 };
+/** 同一筆操作在「帳面每股 B」這把尺上的效果。
+ *
+ *  B = H/S,式子裡沒有幣價、也沒有求償權,所以只有真的動到持幣或股數的操作
+ *  才會有數字,其餘一律是結構上的零 —— 那些零正是重點:
+ *  折價回購讓股東實得變多,B 卻完全看不到;幣價讓求償權縮水同理。
+ *  反過來,發優先股買幣會讓 B 漂亮地上升,但那些幣是借來的。 */
+const OP_BPS: Record<string, "held" | "shares" | null> = {
+  price: null, atm: "shares", pref_issue: null, buyback: null,
+  converts: null, btc: "held", carry: null, other: null,
+};
+const OP_BPS_ZERO: Record<string, string> = {
+  price: "B 的式子裡沒有幣價",
+  pref_issue: "募到的錢買的幣算在「買賣比特幣」那一列",
+  buyback: "B 的式子裡沒有求償權",
+  converts: "同上;轉股造成的股數變動併入「ATM 增發」",
+  carry: "不動持幣也不動股數",
+  other: "未建模項,不歸因到 B",
+};
+
 const OP_NOTE: Record<string, string> = {
   price: "被動 —— 求償權面額固定在美元,幣價一漲它在幣計價下就自己縮小",
   atm: "只有「發行價高於每股淨值」的溢價部分才加分,不是「增發就是壞事」",
@@ -242,6 +261,70 @@ export const strategyPage: PageFn = (root) => {
             <span class="layer-vals"><b>${signed(delta)}</b><span class="layer-share">sats</span></span>
           </div>
         </div>
+      </div>
+
+      <h3 style="margin:34px 0 8px">同一筆操作,兩把尺量出來的結果</h3>
+      <p class="lede" style="margin-bottom:14px">
+        左邊是<b>帳面每股 ${tex("B = H/S")}</b> —— 式子裡沒有幣價、沒有求償權,
+        所以它不受行情污染,但也看不見錢是誰的。
+        右邊是<b>實得每股 ${tex("E = (H - C/p)/S")}</b>。
+        <b>橫著讀每一列</b>:兩欄不一致的地方,就是這家公司最容易被誤讀的地方。
+      </p>
+      <div class="table-wrap"><table class="mini ruler">
+        <thead><tr>
+          <th>操作</th>
+          <th class="n">對帳面每股 B</th>
+          <th class="n">對實得每股 E</th>
+        </tr></thead>
+        <tbody>
+          ${order.map((k) => {
+            const f = OP_BPS[k];
+            const b = f ? r.bpsOps[f] : 0;
+            const e = r.ops[k];
+            return `
+              <tr>
+                <td>${OP_LABEL[k]}</td>
+                <td class="n ${f ? (b >= 0 ? "up" : "down") : "zero"}">${
+                  f ? signed(b) : `0<span class="zero-why">${OP_BPS_ZERO[k] ?? ""}</span>`}</td>
+                <td class="n ${e >= 0 ? "up" : "down"}">${signed(e)}</td>
+              </tr>`;
+          }).join("")}
+          <tr class="subtotal">
+            <td>其中:決策小計<span class="zero-why" style="margin-left:0">
+              扣掉被動的那一列</span></td>
+            <td class="n">${signed(r.bpsOps.held + r.bpsOps.shares)}
+              <span class="zero-why" style="margin-left:0">B 本來就沒有被動列</span></td>
+            <td class="n ${delta - r.ops.price >= 0 ? "up" : "down"}">${
+              signed(delta - r.ops.price)}</td>
+          </tr>
+          <tr class="total">
+            <td><b>合計</b></td>
+            <td class="n"><b>${signed(r.bpsOps.held + r.bpsOps.shares)}</b></td>
+            <td class="n"><b>${signed(delta)}</b></td>
+          </tr>
+        </tbody>
+      </table></div>
+      <div class="note warn" style="margin-top:14px">
+        <b>比較合計之前先看「決策小計」那一列。</b>
+        B 的式子裡沒有幣價,所以它<b>整欄都是決策</b>;
+        E 的合計卻含了 ${signed(r.ops.price)} sats 的被動貢獻(幣價讓求償權縮水)。
+        直接拿兩個合計對比會把行情算到公司頭上 ——
+        對得起來的是<b>決策小計</b>這一列。
+      </div>
+
+      <div class="note" style="margin-top:14px">
+        <b>兩欄的零,一個是優點一個是盲點。</b>
+        「幣價讓求償權縮水」在 B 這欄是 0 —— 那 ${signed(r.ops.price)} sats 不是公司做的,
+        B 這把尺測不到它,<b>這是 B 的優點</b>。
+        但「優先股折價回購」在 B 這欄<b>也是 0</b> —— 公司真的替股東買回了求償權,
+        B 一樣測不到,<b>這是 B 的盲點</b>,因為它的式子裡根本沒有求償權這一項。
+        <br><br>
+        公司拿 B 當 KPI,所以誘因天生偏向「把持幣做大」而不是「把求償權做小」。
+        這一段做的剛好是後者:增發普通股稀釋了 B
+        ${signed(r.bpsOps.shares)} sats,而募到的錢拿去回收求償權 ——
+        那筆好處<b>完全落在 E 這欄,B 一分也認不到</b>。
+        所以同一段期間,公司自己的 KPI 難看,股東實際拿到的卻變多。
+        每一把工具的代數見<a href="#/structure">資本結構</a>頁。
       </div>
 
       <div class="note key" style="margin-top:18px">
