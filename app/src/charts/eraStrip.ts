@@ -55,7 +55,7 @@ export function drawEraStrip(el: HTMLElement): void {
   const pts: Array<[number, number]> = [];
   for (let i = 0; i < N; i++) pts.push([x(i), y(cebe[i]!)]);
   parts.push(`<path d="${path(pts)}" fill="none" stroke="var(--equity)" stroke-width="1.5"/>`);
-  parts.push(text(PAD_L, LINE_TOP - 3, "CEBE 每股含幣量",
+  parts.push(text(PAD_L, LINE_TOP - 3, "實得每股含幣量",
     { size: 9, fill: "var(--ink-3)" }));
 
   parts.push(text(PAD_L, H - 3, daily.date[0]!, { size: 9, fill: "var(--ink-3)", mono: true }));
@@ -63,5 +63,5 @@ export function drawEraStrip(el: HTMLElement): void {
     { size: 9, anchor: "end", fill: "var(--ink-3)", mono: true }));
 
   el.innerHTML = svg(CW, H, parts.join(""),
-    "資本結構分期時間軸,色塊為各階段,下方折線是同期的 CEBE 每股含幣量");
+    "資本結構分期時間軸,色塊為各階段,下方折線是同期的 實得每股含幣量");
 }

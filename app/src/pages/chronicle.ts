@@ -72,11 +72,9 @@ function metricsTableRows(e: Era): string {
     <div class="table-wrap"><table class="era-metrics">
       <thead><tr><th>指標</th><th>期初</th><th></th><th>期末</th><th>變化</th></tr></thead>
       <tbody>
-        ${row("實現的 CEBE 每股", m.cebe, sats,
+        ${row("實現的 實得每股", m.cebe, sats,
           "決策 + 行情的合計結果")}
-        ${row("CEBE @ 固定幣價", m.cebeFixed, sats,
-          "用期末幣價回頭重估 —— 內含後見之明,僅供對照")}
-        ${row("帳面每股(basic 股數)", m.grossBps, sats, "不扣求償權")}
+        ${row("帳面每股", m.grossBps, sats, "不扣求償權")}
         ${row("淨求償權", m.claims, (v) => `$${v.toFixed(2)}B`,
           "可轉債 + 優先股 − 現金。減少對普通股是好事", "downGood")}
         ${row("其中:優先股", m.pref, (v) => `$${v.toFixed(2)}B`, "", "downGood")}
@@ -139,7 +137,7 @@ const CHART_FOR: Record<string, "perShare" | "riverBtc" | "riverUsd"> = {
 };
 
 const CHART_CAPTION: Record<string, string> = {
-  perShare: "帳面每股(basic 股數)vs CEBE —— 兩條線的落差就是求償權吃掉的部分",
+  perShare: "帳面每股vs CEBE —— 兩條線的落差就是求償權吃掉的部分",
   riverBtc: "BTC 計價的資本結構 —— 下半部是求償權吃掉的幣,上面那條帶子才是普通股的",
   riverUsd: "美元計價 —— 求償權堆疊加上 MSTR 市值,虛線是 BTC 總市值",
 };
@@ -162,16 +160,16 @@ function programPanel(): string {
     <div class="program">
       <div class="program-span">全期 ${p.span[0]} → ${p.span[1]}</div>
       <div class="grid3" style="margin-bottom:14px">
-        ${cell("純操作(CEBE @ 固定幣價)", m.cebeFixed, sats)}
+        ${cell("實得每股含幣量", m.cebe, sats)}
         ${cell("BTC 價格", m.btcPrice, usd0)}
         ${cell("總持幣", m.held, (v) => fmtBtc(v) + " 顆")}
         ${cell("淨求償權", m.claims, (v) => `$${v.toFixed(2)}B`, "neutral")}
       </div>
       <p class="program-key">
-        兩年多下來每股含幣量的變化,拆成決策與行情兩半之後:
+        兩年多下來實得每股含幣量的變化,拆成決策與行情兩半之後:
         <b>決策貢獻 ${signed(p.split.decision)} sats,行情貢獻只有
         ${signed(p.split.market)} sats</b>。
-        也就是說這段期間每股含幣量的成長<b>幾乎全部來自公司的作為</b>,
+        也就是說這段期間實得每股含幣量的成長<b>幾乎全部來自公司的作為</b>,
         比特幣自己的漲跌在兩年尺度上互相抵銷掉了。
         任何單一階段都只是這台機器的某一個轉速 ——
         各階段的決策成績見下方每一則的第一排。

@@ -79,7 +79,7 @@ export function mnavLabels(g: Geo, i: number): SeriesLabel[] {
   ];
 }
 
-// --------------------------------------------------------------- 每股 BTC(帳面 vs CEBE)
+// --------------------------------------------------------------- 每股含幣量(帳面 vs 實得)
 const cebePerShare = (i: number): number => (daily.common_btc[i]! / (daily.shares[i]! * 1e6)) * 1e8;
 
 export interface PerShareGeo {
@@ -115,8 +115,8 @@ export function drawPerShare(el: HTMLElement, h = 190, range?: [number, number])
     `<path d="${path(pts(cebe, y))}" fill="none" stroke="var(--equity)" stroke-width="1.8"/>`,
     text(f.x(lo) + 4, yBtc(daily.btc[lo]!) - 5, "BTC 價格(參考)", { size: 9, anchor: "start", fill: "var(--btc)", opacity: 0.7 }),
     text(f.x(lo) + 4, yMstr(daily.mstr[lo]!) + 12, "MSTR 股價(參考)", { size: 9, anchor: "start", fill: "var(--senti)", opacity: 0.7 }),
-    text(CW - PAD_R, y(daily.bps[hi]!) + 13, "帳面(basic 股數)", { size: 10, anchor: "end", fill: "var(--c3)", weight: 600 }),
-    text(CW - PAD_R, y(cebe[hi]!) - 6, "CEBE", { size: 10, anchor: "end", fill: "var(--equity)", weight: 600 }),
+    text(CW - PAD_R, y(daily.bps[hi]!) + 13, "帳面每股", { size: 10, anchor: "end", fill: "var(--c3)", weight: 600 }),
+    text(CW - PAD_R, y(cebe[hi]!) - 6, "實得每股", { size: 10, anchor: "end", fill: "var(--equity)", weight: 600 }),
   ];
 
   // 官方揭露的 Gross BPS(用假設稀釋股數,而非 basic 股數)—— 只有最新一期
@@ -130,7 +130,7 @@ export function drawPerShare(el: HTMLElement, h = 190, range?: [number, number])
   }
 
   el.innerHTML = svg(CW, h, parts.join(""),
-    "帳面每股持幣(basic 股數)vs 實際每股持幣(CEBE),對數座標,單位 sats;虛線為 BTC 與 MSTR 價格參考;" +
+    "帳面每股含幣量 vs 實得每股含幣量,對數座標,單位 sats;虛線為 BTC 與 MSTR 價格參考;" +
     "圓點為官方揭露的 Gross BPS(假設稀釋股數口徑,僅最新一期 FWP 有此數字)");
   return { y, yBtc, yMstr };
 }
@@ -138,7 +138,7 @@ export function drawPerShare(el: HTMLElement, h = 190, range?: [number, number])
 export function perShareLabels(g: PerShareGeo, i: number): SeriesLabel[] {
   const cebe = cebePerShare(i);
   return [
-    { label: "CEBE 每股", value: sats(cebe), color: "var(--equity)", y: g.y(cebe) },
+    { label: "實得每股", value: sats(cebe), color: "var(--equity)", y: g.y(cebe) },
     { label: "帳面每股", value: sats(daily.bps[i]!), color: "var(--c3)", y: g.y(daily.bps[i]!) },
     { label: "BTC 價格", value: usd0(daily.btc[i]!), color: "var(--btc)", y: g.yBtc(daily.btc[i]!) },
     { label: "MSTR 股價", value: usd(daily.mstr[i]!), color: "var(--senti)", y: g.yMstr(daily.mstr[i]!) },

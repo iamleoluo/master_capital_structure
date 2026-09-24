@@ -2,7 +2,7 @@
  *
  *  這一頁只回答「這家公司的資本結構長什麼樣、CEBE 是什麼、怎麼從圖上讀出來」。
  *  「某段期間發生了什麼」一律放到大事記,避免頁面隨資料更新而過期 ——
- *  先前這裡的標題是「帳面每股在漲,實際每股在縮」,在 2026-06 之後就不再成立了。 */
+ *  先前這裡的標題是「帳面每股在漲,實得每股在縮」,在 2026-06 之後就不再成立了。 */
 import { chronicle, daily, meta, N } from "../data";
 import { explorer } from "../components/explorer";
 import { toolkitTable } from "../components/toolkit";
@@ -32,7 +32,7 @@ export const structurePage: PageFn = (root) => {
       </div>
 
       <div class="grid3" style="margin-bottom:10px">
-        <div class="tile"><div class="k">帳面每股(basic 股數)</div>
+        <div class="tile"><div class="k">帳面每股</div>
           <div class="v">${Math.round(grossNow).toLocaleString()}</div>
           <div class="d">sats。總持幣 ÷ basic 股數,不含可轉債稀釋</div></div>
         <div class="tile"><div class="k">求償權吃掉</div>
@@ -40,7 +40,7 @@ export const structurePage: PageFn = (root) => {
           <div class="d">sats,佔帳面的 ${pct(eatenNow / grossNow)}<br>
             對應 ${bn(claimsNow)} 的固定美元請求權</div></div>
         <div class="tile" style="border-left:3px solid var(--equity)">
-          <div class="k">CEBE(實際每股)</div>
+          <div class="k">實得每股含幣量</div>
           <div class="v" style="color:var(--equity)">${Math.round(cebeNow).toLocaleString()}</div>
           <div class="d">sats。這才是股東手上真正的量</div></div>
       </div>
@@ -69,8 +69,73 @@ export const structurePage: PageFn = (root) => {
         <p style="font-size:.88rem;color:var(--ink-2);margin:12px 0 0">
           注意分子那一項:求償權的面額是<b>固定美元</b>,所以換算成「幾顆幣」時,
           分母是當下的 BTC 價格。BTC 漲,同一筆求償權吃掉的幣就變少,
-          普通股不用多買一顆,每股含幣量就會自己上升 —— 這就是槓桿。
+          普通股不用多買一顆,實得每股含幣量就會自己上升 —— 這就是槓桿。
           反過來 BTC 跌的時候,它也會把跌幅放大。</p>
+      </div>
+
+
+      <h2 style="margin-bottom:8px">兩個每股指標,差別在扣不扣求償權</h2>
+      <p class="lede" style="margin-bottom:16px">
+        全站只用這兩個名字。技術文獻裡的 Gross BPS、BTC Yield、CEBE
+        分別對應下面哪一個,在這裡說明一次,其他頁不再重複。
+      </p>
+
+      <div class="card formulas" style="margin-bottom:20px">
+        <div class="formula">
+          <div class="formula-tag">1</div>
+          <div>
+            <div class="formula-name">帳面每股含幣量 <span class="formula-alias">Gross BPS / 公司的 BTC Yield</span></div>
+            <div class="formula-eq">帳面每股 = 總持幣 H ÷ 股數 S</div>
+            <div class="formula-note">
+              <b>式子裡沒有幣價,也沒有求償權。</b>幣價怎麼波動都不影響它 ——
+              這正是公司拿它當 KPI 的原因。缺點是它看不見求償權:
+              用發優先股的錢買幣會讓它上升,但股東一顆也沒多拿到(phantom growth)。
+            </div>
+          </div>
+        </div>
+        <div class="formula">
+          <div class="formula-tag key">2</div>
+          <div>
+            <div class="formula-name">實得每股含幣量 <span class="formula-alias">CEBE</span></div>
+            <div class="formula-eq">實得每股 = ( H − C ÷ p ) ÷ S</div>
+            <div class="formula-note">
+              C 是求償權(可轉債 + 優先股清算優先權 − USD 流動性),面額固定在美元,
+              所以要<b>除以當下幣價 p</b> 才能換算成「幾顆幣」。
+              這是股東真正分到的量,代價是<b>幣價跑進式子裡了</b> ——
+              公司什麼都不做,幣價一漲它也會上升。
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h2 style="margin-bottom:8px">怎麼把「決策」跟「行情」分開</h2>
+      <p class="lede" style="margin-bottom:16px">
+        實得每股的式子裡有幣價,所以它的變化混了兩件事。
+        <a href="#/strategy">績效歸因</a>頁用<b>逐日鏈結</b>把兩者拆開,方法是沿著時間一天一天走,
+        每天拆成兩半:
+      </p>
+      <div class="card" style="padding:18px 20px;margin-bottom:16px">
+        <div style="font-family:var(--mono);font-size:.9rem;line-height:2.1">
+          第一步　結構凍結,只讓當天的幣價動　→ <b>行情</b><br>
+          第二步　再讓當天的結構動,用<b>當天的</b>幣價評價　→ <b>決策</b>
+        </div>
+        <p style="font-size:.86rem;color:var(--ink-2);margin:12px 0 0">
+          逐日加總,兩者相加<b>精確等於</b>實現變化。關鍵在第二步:
+          每個決策只用它<b>發生當下</b>能知道的價格評價,所以不含後見之明 ——
+          否則「在行情上漲前增發」會永遠被判成減分,因為賣出去的股票事後看都賣便宜了。
+        </p>
+      </div>
+
+      <h2 style="margin-bottom:8px">股價的恆等式</h2>
+      <div class="card" style="padding:18px 20px;margin-bottom:26px">
+        <div style="font-family:var(--mono);font-size:.95rem">
+          MSTR 股價 = mNAV × 實得每股 × 幣價 ÷ 1e8
+        </div>
+        <p style="font-size:.86rem;color:var(--ink-2);margin:12px 0 0">
+          三個因子相乘,取對數之後變成相加 —— 所以報酬可以精確拆成
+          <b>幣價</b>(市場)、<b>實得每股</b>(公司)、<b>mNAV</b>(情緒)三層,沒有殘差。
+          拆解結果見<a href="#/strategy">績效歸因</a>。
+        </p>
       </div>
 
       <h2 style="margin-bottom:8px">公司能動用的工具</h2>
@@ -95,7 +160,7 @@ export const structurePage: PageFn = (root) => {
         BTC 計價那張圖的下緣是求償權(依清償順位堆疊),上緣的黑線是總持幣,
         中間那條橘色帶子就是普通股。帶子越薄代表 CEBE 越小。
         切到「每股」模式後,縱軸變成 sats／股,帶子的厚度直接就是 CEBE 的數值 ——
-        游標標籤會同時顯示「帳面每股」與「普通股每股」,兩者相減就是求償權吃掉的部分。
+        游標標籤會同時顯示「帳面每股」與「實得每股」,兩者相減就是求償權吃掉的部分。
         下面那張美元計價的圖完全看不出這件事,因為求償權與資產同時以美元計價,
         比例變化被價格漲跌蓋掉了。
       </div>

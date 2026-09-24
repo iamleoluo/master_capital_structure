@@ -17,7 +17,7 @@ type ChartKey = keyof typeof H;
 const LABEL: Record<ChartKey, string> = {
   price: "MSTR 與 BTC 價格(同基期指數化,對數軸)",
   mnav: "mNAV — basic(看不到優先股)vs CEBE(扣求償權後)",
-  perShare: "每股持幣:帳面(basic 股數)vs 實際(CEBE),對數軸",
+  perShare: "每股含幣量:帳面 vs 實得,對數軸",
   riverUsd: "美元計價:求償權堆疊 + MSTR 市值,虛線是 BTC 總市值",
   riverBtc: "BTC 計價:同樣的結構,但縱軸是「幣的顆數」",
 };

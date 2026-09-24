@@ -1,7 +1,7 @@
 /** 槓桿曲線 —— 定價頁的主圖。
  *
  * 核心觀念:求償權的面額固定在美元,普通股拿的是**殘值**。
- * 所以每股含幣量 = (總持幣 − 求償權/BTC價) / 股數,是 BTC 價格的遞增函數:
+ * 所以實得每股含幣量 = (總持幣 − 求償權/BTC價) / 股數,是 BTC 價格的遞增函數:
  *   BTC 跌 → 求償權吃掉更多幣 → 每股含幣縮水
  *   BTC 漲 → 求償權在幣計價下縮小 → 每股含幣自己長回來,一顆都不用多買
  *
@@ -213,9 +213,9 @@ export function drawLeverage(el: HTMLElement, b: Basis, o: LeverageOpts,
   parts.push(text(x(sp), y(spSats) - 12, `${Math.round(spSats).toLocaleString()} sats`,
     { size: 11, anchor: "middle", fill: "var(--equity)", weight: 700, mono: true }));
 
-  parts.push(text(PL, PT - 8, "普通股每股含幣量(sats)", { size: 10, opacity: 0.65 }));
+  parts.push(text(PL, PT - 8, "實得每股含幣量(sats)", { size: 10, opacity: 0.65 }));
   parts.push(text(W - PR, H - 6, "BTC 價格", { size: 10, anchor: "end", opacity: 0.6 }));
 
   el.innerHTML = svg(W, H, parts.join(""),
-    "普通股每股含幣量隨 BTC 價格上升的曲線,含槓桿下限再融資與 mNAV 增發情境模擬");
+    "實得每股含幣量隨 BTC 價格上升的曲線,含槓桿下限再融資與 mNAV 增發情境模擬");
 }

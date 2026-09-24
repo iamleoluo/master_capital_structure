@@ -85,8 +85,6 @@ export interface Era {
   metrics: {
     btcPrice: Delta; held: Delta; claims: Delta; pref: Delta; shares: Delta;
     cebe: Delta;
-    /** 度量 C:兩端同代入期末幣價,幣價效果消掉 —— 評價操作看這個 */
-    cebeFixed: Delta;
     grossBps: Delta; mnavCebe: Delta; mstrPrice: Delta;
     strcPrice: (Delta & { low: number; lowDate: string }) | null;
   };
@@ -105,12 +103,6 @@ export interface Era {
 /** 策略歸因的單一起始日結果(終點恆為最新一天)。 */
 export interface StrategyRow {
   cebe0: number;
-  /** 四因子 Shapley,加總 = ΔCEBE */
-  f: { held: number; claims: number; price: number; shares: number };
-  /** 主動 = 持幣+求償權+股數;被動 = 幣價讓求償權縮水 */
-  active: number; passive: number;
-  /** 反事實:結構凍結、只讓幣價走 */
-  cf: number; vsCf: number;
   /** 三層乘法恆等式的對數拆解,三者加總 = log(股價比) */
   layers: { mnav: number; cebe: number; btc: number };
   /** 總變化太小時佔比會失真,此旗標為 false 時改顯示各層自身漲跌 */
@@ -131,7 +123,6 @@ export interface StrategyRow {
   /** Gross BPS(公司的 BTC Yield):公式無幣價項 */
   bps0: number;
   /** 兩因子對數拆解,加總 = log(BPS 比) */
-  bpsLayers: { held: number; shares: number };
   /** 資金流揭露是否完整到足以下結論(殘差 ≤ 總變化的 25%) */
   opsOk: boolean;
 }
@@ -158,8 +149,6 @@ export interface Meta {
     span: [string, string];
     metrics: {
       cebe: Delta;
-      /** 度量 C:純操作,不含幣價效果 */
-      cebeFixed: Delta;
       held: Delta; btcPrice: Delta; mstrPrice: Delta; claims: Delta;
     };
     btcSoldEver: number; btcBoughtEver: number;

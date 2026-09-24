@@ -29,10 +29,10 @@ export const pricingPage: PageFn = (root) => {
         <p class="eyebrow">槓桿與定價</p>
         <h1>槓桿怎麼放大,價格怎麼回推</h1>
         <p class="lede">求償權的面額鎖死在美元,所以它在幣計價下的大小完全由 BTC 價格決定 ——
-          這讓普通股的每股含幣量變成一個<b>對 BTC 價格有槓桿的部位</b>:
-          BTC 漲,同一筆求償權吃掉的幣變少,每股含幣量不用多買一顆就會自己上升;
+          這讓普通股的實得每股含幣量變成一個<b>對 BTC 價格有槓桿的部位</b>:
+          BTC 漲,同一筆求償權吃掉的幣變少,實得每股含幣量不用多買一顆就會自己上升;
           BTC 跌則反過來放大。這一頁把這個機制量化,並用三個可調參數模擬不同情境:
-          公司會不會補倉槓桿、市場願付多少溢價、溢價增發又會怎麼反過來墊高每股含幣量。
+          公司會不會補倉槓桿、市場願付多少溢價、溢價增發又會怎麼反過來墊高實得每股含幣量。
           <a href="#/chronicle">大事記</a>記錄的是這個機制在各階段實際發生了什麼。</p>
       </div>
 
@@ -66,7 +66,7 @@ export const pricingPage: PageFn = (root) => {
       <div class="card flush" style="padding:20px 22px 10px;margin-bottom:8px">
         <div class="chart-block">
           <div class="chart-head">
-            <div class="chart-label">普通股每股含幣量 vs BTC 價格</div>
+            <div class="chart-label">實得每股含幣量 vs BTC 價格</div>
             <div class="chart-tools"></div>
           </div>
           <div class="scroller"><div id="lev"></div></div>
@@ -204,7 +204,7 @@ export const pricingPage: PageFn = (root) => {
     const rMkt = (r.marketPrice / (p.mnav * nowVal) - 1) * 100;
 
     q("#tiles").innerHTML = `
-      <div class="tile"><div class="k">每股含幣量(情境)</div>
+      <div class="tile"><div class="k">實得每股含幣量(情境)</div>
         <div class="v" style="color:var(--equity)">${Math.round(r.perShareSats).toLocaleString()}</div>
         <div class="d">sats,今天是 ${Math.round(nowSats).toLocaleString()}
           (${dSats >= 0 ? "+" : ""}${dSats.toFixed(0)}%)</div></div>
@@ -226,11 +226,11 @@ export const pricingPage: PageFn = (root) => {
       parts.push(`這是今天的價位。`);
     }
     parts.push(`在槓桿下限 ${p.leverageFloor.toFixed(2)}x、mNAV ${p.mnav.toFixed(2)}x、`
-      + `ATM 增發 ${atmSlider.value}% 的假設下,每股含幣量會是 `
+      + `ATM 增發 ${atmSlider.value}% 的假設下,實得每股含幣量會是 `
       + `<b>${Math.round(r.perShareSats).toLocaleString()} sats</b>(${dSats >= 0 ? "+" : ""}${dSats.toFixed(0)}%)。`);
     if (r.triggeredReleverage) {
       parts.push(`這個價位已經高過 ${usd0(r.triggerPx)} 的觸發價 —— 模型假設公司從那裡開始持續發 STRC `
-        + `買幣、把槓桿釘在 ${p.leverageFloor.toFixed(2)}x,所以每股含幣量在觸發價之後會沿著 `
+        + `買幣、把槓桿釘在 ${p.leverageFloor.toFixed(2)}x,所以實得每股含幣量在觸發價之後會沿著 `
         + `<b>price^${p.leverageFloor.toFixed(2)}</b> 的冪次曲線成長,比自然衰減曲線更快回升。`);
     }
     if (p.atmDilution > 0 && p.mnav !== 1) {
@@ -246,7 +246,7 @@ export const pricingPage: PageFn = (root) => {
   [slider, floorSlider, mnavSlider, atmSlider].forEach((s) => s.addEventListener("input", paint));
   paint();
 
-  const z = zoomable(host, "普通股每股含幣量 vs BTC 價格(情境模擬)", (el, h) => {
+  const z = zoomable(host, "實得每股含幣量 vs BTC 價格(情境模擬)", (el, h) => {
     if (h > 400) zoomEl = el;
     drawInto(el, h);
   }, { inlineHeight: 330, zoomHeight: 620 });

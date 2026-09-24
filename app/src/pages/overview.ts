@@ -32,7 +32,7 @@ export const overviewPage: PageFn = (root) => {
           <span><i>自 ${latest.start}</i> 求償權
             <b class="${(m.claims.pct ?? 0) < 0 ? "up" : "down"}">${
               m.claims.pct == null ? "—" : (m.claims.pct >= 0 ? "+" : "") + m.claims.pct.toFixed(1) + "%"}</b></span>
-          <span>CEBE 每股
+          <span>實得每股
             <b class="${(m.cebe.pct ?? 0) >= 0 ? "up" : "down"}">${
               m.cebe.pct == null ? "—" : (m.cebe.pct >= 0 ? "+" : "") + m.cebe.pct.toFixed(1) + "%"}</b></span>
           <span>持幣
@@ -69,7 +69,7 @@ export const overviewPage: PageFn = (root) => {
             誰排在誰前面、CEBE 怎麼算,以及公司能動用哪些工具去改變它。</p>
           <p style="font-size:.9rem;color:var(--ink-2);margin:0">
             <a href="#/pricing">槓桿與定價</a> ——
-            求償權固定在美元,所以每股含幣量是一個對 BTC 有槓桿的部位。</p>
+            求償權固定在美元,所以實得每股含幣量是一個對 BTC 有槓桿的部位。</p>
         </div>
       </div>
     </div>`;

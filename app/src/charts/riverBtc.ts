@@ -128,7 +128,7 @@ export function drawRiverBtc(el: HTMLElement, h = 300, perShare = false, range?:
 
   el.innerHTML = svg(CW, h, parts.join(""),
     perShare
-      ? "以每股 sats 計價的資本結構河流圖,求償權堆疊在下,普通股每股殘量在上,虛線為 BTC 價格參考"
+      ? "以每股 sats 計價的資本結構河流圖,求償權堆疊在下,實得每股殘量在上,虛線為 BTC 價格參考"
       : "以 BTC 顆數計價的資本結構河流圖,求償權堆疊在下,普通股殘量在上,總和等於總持有量,虛線為 BTC 價格參考");
   return g;
 }
@@ -141,7 +141,7 @@ export function riverBtcLabels(g: RiverBtcGeo, i: number): SeriesLabel[] {
   return [
     { label: g.perShare ? "帳面每股" : "總持有", value: fmt(g.held[i]!),
       color: "var(--ink)", y: g.y(g.held[i]!) },
-    { label: g.perShare ? "普通股每股" : "普通股", value: fmt(common),
+    { label: g.perShare ? "實得每股" : "普通股", value: fmt(common),
       color: "var(--equity)", y: g.y((g.claimsTop[i]! + g.held[i]!) / 2) },
     { label: "求償權", value: fmt(g.claimsTop[i]!),
       color: "var(--c2)", y: g.y(g.claimsTop[i]! / 2) },

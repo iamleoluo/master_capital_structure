@@ -281,17 +281,6 @@ def build_chronicle(daily: dict, weekly: list) -> list:
 
         strc = sorted((d, v) for d, v in pref_px.get("STRC", {}).items() if wa <= d <= wb)
 
-        # 度量 C:兩端都代入期末幣價,幣價效果整項消掉,剩下純操作。
-        # 期間實現的 CEBE 變化(度量 B)混了幣價,不能拿來評價操作 ——
-        # 實測「優先股堆疊」B 只有 +1.1%,但那是同期幣價跌 31.8% 吃掉的,
-        # 去掉幣價後操作其實是 +10.5%。
-        p_end = daily["btc"][hi]
-        fixed = [round((daily["held"][k]
-                        - (daily["debt"][k] + daily["pref_total"][k]
-                           - daily["cash"][k]) * 1e9 / p_end)
-                       / (daily["shares"][k] * 1e6) * 1e8, 1)
-                 for k in (lo, hi)]
-
         out.append({
             "id": era.id, "title": era.title, "subtitle": era.subtitle,
             "start": a, "end": None if era.end is None else b,
@@ -309,10 +298,6 @@ def build_chronicle(daily: dict, weekly: list) -> list:
                 "pref": _pair(daily["pref_total"], lo, hi, 2),
                 "shares": _pair(daily["shares"], lo, hi, 1),
                 "cebe": _pair(cebe, lo, hi),
-                # 純操作口徑(度量 C)—— 用期末幣價回頭重估,內含後見之明
-                "cebeFixed": {"from": fixed[0], "to": fixed[1],
-                              "pct": round((fixed[1] / fixed[0] - 1) * 100, 1)
-                              if fixed[0] else None},
                 "grossBps": _pair(daily["bps"], lo, hi),
                 "mnavCebe": _pair(daily["mnav_cebe"], lo, hi, 2),
                 "mstrPrice": _pair(daily["mstr"], lo, hi, 2),
@@ -322,8 +307,8 @@ def build_chronicle(daily: dict, weekly: list) -> list:
                                "lowDate": min(strc, key=lambda x: x[1])[0]}
                               if len(strc) > 1 else None),
             },
-            # 逐日鏈結:決策用「當下幣價」評價,不含後見之明。
-            # 評價公司作為應該看這個,cebeFixed 只拿來對照。
+            # 逐日鏈結:每天先讓幣價動(行情)、再讓結構動並以當天幣價評價(決策)。
+            # 兩者相加精確等於實現變化,且決策不含後見之明。
             "split": {"market": round(pm[hi] - pm[lo]),
                       "decision": round(pd[hi] - pd[lo])},
             "flows": {
@@ -441,8 +426,6 @@ def build_strategy(daily: dict, weekly: list, chronicle: list) -> dict:
         except ValueError:
             rows.append(None)
             continue
-        parts = A.shapley_cebe(a, end_st)
-        cf = A.counterfactual_cebe(a, end_st["price"])
         layers = A.price_layers(
             daily["mnav_cebe"][i], c0, daily["btc"][i],
             daily["mnav_cebe"][end], end_cebe, daily["btc"][end])
@@ -458,14 +441,6 @@ def build_strategy(daily: dict, weekly: list, chronicle: list) -> dict:
 
         rows.append({
             "cebe0": round(c0),
-            # Shapley:四項加總 = ΔCEBE
-            "f": {k: round(v) for k, v in parts.items()},
-            # 主動 = 公司做的三件事合計;被動 = 幣價讓求償權縮水,不需作為
-            "active": round(parts["held"] + parts["claims"] + parts["shares"]),
-            "passive": round(parts["price"]),
-            # 反事實:結構凍結在起點,只讓幣價走
-            "cf": round(cf),
-            "vsCf": round(end_cebe - cf),
             # 三層價格歸因:存對數變化量,佔比由前端相除(純算術,不是金融計算)
             "layers": {k: round(v, 4) for k, v in layers.items()},
             "stable": stable,
@@ -482,9 +457,6 @@ def build_strategy(daily: dict, weekly: list, chronicle: list) -> dict:
             "split": {"market": round(pm[end] - pm[i]),
                       "decision": round(pd[end] - pd[i])},
             "bps0": round(daily["bps"][i], 1),
-            "bpsLayers": {k: round(v, 4) for k, v in A.gross_bps_layers(
-                daily["held"][i], daily["shares"][i],
-                daily["held"][end], daily["shares"][end]).items()},
             "opsOk": bool(abs(op_parts.get("other", 0.0))
                           <= 0.25 * max(abs(end_cebe - c0), 1.0)),
         })
@@ -505,8 +477,6 @@ def build_strategy(daily: dict, weekly: list, chronicle: list) -> dict:
 
 
 def build_program(daily: dict, weekly: list) -> dict:
-    from mstr_cebe import attribution as A      # noqa: E402
-
     """大事記最上面的整體框架:長期論述 + 全期數字。
 
     全期數字存在的理由是擋住「用三五個月論斷這套結構」——
@@ -524,11 +494,6 @@ def build_program(daily: dict, weekly: list) -> dict:
     sold = sum(-w["delta"] for w in weekly if (w["delta"] or 0) < 0)
     bought = sum(w["delta"] for w in weekly if (w["delta"] or 0) > 0)
 
-    cf0 = A.cebe_at_fixed_price(daily["held"][lo], claims[lo] * 1e9,
-                                daily["shares"][lo] * 1e6, daily["btc"][hi])
-    cf1 = A.cebe_at_fixed_price(daily["held"][hi], claims[hi] * 1e9,
-                                daily["shares"][hi] * 1e6, daily["btc"][hi])
-
     pm, pd = _chain_increments(daily)
 
     return {
@@ -539,10 +504,6 @@ def build_program(daily: dict, weekly: list) -> dict:
         "span": [daily["date"][lo], daily["date"][hi]],
         "metrics": {
             "cebe": _pair(cebe, lo, hi),
-            # 度量 C:兩端同代入期末幣價。頭條用這個 —— 它不能被
-            # 「那只是幣價漲」打掉,因為幣價效果已經被消掉了。
-            "cebeFixed": {"from": round(cf0), "to": round(cf1),
-                          "pct": round((cf1 / cf0 - 1) * 100, 1)},
             "held": _pair(daily["held"], lo, hi),
             "btcPrice": _pair(daily["btc"], lo, hi),
             "mstrPrice": _pair(daily["mstr"], lo, hi, 2),
