@@ -421,6 +421,11 @@ def build_strategy(daily: dict, weekly: list, chronicle: list) -> dict:
             # 殘差大於總變化的四分之一時就不該拿來下結論,用 opsOk 標記。
             "ops": {k: round(v) for k, v in op_parts.items()},
             "opMeta": {k: round(v) for k, v in opMeta.items()},
+            # Gross BPS(公司的 BTC Yield):公式裡沒有幣價,天生不受幣價污染
+            "bps0": round(daily["bps"][i], 1),
+            "bpsLayers": {k: round(v, 4) for k, v in A.gross_bps_layers(
+                daily["held"][i], daily["shares"][i],
+                daily["held"][end], daily["shares"][end]).items()},
             "opsOk": bool(abs(op_parts.get("other", 0.0))
                           <= 0.25 * max(abs(end_cebe - c0), 1.0)),
         })
@@ -428,6 +433,8 @@ def build_strategy(daily: dict, weekly: list, chronicle: list) -> dict:
     return {
         "end": daily["date"][end],
         "cebeNow": round(end_cebe),      # 所有列共用的終點,不必每列重複
+        "bpsNow": round(daily["bps"][end], 1),
+        "priceNow": daily["btc"][end],
         "rows": rows,
         # 預設起點候選:各階段起點 + 第一次賣幣
         "presets": (

@@ -265,3 +265,21 @@ table.era-metrics td.chg.flat{color:var(--ink-3)}
 .layer-note{font-size:.74rem;color:var(--ink-3);margin-top:7px}
 .passive-tag{font-size:.66rem;background:var(--surface-2);color:var(--ink-3);
   border-radius:20px;padding:1px 7px;margin-left:4px}
+
+/* 策略分析的公式區 */
+.formulas{display:flex;flex-direction:column;gap:18px}
+.formula{display:flex;gap:14px;align-items:flex-start}
+.formula-tag{flex:0 0 auto;width:22px;height:22px;border-radius:50%;
+  display:inline-flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:.72rem;font-weight:600;
+  background:var(--surface-2);color:var(--ink-2);border:1px solid var(--line-2)}
+.formula-tag.key{background:var(--equity);color:var(--paper);border-color:var(--equity)}
+.formula-name{font-weight:600;font-size:.94rem;margin-bottom:5px}
+.formula-eq{font-family:var(--mono);font-size:.92rem;background:var(--surface-2);
+  border-radius:4px;padding:9px 12px;margin-bottom:7px;overflow-x:auto;
+  white-space:nowrap}
+.formula-note{font-size:.84rem;color:var(--ink-2);line-height:1.7}
+.tile.key{border-left:3px solid var(--equity)}
+.tile .v.up{color:var(--good)}
+.tile .v.down{color:var(--bad)}
+.tile .k .formula-tag{width:18px;height:18px;font-size:.64rem;margin-right:3px}

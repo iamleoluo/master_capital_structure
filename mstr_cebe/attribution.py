@@ -210,3 +210,43 @@ def build_operations(*, raised: float, discount: float, obligations: float,
         "converts": {"dclaims": d_debt},
         "other": {"dclaims": residual},
     }
+
+
+# ---------------------------------------------------------------------------
+# Gross BPS(公司自己的 BTC Yield)—— 公式裡沒有幣價,所以天生乾淨
+#
+#     Gross BPS = 總持幣 ÷ 股數
+#
+# 注意這個式子<b>完全沒有幣價這一項</b>,也沒有求償權。所以:
+#   優點:幣價怎麼波動都不影響它,想看「公司做了什麼」時不需要額外去污染
+#   缺點:它看不見求償權,所以用發優先股的錢買幣會讓它上升 —— phantom growth
+#
+# 取對數後只剩兩個驅動因子,精確可加、沒有殘差、也不需要 Shapley:
+#     log(BPS₁/BPS₀) = log(持幣₁/持幣₀) − log(股數₁/股數₀)
+# ---------------------------------------------------------------------------
+
+def gross_bps_layers(held0: float, shares0: float,
+                     held1: float, shares1: float) -> Dict[str, float]:
+    """兩個因子的對數拆解:持幣效果與股數效果,兩者加總 = log(BPS 比)。"""
+    for v in (held0, shares0, held1, shares1):
+        if v <= 0:
+            raise ValueError("持幣與股數必須為正")
+    return {
+        "held": math.log(held1 / held0),
+        "shares": -math.log(shares1 / shares0),
+    }
+
+
+def cebe_at_fixed_price(held: float, claims_usd: float, shares: float,
+                        price: float) -> float:
+    """把幣價釘在同一個值來算 CEBE —— 去掉幣價效果,但保留求償權。
+
+    這是三種度量裡最適合衡量「操作績效」的一個:
+      Gross BPS      沒有幣價(乾淨)但看不見求償權
+      CEBE           看得見求償權但被幣價污染
+      CEBE@固定幣價   兩者兼顧
+
+    起點與終點都用同一個幣價代入,兩者相減就是純操作造成的變化。
+    數學上這與「實際值 − 反事實(結構凍結、只讓幣價走)」完全相同。
+    """
+    return cebe_sats(held, claims_usd, price, shares)

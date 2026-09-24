@@ -8,7 +8,7 @@
  *  每股含幣量會走到哪裡?實際值減掉它,才是資本操作真正的淨貢獻。 */
 import { daily, indexOfDate, N, strategy } from "../data";
 import { drawPerShare } from "../charts/timeseries";
-import { bn, btc as fmtBtc } from "../lib/format";
+import { bn, btc as fmtBtc, usd0 } from "../lib/format";
 import { zoomable } from "../lib/zoomable";
 import type { StrategyRow } from "../types";
 import type { PageFn } from "../router";
@@ -84,6 +84,53 @@ export const strategyPage: PageFn = (root) => {
       </div>
 
       <div id="headline"></div>
+
+      <h2 style="margin:34px 0 6px">三個度量,先講清楚差在哪</h2>
+      <p class="lede" style="margin-bottom:16px">
+        「每股含幣量」不只一種算法,而且選錯會讓結論反過來。
+        三個式子的差別只在<b>有沒有把求償權扣掉</b>、以及<b>式子裡有沒有幣價</b>:
+      </p>
+
+      <div class="card formulas" style="margin-bottom:16px">
+        <div class="formula">
+          <div class="formula-tag">A</div>
+          <div>
+            <div class="formula-name">Gross BPS(公司自己的 BTC Yield)</div>
+            <div class="formula-eq">BPS = 總持幣 H ÷ 股數 S</div>
+            <div class="formula-note">
+              <b>式子裡沒有幣價,也沒有求償權。</b>幣價怎麼波動都不影響它 ——
+              這正是為什麼公司拿它當 KPI。缺點是它看不見求償權:
+              用發優先股的錢買幣會讓它上升,但股東一顆也沒多拿到(phantom growth)。
+            </div>
+          </div>
+        </div>
+        <div class="formula">
+          <div class="formula-tag">B</div>
+          <div>
+            <div class="formula-name">CEBE(扣掉求償權後真正屬於普通股的)</div>
+            <div class="formula-eq">CEBE = ( H − C ÷ p ) ÷ S</div>
+            <div class="formula-note">
+              C 是求償權(可轉債 + 優先股清算優先權 − USD 流動性),面額固定在美元,
+              所以要<b>除以當下幣價 p</b> 才能換算成「幾顆幣」。
+              代價就是<b>幣價跑進式子裡了</b> —— 公司什麼都不做,幣價一漲 CEBE 也會上升。
+            </div>
+          </div>
+        </div>
+        <div class="formula">
+          <div class="formula-tag key">C</div>
+          <div>
+            <div class="formula-name">CEBE @ 固定幣價 — 衡量操作績效用這個</div>
+            <div class="formula-eq">CEBE<sub>固定</sub> = ( H − C ÷ p* ) ÷ S &nbsp;&nbsp;(起點與終點都代入同一個 p*)</div>
+            <div class="formula-note">
+              把 p 釘死成同一個數,幣價效果就<b>整項消失</b>,但求償權還留著。
+              兩者兼顧。數學上這與「實際值 − 反事實(結構凍結、只讓幣價走)」完全等價,
+              也就是上面那個「資本操作淨貢獻」。
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="measures"></div>
 
       <h2 style="margin:34px 0 6px">第一層:報酬來自哪裡</h2>
       <p class="lede" style="margin-bottom:16px">
@@ -169,7 +216,8 @@ export const strategyPage: PageFn = (root) => {
         每股含幣量會是 <b>${sats(r.cf)} sats</b>。
         實際是 ${sats(strategy.cebeNow)} sats,
         所以這段期間全部資本操作的淨效果是 <b>${signed(r.vsCf)} sats／股</b>
-        (${good ? "加分" : "減分"})。
+        (${good ? "加分" : "減分"})。這個數字等同於下面的度量 C
+        —— 把幣價釘死之後的 CEBE 變化。
         ${r.sold || r.bought ? `期間實際買入 ${fmtBtc(r.bought)} 顆、賣出 ${fmtBtc(r.sold)} 顆。` : ""}
       </div>`;
   }
@@ -204,6 +252,54 @@ export const strategyPage: PageFn = (root) => {
               <div class="layer-note">${LAYER_NOTE[k]}</div>
             </div>`;
         }).join("")}
+      </div>`;
+  }
+
+  /** 三個度量並排 —— 讓「選錯度量會結論相反」這件事直接看得到。 */
+  function paintMeasures(r: StrategyRow): void {
+    const bpsPct = (strategy.bpsNow / r.bps0 - 1) * 100;
+    const cebePct = (strategy.cebeNow / r.cebe0 - 1) * 100;
+    const fixedPct = (strategy.cebeNow / r.cf - 1) * 100;
+    const gap = fixedPct - bpsPct;
+    const cell = (tag: string, name: string, from: number, to: number,
+                  pct: number, note: string, key = false) => `
+      <div class="tile${key ? " key" : ""}">
+        <div class="k"><span class="formula-tag${key ? " key" : ""}">${tag}</span> ${name}</div>
+        <div class="v ${pct >= 0 ? "up" : "down"}">${pct1(pct)}</div>
+        <div class="d">${sats(from)} → ${sats(to)} sats<br>${note}</div>
+      </div>`;
+
+    el("measures").innerHTML = `
+      <div class="grid3" style="margin-bottom:14px">
+        ${cell("A", "Gross BPS", r.bps0, strategy.bpsNow, bpsPct,
+               "無幣價,但看不見求償權")}
+        ${cell("B", "CEBE", r.cebe0, strategy.cebeNow, cebePct,
+               "看得見求償權,但被幣價污染")}
+        ${cell("C", "CEBE @ 固定幣價", r.cf, strategy.cebeNow, fixedPct,
+               `同代入 ${usd0(strategy.priceNow)} —— 純操作`, true)}
+      </div>
+      <div class="note key">
+        <b>A 與 C 的差距就是去槓桿的價值。</b>
+        公司自己的 BTC Yield(A)說每股含幣量 ${pct1(bpsPct)},
+        但它看不見那些增發的錢換掉了多少求償權。
+        把幣價釘死、同時保留求償權之後(C)是 ${pct1(fixedPct)} ——
+        中間 <b>${Math.abs(gap).toFixed(1)} 個百分點</b>就是消滅求償權創造出來、
+        而 BTC Yield 這個指標結構上看不到的部分。
+        <br><br>
+        反過來,B 的 ${pct1(cebePct)} 看起來最漂亮,但那主要是幣價
+        ${pct1(r.btcRet)} 推的 —— 不該拿來當操作績效。
+      </div>
+
+      <div class="note">
+        <b>A 的拆解特別乾淨:式子裡沒有幣價,所以只有兩個驅動因子,取對數後精確可加。</b>
+        <span class="mono" style="font-size:.84rem">
+          log(BPS₁/BPS₀) = log(H₁/H₀) − log(S₁/S₀)</span>
+        <br>
+        持幣效果 <b class="${r.bpsLayers.held >= 0 ? "up" : "down"}">${
+          pct1((Math.exp(r.bpsLayers.held) - 1) * 100)}</b>、
+        股數效果 <b class="${r.bpsLayers.shares >= 0 ? "up" : "down"}">${
+          pct1((Math.exp(r.bpsLayers.shares) - 1) * 100)}</b>
+        —— 完全不需要 Shapley,因為沒有交互作用項可以分。
       </div>`;
   }
 
@@ -349,6 +445,7 @@ export const strategyPage: PageFn = (root) => {
       b.classList.toggle("active", b.dataset.preset === daily.date[idx]));
     if (!r) return;
     paintHeadline(r);
+    paintMeasures(r);
     paintLayers(r);
     paintOps(r);
     paintFactors(r);

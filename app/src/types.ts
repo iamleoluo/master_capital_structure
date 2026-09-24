@@ -121,6 +121,10 @@ export interface StrategyRow {
     raisedM: number; discountM: number; carryM: number;
     prefParM: number; prefProceedsM: number; debtM: number; residualM: number;
   };
+  /** Gross BPS(公司的 BTC Yield):公式無幣價項 */
+  bps0: number;
+  /** 兩因子對數拆解,加總 = log(BPS 比) */
+  bpsLayers: { held: number; shares: number };
   /** 資金流揭露是否完整到足以下結論(殘差 ≤ 總變化的 25%) */
   opsOk: boolean;
 }
@@ -128,6 +132,8 @@ export interface StrategyRow {
 export interface Strategy {
   end: string;
   cebeNow: number;
+  bpsNow: number;
+  priceNow: number;
   rows: (StrategyRow | null)[];
   presets: { id: string; label: string; date: string }[];
 }
