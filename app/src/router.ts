@@ -3,7 +3,20 @@
 export type Teardown = () => void;
 export type PageFn = (root: HTMLElement) => Teardown | void;
 
-export interface Route { path: string; title: string; page: () => Promise<PageFn>; }
+export interface Route {
+  path: string;
+  title: string;
+  page: () => Promise<PageFn>;
+  /** 上層分頁的 path。有值 = 這是子分頁,不出現在主導覽,
+   *  而是出現在「所屬上層分頁被選中時」的第二排導覽裡。 */
+  parent?: string;
+}
+
+/** 主導覽只放沒有 parent 的。 */
+export const topRoutes = (rs: Route[]): Route[] => rs.filter((r) => !r.parent);
+/** 某個上層分頁底下的子分頁,按宣告順序。 */
+export const subRoutes = (rs: Route[], parent: string): Route[] =>
+  rs.filter((r) => r.parent === parent);
 
 let routes: Route[] = [];
 let teardown: Teardown | null = null;
@@ -16,15 +29,38 @@ function current(): string {
 
 async function render(): Promise<void> {
   const path = current();
-  const route = routes.find((r) => r.path === path) ?? routes[0]!;
+  let route = routes.find((r) => r.path === path) ?? routes[0]!;
+
+  // 點到有子分頁的上層 path(例如導覽列那顆),自動落到第一個子分頁
+  const kids = subRoutes(routes, route.path);
+  if (kids.length) route = kids[0]!;
+
+  // 主導覽要高亮的是「上層」,子分頁也算在它的上層底下
+  const top = route.parent ?? route.path;
 
   if (teardown) { teardown(); teardown = null; }
   mount.innerHTML = "";
 
   document.querySelectorAll<HTMLAnchorElement>(".nav a").forEach((a) => {
-    a.classList.toggle("active", a.getAttribute("href") === "#" + route.path);
+    a.classList.toggle("active", a.getAttribute("href") === "#" + top);
   });
-  document.title = `${route.title} · MSTR 資本結構解剖`;
+
+  // 第二排導覽:只在所屬上層分頁有子分頁時出現
+  const bar = document.querySelector<HTMLElement>("#subnav");
+  if (bar) {
+    const subs = subRoutes(routes, top);
+    bar.innerHTML = subs.length
+      ? `<div class="wrap"><div class="subnav-inner">${subs.map((r) =>
+          `<a href="#${r.path}" class="${r.path === route.path ? "active" : ""}"`
+          + `>${r.title}</a>`).join("")}</div></div>`
+      : "";
+    bar.hidden = !subs.length;
+  }
+
+  const parentTitle = routes.find((r) => r.path === top)?.title;
+  document.title = (parentTitle && parentTitle !== route.title
+    ? `${route.title} · ${parentTitle}` : route.title)
+    + " · MSTR 資本結構解剖";
 
   let page: PageFn;
   try {

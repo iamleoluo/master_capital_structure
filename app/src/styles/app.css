@@ -297,6 +297,30 @@ table.era-metrics td.chg.flat{color:var(--ink-3)}
 .split-cell.good .v{color:var(--good)}
 .split-cell.bad .v{color:var(--bad)}
 .split-cell .d{font-size:.72rem;color:var(--ink-3);margin-top:5px;line-height:1.55}
+/* 第二排導覽(子分頁)。只在上層分頁有子分頁時出現。 */
+.subnav{border-bottom:1px solid var(--line);background:var(--surface);
+  position:sticky;top:var(--topbar-h,52px);z-index:8}
+.subnav-inner{display:flex;gap:4px;overflow-x:auto;padding:7px 0}
+.subnav a{font-size:.82rem;color:var(--ink-2);text-decoration:none;
+  padding:5px 12px;border-radius:4px;white-space:nowrap}
+.subnav a:hover{background:var(--surface-2);color:var(--ink)}
+.subnav a.active{background:var(--surface-2);color:var(--ink);font-weight:600;
+  box-shadow:inset 0 -2px 0 var(--equity)}
+
+/* 組合操作 */
+.combos{display:flex;flex-direction:column;gap:14px;margin:0 0 16px}
+.combo{background:var(--surface);border:1px solid var(--line);
+  border-left:3px solid var(--equity);border-radius:4px;padding:18px 20px}
+.combo-head{display:flex;align-items:center;gap:10px;font-size:1rem;
+  margin-bottom:8px}
+.combo-n{flex:0 0 auto;width:22px;height:22px;border-radius:50%;
+  display:inline-flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:.72rem;font-weight:600;
+  background:var(--equity);color:var(--paper)}
+.combo-lead{font-size:.86rem;color:var(--ink-2);line-height:1.7;margin:0 0 12px}
+.combo .katex-display{margin:0;overflow-x:auto;overflow-y:hidden;
+  padding:10px 0 12px}
+
 /* B vs E 對照表 */
 table.ruler td.n{font-variant-numeric:tabular-nums;white-space:nowrap}
 table.ruler td.n.up{color:var(--good)}

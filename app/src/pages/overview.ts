@@ -59,13 +59,13 @@ export const overviewPage: PageFn = (root) => {
         <div>
           <h3 style="margin-bottom:8px">接下來看什麼</h3>
           <p style="font-size:.9rem;color:var(--ink-2);margin-bottom:10px">
-            <a href="#/accumulation">持幣與融資</a> ——
+            <a href="#/structure/holdings">持幣與融資</a> ——
             它到底買了多少幣、每一批是拿哪個 ATM 的錢買的,逐週原始資料。</p>
           <p style="font-size:.9rem;color:var(--ink-2);margin-bottom:10px">
             <a href="#/chronicle">大事記</a> ——
             公司在不同階段用的是完全不同的資本工具,對股東的後果也完全相反。</p>
           <p style="font-size:.9rem;color:var(--ink-2);margin-bottom:10px">
-            <a href="#/structure">資本結構</a> ——
+            <a href="#/structure/model">資本結構</a> ——
             誰排在誰前面、CEBE 怎麼算,以及公司能動用哪些工具去改變它。</p>
           <p style="font-size:.9rem;color:var(--ink-2);margin:0">
             <a href="#/pricing">槓桿與定價</a> ——

@@ -8,9 +8,8 @@
  *  其他頁需要時以超連結指回來,不重述。 */
 import { chronicle, daily, meta, N } from "../data";
 import { explorer } from "../components/explorer";
-import { toolkitAlgebra, toolkitTable } from "../components/toolkit";
 import { bn, pct } from "../lib/format";
-import { eqCard, tex, texAlign, texBlock } from "../lib/math";
+import { eqCard, tex, texBlock } from "../lib/math";
 import type { PageFn } from "../router";
 
 /** 符號表的一列。 */
@@ -132,35 +131,6 @@ export const structurePage: PageFn = (root) => {
          普通股不用多買一顆,${tex("E")} 就會自己往 ${tex("B")} 靠 —— 這就是槓桿。
          反過來幣價跌的時候,它也會把跌幅放大。`)}
 
-      <h2 style="margin-bottom:8px">怎麼把「決策」跟「行情」分開</h2>
-      <p class="lede" style="margin-bottom:16px">
-        ${tex("E")} 的式子裡有 ${tex("p")},所以它的變化混了兩件事:公司做了什麼、
-        以及幣價自己走了多少。<a href="#/strategy">績效歸因</a>頁用<b>逐日鏈結</b>把兩者拆開。
-        先把結構的三個量寫成一個向量,${tex("E")} 就是結構與幣價的函數:
-      </p>
-      ${eqCard(texBlock(
-        "E(x,\\,p) = \\frac{\\,H - C/p\\,}{S}\\times 10^{8}"
-        + ",\\qquad x = (H,\\,C,\\,S)"))}
-      <p class="lede" style="margin-bottom:16px">
-        接著沿時間一天一天走。第 ${tex("t")} 天拆成兩步:先凍結結構只讓幣價動,
-        再讓結構動、並用<b>當天的</b>幣價評價。
-      </p>
-      ${eqCard(texAlign([
-        "\\Delta_{t}^{\\text{行情}} &= E(x_{t-1},\\,p_{t}) - E(x_{t-1},\\,p_{t-1})",
-        "\\Delta_{t}^{\\text{決策}} &= E(x_{t},\\,p_{t}) - E(x_{t-1},\\,p_{t})",
-      ]), `第二步是關鍵:每個決策只用它<b>發生當下</b>能知道的幣價評價,
-           所以不含後見之明 —— 否則「在行情上漲前增發」會永遠被判成減分,
-           因為賣出去的股票事後看都賣便宜了。`)}
-      <p class="lede" style="margin-bottom:16px">
-        兩步相加剛好是當天的實現變化,所以逐日加總會<b>完全消去中間項</b>,不留殘差:
-      </p>
-      ${eqCard(texAlign([
-        "\\sum_{t=1}^{T}\\left(\\Delta_{t}^{\\text{行情}} + \\Delta_{t}^{\\text{決策}}\\right)"
-        + " &= \\sum_{t=1}^{T}\\left(E(x_{t},\\,p_{t}) - E(x_{t-1},\\,p_{t-1})\\right)",
-        "&= E_{T} - E_{0}",
-      ]), `「行情」與「決策」兩個數字相加<b>精確等於</b>期間的實現變化,
-           這是恆等式而不是近似 —— 不需要決定誰先算,也沒有分配殘差的問題。`)}
-
       <h2 style="margin-bottom:8px">股價的恆等式</h2>
       <p class="lede" style="margin-bottom:16px">
         股價可以精確寫成三個因子相乘,沒有剩下的部分:
@@ -177,50 +147,12 @@ export const structurePage: PageFn = (root) => {
         `中間那一項就是上面拆成「決策 + 行情」的對象。
          拆解結果見<a href="#/strategy">績效歸因</a>。`)}
 
-      <h2 style="margin-bottom:8px">公司能動用的工具</h2>
-      <p class="lede" style="margin-bottom:16px">
-        改變這個結構的方法是有限且可列舉的。每一項對求償權、股數、持幣的作用不同,
-        對 ${tex("E")} 的淨效果也不同 —— <b>真正會讓 ${tex("E")} 上升的只有右邊標成加分的那幾項</b>。
-        公司在不同時期用的是不同組合,那就是<a href="#/chronicle">大事記</a>在記錄的事。
-      </p>
-      ${toolkitTable()}
-
-      <h3 style="margin:32px 0 6px">每一把工具的代數</h3>
-      <p class="lede" style="margin-bottom:16px">
-        上表的箭頭只說了方向,代數才說得出「在什麼條件下」。以下用 ${tex("c")} 表示
-        這筆操作動用的美元、${tex("F")} 標的面額、${tex("n")} 股數變動、
-        ${tex("P")} 每股成交價、${tex("x")} 幣的顆數。
-        <b>兩欄請橫著讀</b>:同一個動作對兩個指標的效果常常是相反的,
-        那個相反就是 phantom growth 的全部內容。
-      </p>
-      ${toolkitAlgebra()}
-
-      <div class="eq-card" style="border-left:3px solid var(--equity)">
-        <p class="eq-note" style="border-top:0;padding-top:0;margin:0 0 14px">
-          <b>普通股 ATM 增發比較繞,值得單獨推一次。</b>
-          以每股 ${tex("P")} 發出 ${tex("n")} 股、募到的 ${tex("nP")} 全部拿去抵求償權,
-          「增發後的每股含幣量要比增發前高」這個條件可以一路化簡:
-        </p>
-        ${texAlign([
-          "\\frac{\\,H - (C - nP)/p\\,}{S + n} &> \\frac{\\,H - C/p\\,}{S}",
-          "\\iff\\quad \\frac{P}{p}\\times 10^{8} &> E",
-          "\\iff\\quad m &> 1",
-        ])}
-        <p class="eq-note">
-          三行是等價的。第二行的意思是<b>發行價換算成幣,要比當下的每股含幣量多</b>;
-          把股價恆等式代進去,它就化簡成第三行 ——
-          <b>增發是否增值,完全等於 mNAV 是否大於 1</b>,跟募到多少、發了幾股都無關。
-          可轉債轉股是同一個條件,只是把 ${tex("P")} 換成轉換價。
-          <br><br>
-          推導有一個前提:${tex("E > 0")}。當求償權大到把普通股吃光時不等式會反向 ——
-          那正是<a href="#/chronicle">大事記</a>裡「壓力測試」那一段在講的處境。
-        </p>
-      </div>
-
-      <div class="note key" style="margin:26px 0 30px">
-        <b>目前在哪一段?</b>
-        <a href="#/chronicle">${latest ? latest.title : "—"}</a>
-        ${latest ? `—— ${latest.subtitle}。${latest.ongoing ? "進行中" : ""}` : ""}
+      <div class="note key" style="margin:26px 0 32px">
+        <b>公司能對這個結構做什麼?</b>
+        改變它的方法有限且可窮舉,每一個動作都有明確的代數 ——
+        七把工具、三個實際在跑的組合,全部在
+        <a href="#/operations">資本操作</a>頁。
+        現在走到哪一段則見<a href="#/chronicle">${latest ? latest.title : "大事記"}</a>。
       </div>
 
       <h2 style="margin-bottom:12px">從圖上讀出來</h2>
@@ -243,7 +175,7 @@ export const structurePage: PageFn = (root) => {
           <p style="font-size:.9rem;color:var(--ink-2);margin:0">
             用發優先股募到的錢買幣,${tex("H")} 上升,${tex("B")} 也跟著上升,
             看起來像在替股東累積比特幣。但同一筆交易等量增加了 ${tex("C")},
-            扣掉之後普通股一顆都沒多拿到 —— 就是上面「用現金買幣」那一行算出來的零。
+            扣掉之後普通股一顆都沒多拿到 —— 代數上這筆操作的淨效果<b>恰好是零</b>(推導見<a href="#/operations">資本操作</a>)。
             真正會讓 ${tex("E")} 上升的只有三種:mNAV 大於 1 時增發普通股、
             以折價回購優先股或可轉債、或可轉債轉股讓求償權直接消失。</p>
         </div>

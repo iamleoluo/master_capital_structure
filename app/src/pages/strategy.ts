@@ -83,7 +83,7 @@ export const strategyPage: PageFn = (root) => {
           選一個起點,看到今天為止股東拿到的報酬怎麼分層:哪些來自比特幣本身、
           哪些來自求償權被幣價縮放、哪些來自市場情緒,
           以及<b>哪些真的是公司做出來的</b>。
-          拆法見<a href="#/structure">資本結構</a>頁的定義區。</p>
+          拆法見<a href="#/operations">資本操作</a>頁「怎麼判斷做得好不好」。</p>
       </div>
 
       <div class="card" style="margin-bottom:24px">
@@ -108,7 +108,7 @@ export const strategyPage: PageFn = (root) => {
         但中間那個 ${tex("E")} 同時裝了兩件完全不同的事:<b>公司做的操作</b>,
         以及<b>求償權被幣價縮放</b>。所以這裡再用逐日鏈結把它切開,一共四層 ——
         <b>只有「公司決策」那一層是公司控制得了的</b>。
-        兩道拆解的推導都見<a href="#/structure">資本結構</a>頁。
+        恆等式見<a href="#/structure/model">資本結構</a>,逐日鏈結見<a href="#/operations">資本操作</a>。
       </p>
       <div id="layers"></div>
 
@@ -121,7 +121,7 @@ export const strategyPage: PageFn = (root) => {
         例如「用現金買幣」恆等於
         ${tex("\\Delta\\!\\left(H - C/p\\right) = c/p - c/p = 0")},
         而 ATM 增發是否加分完全取決於 ${tex("m > 1")}。
-        完整推導見<a href="#/structure">資本結構</a>頁,下面按操作拆。
+        完整推導見<a href="#/operations">資本操作</a>頁,下面按操作拆。
       </p>
       <div id="ops"></div>
 
@@ -324,7 +324,7 @@ export const strategyPage: PageFn = (root) => {
         ${signed(r.bpsOps.shares)} sats,而募到的錢拿去回收求償權 ——
         那筆好處<b>完全落在 E 這欄,B 一分也認不到</b>。
         所以同一段期間,公司自己的 KPI 難看,股東實際拿到的卻變多。
-        每一把工具的代數見<a href="#/structure">資本結構</a>頁。
+        每一把工具的代數見<a href="#/operations">資本操作</a>頁。
       </div>
 
       <div class="note key" style="margin-top:18px">

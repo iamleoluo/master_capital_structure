@@ -85,7 +85,7 @@ export const pricingPage: PageFn = (root) => {
       <h2 style="margin-bottom:8px">槓桿是怎麼跑出來的</h2>
       <p class="lede" style="margin-bottom:16px">
         上面那條曲線不是模型擬合,是代數推出來的。符號沿用
-        <a href="#/structure">資本結構</a>頁:${tex("H")} 總持幣、${tex("C")} 求償權、
+        <a href="#/structure/model">資本結構</a>頁:${tex("H")} 總持幣、${tex("C")} 求償權、
         ${tex("p")} 幣價、${tex("E")} 實得每股含幣量。先看曲線跟橫軸的交點 ——
         普通股殘值歸零的價格:
       </p>
