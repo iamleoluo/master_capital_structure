@@ -204,22 +204,49 @@ export const strategyPage: PageFn = (root) => {
         <div class="tile"><div class="k">每股含幣量</div>
           <div class="v">${sats(r.cebe0)} → ${sats(strategy.cebeNow)}</div>
           <div class="d">sats,扣掉求償權後真正屬於股東的</div></div>
-        <div class="tile" style="border-left:3px solid ${good ? "var(--good)" : "var(--bad)"}">
-          <div class="k">資本操作淨貢獻</div>
-          <div class="v" style="color:${good ? "var(--good)" : "var(--bad)"}">${signed(r.vsCf)}</div>
-          <div class="d">sats／股,實際 ${sats(strategy.cebeNow)} − 反事實 ${sats(r.cf)}</div></div>
+        <div class="tile">
+          <div class="k">Gross BPS(公司的 BTC Yield)</div>
+          <div class="v ${strategy.bpsNow >= r.bps0 ? "up" : "down"}">${
+            pct1((strategy.bpsNow / r.bps0 - 1) * 100)}</div>
+          <div class="d">${sats(r.bps0)} → ${sats(strategy.bpsNow)} sats。看不見求償權</div></div>
+      </div>
+
+      <div class="split-row">
+        <div class="split-cell ${r.split.decision >= 0 ? "good" : "bad"}">
+          <div class="k">決策貢獻(無後見之明)</div>
+          <div class="v">${signed(r.split.decision)}</div>
+          <div class="d">sats／股</div></div>
+        <div class="split-cell muted">
+          <div class="k">行情貢獻</div>
+          <div class="v">${signed(r.split.market)}</div>
+          <div class="d">sats／股。公司無從控制</div></div>
+        <div class="split-cell">
+          <div class="k">合計 = 實現變化</div>
+          <div class="v">${signed(r.split.market + r.split.decision)}</div>
+          <div class="d">sats／股</div></div>
       </div>
 
       <div class="note key">
-        <b>反事實就是「度量 C 的起點值」,不是另一個概念。</b>
+        <b>決策與行情怎麼分開的:逐日走,每天拆兩半。</b>
+        先讓當天的幣價動、結構凍結(那是<b>行情</b>),再讓當天的結構動、
+        用<b>當天的</b>幣價評價(那是<b>決策</b>)。逐日加總,兩者相加精確等於實現變化,
+        而且每個決策只用它<b>發生當下</b>能知道的價格評價 —— 不含後見之明。
+      </div>
+
+      <div class="note">
+        <b>反事實(度量 C)是另一種切法,內含後見之明,擺在這裡對照。</b>
         把期初的持幣、求償權、股數原封不動代進去,但幣價用<b>今天的</b> ——
         也就是「公司從 ${daily.date[idx]} 起什麼都不做,只有行情在走」的世界。
         <div class="formula-eq" style="margin:10px 0">
           反事實 = ( H₀ − C₀ ÷ p₁ ) ÷ S₀ = ${sats(r.cf)} sats<br>
           實際　 = ( H₁ − C₁ ÷ p₁ ) ÷ S₁ = ${sats(strategy.cebeNow)} sats
         </div>
-        兩邊的幣價都是 p₁,所以相減時<b>幣價效果整項消掉</b>,
-        剩下的純粹是持幣 H、求償權 C、股數 S 的變化 —— 也就是公司做的事。
+        兩邊的幣價都是 p₁,所以相減時幣價效果整項消掉。
+        但代價是它用<b>今天的</b>價格回頭評價所有過去的決策 ——
+        「在行情上漲前增發」用這個口徑永遠會被判成減分,因為賣出去的股票
+        事後看都賣便宜了。想知道「決策當下對不對」,要看上面的決策貢獻
+        (${signed(r.split.decision)});這裡的 ${signed(r.vsCf)} 回答的是
+        「用今天的價格回頭看划不划算」。
         實際是 ${sats(strategy.cebeNow)} sats,
         所以這段期間全部資本操作的淨效果是 <b>${signed(r.vsCf)} sats／股</b>
         (${good ? "加分" : "減分"})。這個數字等同於下面的度量 C

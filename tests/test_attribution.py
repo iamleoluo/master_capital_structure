@@ -175,3 +175,63 @@ def test_atm_above_nav_is_accretive_below_is_dilutive():
         parts = A.shapley_operations(
             base, {"atm": {"dclaims": -raised, "dshares": shares}})
         assert parts["atm"] * sign > 0, f"發行價 {mult}× 淨值時方向錯了"
+
+
+# ---------------------------------------------------------------------------
+# 逐日鏈結(決策 vs 行情)
+# ---------------------------------------------------------------------------
+
+def _path(*tuples):
+    return [{"held": h, "claims": c, "price": p, "shares": s}
+            for h, c, p, s in tuples]
+
+
+def test_chain_linked_sums_exactly():
+    path = _path((846_682, 20.0e9, 60_260, 371.2e6),
+                 (846_682, 19.0e9, 70_000, 390.0e6),
+                 (846_000, 14.8e9, 86_404, 415.9e6))
+    r = A.chain_linked(path)
+    assert r["market"] + r["decision"] == pytest.approx(r["total"], abs=1e-6)
+
+
+def test_chain_linked_pure_price_path_is_all_market():
+    """結構完全沒動,只有幣價在走 —— 決策貢獻必須是零。"""
+    path = _path((846_000, 15.0e9, 60_000, 400e6),
+                 (846_000, 15.0e9, 75_000, 400e6),
+                 (846_000, 15.0e9, 90_000, 400e6))
+    r = A.chain_linked(path)
+    assert r["decision"] == pytest.approx(0.0, abs=1e-9)
+    assert r["market"] == pytest.approx(r["total"], abs=1e-9)
+
+
+def test_chain_linked_pure_structure_path_is_all_decision():
+    """幣價完全沒動 —— 行情貢獻必須是零。"""
+    path = _path((846_000, 20.0e9, 80_000, 400e6),
+                 (846_000, 17.0e9, 80_000, 405e6),
+                 (846_000, 15.0e9, 80_000, 410e6))
+    r = A.chain_linked(path)
+    assert r["market"] == pytest.approx(0.0, abs=1e-9)
+    assert r["decision"] == pytest.approx(r["total"], abs=1e-9)
+
+
+def test_chain_linked_removes_hindsight_that_fixed_price_embeds():
+    """核心差異:增發之後幣價大漲時,固定期末幣價會把決策打成負的,鏈結不會。
+
+    同一條路徑:先在低價增發(當下高於淨值,是加分),之後幣價翻倍。
+    度量 C 用期末高價回頭看,會判定增發稀釋;鏈結用增發當下的價格評價,不會。
+    """
+    p0, p1 = 60_000.0, 120_000.0
+    start = {"held": 800_000.0, "claims": 20e9, "price": p0, "shares": 400e6}
+    nav0 = A.cebe_of(start) / 1e8 * p0
+    new_shares = 40e6
+    raised = new_shares * nav0 * 1.5           # 以 1.5 倍淨值發行,當下明顯加分
+    mid = {"held": start["held"], "claims": start["claims"] - raised,
+           "price": p0, "shares": start["shares"] + new_shares}
+    end = dict(mid, price=p1)
+
+    chained = A.chain_linked([start, mid, end])
+    fixed = A.cebe_of(end) - A.cebe_sats(
+        start["held"], start["claims"], p1, start["shares"])
+
+    assert chained["decision"] > 0, "當下高於淨值的增發,鏈結口徑應判為加分"
+    assert fixed < chained["decision"], "固定期末幣價應該比鏈結更不利於增發"

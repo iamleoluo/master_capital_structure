@@ -193,6 +193,42 @@ def _era_window(daily: dict, era) -> tuple:
     return lo, hi, start, end
 
 
+def _chain_increments(daily: dict) -> tuple:
+    """逐日的(行情增量, 決策增量)。前綴和之後,任意區間都是 O(1) 查詢。
+
+    每一天先讓幣價走(結構凍結)= 行情,再讓結構走(用當天幣價評價)= 決策。
+    決策只用它當下能知道的價格評價,所以不含後見之明 ——
+    這是與「兩端同代入期末幣價」最關鍵的差別。
+    """
+    from mstr_cebe import attribution as A      # noqa: E402
+
+    n = len(daily["date"])
+    mkt = [0.0] * n
+    dec = [0.0] * n
+    for t in range(1, n):
+        h0 = daily["held"][t - 1]
+        c0 = (daily["debt"][t - 1] + daily["pref_total"][t - 1]
+              - daily["cash"][t - 1]) * 1e9
+        s0 = daily["shares"][t - 1] * 1e6
+        p0 = daily["btc"][t - 1]
+        h1 = daily["held"][t]
+        c1 = (daily["debt"][t] + daily["pref_total"][t]
+              - daily["cash"][t]) * 1e9
+        s1 = daily["shares"][t] * 1e6
+        p1 = daily["btc"][t]
+        before = A.cebe_sats(h0, c0, p0, s0)
+        moved = A.cebe_sats(h0, c0, p1, s0)     # 只有幣價動
+        after = A.cebe_sats(h1, c1, p1, s1)     # 結構再動,用今天的 p1
+        mkt[t] = moved - before
+        dec[t] = after - moved
+    # 前綴和:區間 (lo, hi] 的貢獻 = pre[hi] - pre[lo]
+    pm, pd = [0.0] * n, [0.0] * n
+    for t in range(1, n):
+        pm[t] = pm[t - 1] + mkt[t]
+        pd[t] = pd[t - 1] + dec[t]
+    return pm, pd
+
+
 def build_chronicle(daily: dict, weekly: list) -> list:
     from mstr_cebe import chronicle as CH      # noqa: E402
 
@@ -201,6 +237,7 @@ def build_chronicle(daily: dict, weekly: list) -> list:
            if os.path.exists(os.path.join(RAW, "repurchase_weekly.json")) else [])
     pref_px = _load_raw("preferred_prices.json")
 
+    pm, pd = _chain_increments(daily)
     claims = [round(daily["debt"][i] + daily["pref_total"][i] - daily["cash"][i], 4)
               for i in range(len(daily["date"]))]
     cebe = [round(daily["common_btc"][i] / (daily["shares"][i] * 1e6) * 1e8, 1)
@@ -272,7 +309,7 @@ def build_chronicle(daily: dict, weekly: list) -> list:
                 "pref": _pair(daily["pref_total"], lo, hi, 2),
                 "shares": _pair(daily["shares"], lo, hi, 1),
                 "cebe": _pair(cebe, lo, hi),
-                # 純操作口徑(度量 C)—— 評價公司作為要看這個,不是上面那個
+                # 純操作口徑(度量 C)—— 用期末幣價回頭重估,內含後見之明
                 "cebeFixed": {"from": fixed[0], "to": fixed[1],
                               "pct": round((fixed[1] / fixed[0] - 1) * 100, 1)
                               if fixed[0] else None},
@@ -285,6 +322,10 @@ def build_chronicle(daily: dict, weekly: list) -> list:
                                "lowDate": min(strc, key=lambda x: x[1])[0]}
                               if len(strc) > 1 else None),
             },
+            # 逐日鏈結:決策用「當下幣價」評價,不含後見之明。
+            # 評價公司作為應該看這個,cebeFixed 只拿來對照。
+            "split": {"market": round(pm[hi] - pm[lo]),
+                      "decision": round(pd[hi] - pd[lo])},
             "flows": {
                 "prefRaisedM": round(pref_raised, 1),
                 "commonRaisedM": round(common_raised, 1),
@@ -342,6 +383,7 @@ def build_strategy(daily: dict, weekly: list, chronicle: list) -> dict:
 
     end_st = st(end)
     end_cebe = A.cebe_of(end_st)
+    pm, pd = _chain_increments(daily)
 
     atm = _load_raw("atm_weekly.json")
     rep = (_load_raw("repurchase_weekly.json")
@@ -437,6 +479,8 @@ def build_strategy(daily: dict, weekly: list, chronicle: list) -> dict:
             "ops": {k: round(v) for k, v in op_parts.items()},
             "opMeta": {k: round(v) for k, v in opMeta.items()},
             # Gross BPS(公司的 BTC Yield):公式裡沒有幣價,天生不受幣價污染
+            "split": {"market": round(pm[end] - pm[i]),
+                      "decision": round(pd[end] - pd[i])},
             "bps0": round(daily["bps"][i], 1),
             "bpsLayers": {k: round(v, 4) for k, v in A.gross_bps_layers(
                 daily["held"][i], daily["shares"][i],
@@ -485,8 +529,12 @@ def build_program(daily: dict, weekly: list) -> dict:
     cf1 = A.cebe_at_fixed_price(daily["held"][hi], claims[hi] * 1e9,
                                 daily["shares"][hi] * 1e6, daily["btc"][hi])
 
+    pm, pd = _chain_increments(daily)
+
     return {
         "lede": CH.PROGRAM.lede,
+        "split": {"market": round(pm[hi] - pm[lo]),
+                  "decision": round(pd[hi] - pd[lo])},
         "principles": [{"t": t, "b": b} for t, b in CH.PROGRAM.principles],
         "span": [daily["date"][lo], daily["date"][hi]],
         "metrics": {

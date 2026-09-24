@@ -250,3 +250,41 @@ def cebe_at_fixed_price(held: float, claims_usd: float, shares: float,
     數學上這與「實際值 − 反事實(結構凍結、只讓幣價走)」完全相同。
     """
     return cebe_sats(held, claims_usd, price, shares)
+
+
+# ---------------------------------------------------------------------------
+# 逐日鏈結 —— 分離「決策」與「行情」,而且不含後見之明
+#
+# 度量 C(兩端同代入期末幣價)有一個嚴重的性質:它用<b>今天的價格</b>去評價
+# 所有過去的決策。所以「在行情上漲前增發」用 C 看永遠是減分 —— 賣出去的股票
+# 事後看都賣便宜了。實測「折價回收」期用 C 看是 −3,585 sats,但那不是因為
+# 決策做錯,是因為增發之後幣價又漲了 43%。
+#
+# 正確的做法是沿著時間逐日走,每一天拆成兩半:
+#     行情:結構凍結,只讓當天的幣價動
+#     決策:再讓當天的結構動,<b>用當天的幣價評價</b>
+# 兩者逐日加總,精確等於總變化,而且每個決策只用它當下能知道的價格來評價。
+#
+# 這也是 time-weighted return 的標準做法:把外部市場變動與內部作為分開,
+# 各自鏈結,不讓其中一方的時點去污染另一方。
+# ---------------------------------------------------------------------------
+
+def chain_linked(states: Sequence[Dict[str, float]]) -> Dict[str, float]:
+    """逐日鏈結拆解。states 是依時間排序的 {held, claims, price, shares}。
+
+    回傳 {"market": 行情貢獻, "decision": 決策貢獻, "total": 總變化},
+    market + decision 精確等於 total。
+    """
+    if len(states) < 2:
+        return {"market": 0.0, "decision": 0.0, "total": 0.0}
+
+    market = decision = 0.0
+    for prev, cur in zip(states, states[1:]):
+        before = cebe_of(prev)
+        # 只讓幣價走到今天,結構還是昨天的
+        moved = cebe_sats(prev["held"], prev["claims"], cur["price"], prev["shares"])
+        after = cebe_of(cur)
+        market += moved - before
+        decision += after - moved
+    return {"market": market, "decision": decision,
+            "total": cebe_of(states[-1]) - cebe_of(states[0])}

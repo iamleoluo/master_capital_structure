@@ -41,16 +41,41 @@ function row(label: string, d: Delta | null, fmt: (v: number) => string,
 }
 
 function metricsTable(e: Era): string {
+  const sats = (v: number) => Math.round(v).toLocaleString("en-US");
+  const sp = e.split;
+  const tot = sp.market + sp.decision;
+  const signed = (v: number) => (v >= 0 ? "+" : "") + sats(v);
+  return `
+    <div class="split-row">
+      <div class="split-cell ${sp.decision >= 0 ? "good" : "bad"}">
+        <div class="k">決策貢獻</div>
+        <div class="v">${signed(sp.decision)}</div>
+        <div class="d">sats／股。每筆操作用<b>當下</b>幣價評價,不含後見之明</div>
+      </div>
+      <div class="split-cell muted">
+        <div class="k">行情貢獻</div>
+        <div class="v">${signed(sp.market)}</div>
+        <div class="d">sats／股。幣價讓固定美元的求償權漲縮,公司無從控制</div>
+      </div>
+      <div class="split-cell">
+        <div class="k">合計 = 實現變化</div>
+        <div class="v">${signed(tot)}</div>
+        <div class="d">sats／股</div>
+      </div>
+    </div>`;
+}
+
+function metricsTableRows(e: Era): string {
   const m = e.metrics;
   const sats = (v: number) => Math.round(v).toLocaleString("en-US");
   return `
     <div class="table-wrap"><table class="era-metrics">
       <thead><tr><th>指標</th><th>期初</th><th></th><th>期末</th><th>變化</th></tr></thead>
       <tbody>
-        ${row("純操作(CEBE @ 固定幣價)", m.cebeFixed, sats,
-          "兩端同代入期末幣價 —— 評價公司作為要看這一列")}
         ${row("實現的 CEBE 每股", m.cebe, sats,
-          "混了幣價效果,不能單獨拿來評價操作")}
+          "決策 + 行情的合計結果")}
+        ${row("CEBE @ 固定幣價", m.cebeFixed, sats,
+          "用期末幣價回頭重估 —— 內含後見之明,僅供對照")}
         ${row("帳面每股(basic 股數)", m.grossBps, sats, "不扣求償權")}
         ${row("淨求償權", m.claims, (v) => `$${v.toFixed(2)}B`,
           "可轉債 + 優先股 − 現金。減少對普通股是好事", "downGood")}
@@ -123,6 +148,7 @@ const CHART_CAPTION: Record<string, string> = {
 function programPanel(): string {
   const p = meta.program;
   const m = p.metrics;
+  const signed = (v: number) => (v >= 0 ? "+" : "") + Math.round(v).toLocaleString("en-US");
   const cell = (label: string, d: Delta, fmt: (v: number) => string,
                 pol: Polarity = "upGood") => `
     <div class="tile">
@@ -142,13 +168,13 @@ function programPanel(): string {
         ${cell("淨求償權", m.claims, (v) => `$${v.toFixed(2)}B`, "neutral")}
       </div>
       <p class="program-key">
-        兩年多下來,<b>純操作讓普通股每股分到的比特幣成長 ${sign(m.cebeFixed.pct)},
-        比同期 BTC 本身的 ${sign(m.btcPrice.pct)} 還高</b>。
-        這裡用的是「兩端同代入期末幣價」的口徑,<b>幣價效果已經被消掉</b> ——
-        所以這個結論不能用「那只是幣價漲」來打掉。
-        實現值是 ${sign(m.cebe.pct)}(含幣價貢獻)。
-        任何單一階段都只是這台機器的某一個轉速,
-        各階段的純操作成績見下方每一則的第一列。
+        兩年多下來每股含幣量的變化,拆成決策與行情兩半之後:
+        <b>決策貢獻 ${signed(p.split.decision)} sats,行情貢獻只有
+        ${signed(p.split.market)} sats</b>。
+        也就是說這段期間每股含幣量的成長<b>幾乎全部來自公司的作為</b>,
+        比特幣自己的漲跌在兩年尺度上互相抵銷掉了。
+        任何單一階段都只是這台機器的某一個轉速 ——
+        各階段的決策成績見下方每一則的第一排。
       </p>
       <p class="lede" style="margin:0">${p.lede}</p>
       <div class="grid2" style="margin-top:18px">
@@ -205,6 +231,7 @@ export const chroniclePage: PageFn = (root) => {
           </div>
 
           ${metricsTable(e)}
+          ${metricsTableRows(e)}
           ${flowsLine(e)}
           ${authorityLine(e)}
 

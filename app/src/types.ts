@@ -90,6 +90,8 @@ export interface Era {
     grossBps: Delta; mnavCebe: Delta; mstrPrice: Delta;
     strcPrice: (Delta & { low: number; lowDate: string }) | null;
   };
+  /** 逐日鏈結:決策用當下幣價評價,不含後見之明。兩項加總 = 實現的 ΔCEBE */
+  split: { market: number; decision: number };
   flows: {
     prefRaisedM: number; commonRaisedM: number;
     prefRepurchasedShares: number; prefRepurchasedM: number;
@@ -124,6 +126,8 @@ export interface StrategyRow {
     raisedM: number; discountM: number; carryM: number;
     prefParM: number; prefProceedsM: number; debtM: number; residualM: number;
   };
+  /** 逐日鏈結:行情 vs 決策(決策用當下幣價評價,無後見之明) */
+  split: { market: number; decision: number };
   /** Gross BPS(公司的 BTC Yield):公式無幣價項 */
   bps0: number;
   /** 兩因子對數拆解,加總 = log(BPS 比) */
@@ -148,6 +152,8 @@ export interface Meta {
   /** 大事記最上面的整體框架:長期論述 + 全期數字 */
   program: {
     lede: string;
+    /** 全期的決策 vs 行情 */
+    split: { market: number; decision: number };
     principles: { t: string; b: string }[];
     span: [string, string];
     metrics: {

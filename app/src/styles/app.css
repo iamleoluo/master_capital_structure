@@ -283,3 +283,18 @@ table.era-metrics td.chg.flat{color:var(--ink-3)}
 .tile .v.up{color:var(--good)}
 .tile .v.down{color:var(--bad)}
 .tile .k .formula-tag{width:18px;height:18px;font-size:.64rem;margin-right:3px}
+
+/* 決策 vs 行情 */
+.split-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+  gap:12px;margin:0 0 18px}
+.split-cell{background:var(--surface);border:1px solid var(--line);
+  border-left:3px solid var(--line-2);border-radius:4px;padding:13px 15px}
+.split-cell.good{border-left-color:var(--good)}
+.split-cell.bad{border-left-color:var(--bad)}
+.split-cell.muted{border-left-color:var(--ink-3)}
+.split-cell .k{font-size:.74rem;color:var(--ink-3);margin-bottom:5px}
+.split-cell .v{font-family:var(--mono);font-size:1.35rem;
+  font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.split-cell.good .v{color:var(--good)}
+.split-cell.bad .v{color:var(--bad)}
+.split-cell .d{font-size:.72rem;color:var(--ink-3);margin-top:5px;line-height:1.55}
