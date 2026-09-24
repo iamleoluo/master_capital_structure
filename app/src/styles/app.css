@@ -297,6 +297,9 @@ table.era-metrics td.chg.flat{color:var(--ink-3)}
 .split-cell.good .v{color:var(--good)}
 .split-cell.bad .v{color:var(--bad)}
 .split-cell .d{font-size:.72rem;color:var(--ink-3);margin-top:5px;line-height:1.55}
+.era-sats-note{font-size:.84rem;color:var(--ink-2);line-height:1.7;
+  margin:14px 0 0;padding-left:14px;border-left:2px solid var(--line-2)}
+.layer-share{white-space:nowrap}
 .formula-alias{font-family:var(--mono);font-size:.72rem;color:var(--ink-3);
   font-weight:400;margin-left:8px}
 

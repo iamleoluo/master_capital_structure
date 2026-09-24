@@ -7,6 +7,7 @@ import { drawEraStrip, eraColor } from "../charts/eraStrip";
 import { drawPerShare, drawRiverUsd } from "../charts/timeseries";
 import { drawRiverBtc } from "../charts/riverBtc";
 import { toolBadges } from "../components/toolkit";
+import { layersBlock } from "../components/layers";
 import { bn, btc as fmtBtc, mult, usd, usd0 } from "../lib/format";
 import { zoomable } from "../lib/zoomable";
 import type { Delta, Era } from "../types";
@@ -40,29 +41,18 @@ function row(label: string, d: Delta | null, fmt: (v: number) => string,
     </tr>`;
 }
 
+/** 這一則的報酬歸因,與<a href="#/strategy">績效歸因</a>頁同一個四層口徑、
+ *  同一段程式碼。底下另附 sats 口徑的決策/行情 —— 對數看的是「幾 %」,
+ *  sats 看的是「每股實際多拿到幾顆聰」,兩種單位回答的是不同的問題。 */
 function metricsTable(e: Era): string {
   const sats = (v: number) => Math.round(v).toLocaleString("en-US");
-  const sp = e.split;
-  const tot = sp.market + sp.decision;
   const signed = (v: number) => (v >= 0 ? "+" : "") + sats(v);
-  return `
-    <div class="split-row">
-      <div class="split-cell ${sp.decision >= 0 ? "good" : "bad"}">
-        <div class="k">決策貢獻</div>
-        <div class="v">${signed(sp.decision)}</div>
-        <div class="d">sats／股。每筆操作用<b>當下</b>幣價評價,不含後見之明</div>
-      </div>
-      <div class="split-cell muted">
-        <div class="k">行情貢獻</div>
-        <div class="v">${signed(sp.market)}</div>
-        <div class="d">sats／股。幣價讓固定美元的求償權漲縮,公司無從控制</div>
-      </div>
-      <div class="split-cell">
-        <div class="k">合計 = 實現變化</div>
-        <div class="v">${signed(tot)}</div>
-        <div class="d">sats／股</div>
-      </div>
-    </div>`;
+  const sp = e.split;
+  return layersBlock(e.layers4) + `
+    <p class="era-sats-note">
+      換成每股實際的顆數:這一則<b>決策貢獻 ${signed(sp.decision)} sats</b>、
+      行情貢獻 ${signed(sp.market)} sats,合計 ${signed(sp.market + sp.decision)} sats／股。
+    </p>`;
 }
 
 function metricsTableRows(e: Era): string {
@@ -165,14 +155,14 @@ function programPanel(): string {
         ${cell("總持幣", m.held, (v) => fmtBtc(v) + " 顆")}
         ${cell("淨求償權", m.claims, (v) => `$${v.toFixed(2)}B`, "neutral")}
       </div>
+      ${layersBlock(p.layers4)}
       <p class="program-key">
-        兩年多下來實得每股含幣量的變化,拆成決策與行情兩半之後:
-        <b>決策貢獻 ${signed(p.split.decision)} sats,行情貢獻只有
-        ${signed(p.split.market)} sats</b>。
-        也就是說這段期間實得每股含幣量的成長<b>幾乎全部來自公司的作為</b>,
+        換成每股實際的顆數:兩年多下來<b>決策貢獻 ${signed(p.split.decision)} sats,
+        行情貢獻只有 ${signed(p.split.market)} sats</b> ——
+        這段期間實得每股含幣量的成長<b>幾乎全部來自公司的作為</b>,
         比特幣自己的漲跌在兩年尺度上互相抵銷掉了。
         任何單一階段都只是這台機器的某一個轉速 ——
-        各階段的決策成績見下方每一則的第一排。
+        各階段的四層成績見下方每一則的第一排。
       </p>
       <p class="lede" style="margin:0">${p.lede}</p>
       <div class="grid2" style="margin-top:18px">

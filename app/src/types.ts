@@ -90,6 +90,8 @@ export interface Era {
   };
   /** 逐日鏈結:決策用當下幣價評價,不含後見之明。兩項加總 = 實現的 ΔCEBE */
   split: { market: number; decision: number };
+  /** 四層對數歸因,與績效歸因頁同一個口徑。四項相加 = ln(MSTR 報酬比) */
+  layers4: { btc: number; decision: number; claims: number; mnav: number };
   flows: {
     prefRaisedM: number; commonRaisedM: number;
     prefRepurchasedShares: number; prefRepurchasedM: number;
@@ -106,7 +108,6 @@ export interface StrategyRow {
   /** 三層乘法恆等式的對數拆解,三者加總 = log(股價比) */
   layers: { mnav: number; cebe: number; btc: number };
   /** 總變化太小時佔比會失真,此旗標為 false 時改顯示各層自身漲跌 */
-  stable: boolean;
   mstrRet: number; btcRet: number;
   bought: number; sold: number;
   /** 操作層級拆解,各項加總 = ΔCEBE */
@@ -146,6 +147,8 @@ export interface Meta {
     lede: string;
     /** 全期的決策 vs 行情 */
     split: { market: number; decision: number };
+    /** 全期四層對數歸因,與績效歸因頁同一個口徑 */
+    layers4: { btc: number; decision: number; claims: number; mnav: number };
     principles: { t: string; b: string }[];
     span: [string, string];
     metrics: {

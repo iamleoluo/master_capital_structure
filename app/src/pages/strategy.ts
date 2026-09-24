@@ -12,6 +12,7 @@ import { daily, indexOfDate, N, strategy } from "../data";
 import { drawPerShare } from "../charts/timeseries";
 import { bn, btc as fmtBtc } from "../lib/format";
 import { tex } from "../lib/math";
+import { layersBlock } from "../components/layers";
 import { zoomable } from "../lib/zoomable";
 import type { StrategyRow } from "../types";
 import type { PageFn } from "../router";
@@ -19,34 +20,6 @@ import type { PageFn } from "../router";
 const sats = (v: number) => Math.round(v).toLocaleString("en-US");
 const signed = (v: number) => (v >= 0 ? "+" : "") + sats(v);
 const pct1 = (v: number) => (v >= 0 ? "+" : "") + v.toFixed(1) + "%";
-
-/** 四層,依「公司控制得了嗎」排序:中間那層是唯一的決策。
- *  原本中間只有一層「實得每股含幣量」,但它同時裝了公司的操作與
- *  求償權被幣價縮放這兩件完全不同的事 —— 那正是這一頁要分開的東西,
- *  所以在對數空間再切一刀(splitLog),兩塊相加仍等於原本那一層。 */
-const LAYER_ORDER = ["btc", "decision", "claims", "mnav"] as const;
-type LayerKey = (typeof LAYER_ORDER)[number];
-
-const LAYER_LABEL: Record<LayerKey, string> = {
-  btc: "比特幣價格",
-  decision: "公司決策",
-  claims: "求償權縮放",
-  mnav: "市場溢價(mNAV)",
-};
-const LAYER_NOTE: Record<LayerKey, string> = {
-  btc: "底層資產本身漲跌。公司做什麼都改變不了它",
-  decision: "增發、回購、買賣幣、付息 —— 唯一真正由公司決定的一層,"
-    + "而且每筆都用它發生當下的幣價評價,不含後見之明",
-  claims: "求償權面額鎖死在美元,幣價一漲它在幣計價下就自己縮小,"
-    + "每股含幣量不用多買一顆就上升。這是槓桿的被動效果,不是決策",
-  mnav: "市場願意付幾倍,情緒與流動性。公司只能間接影響",
-};
-const LAYER_COLOR: Record<LayerKey, string> = {
-  btc: "var(--btc)", decision: "var(--equity)",
-  claims: "var(--c3)", mnav: "var(--senti)",
-};
-/** 只有「公司決策」是公司控制得了的,其餘三層都不是。 */
-const CONTROLLED: LayerKey = "decision";
 
 const OP_LABEL: Record<string, string> = {
   price: "幣價讓求償權縮水",
@@ -211,62 +184,13 @@ export const strategyPage: PageFn = (root) => {
   }
 
   function paintLayers(r: StrategyRow): void {
-    // 中間那層拆成兩塊:splitLog 的兩項相加恰好等於 r.layers.cebe(build 時有斷言)
-    const logOf: Record<LayerKey, number> = {
+    // 中間那層切成兩塊:splitLog 兩項相加恰好等於 r.layers.cebe(build 時逐列斷言)
+    el("layers").innerHTML = layersBlock({
       btc: r.layers.btc,
       decision: r.splitLog.decision,
       claims: r.splitLog.market,
       mnav: r.layers.mnav,
-    };
-    const total = LAYER_ORDER.reduce((a, k) => a + logOf[k], 0);
-    const max = Math.max(...LAYER_ORDER.map((k) => Math.abs(logOf[k])), 1e-9);
-
-    // 「公司做出來的」佔總報酬多少 —— 這一頁的標題問的就是這個
-    const byCompany = logOf[CONTROLLED];
-    const notCompany = total - byCompany;
-
-    el("layers").innerHTML = `
-      ${r.stable ? "" : `<div class="note warn" style="margin-top:0">
-        這個區間的總報酬太接近零(${pct1(r.mstrRet)}),
-        再去算「各層佔百分之幾」會被分母放大成沒有意義的數字 ——
-        所以下面只顯示每一層自己的漲跌幅,不給佔比。</div>`}
-
-      <div class="split-row">
-        <div class="split-cell ${byCompany >= 0 ? "good" : "bad"}">
-          <div class="k">公司決策做出來的</div>
-          <div class="v">${pct1((Math.exp(byCompany) - 1) * 100)}</div>
-          <div class="d">${r.stable
-            ? `佔總報酬 ${((byCompany / total) * 100).toFixed(0)}%` : "對股價的貢獻"}</div></div>
-        <div class="split-cell muted">
-          <div class="k">行情與情緒給的</div>
-          <div class="v">${pct1((Math.exp(notCompany) - 1) * 100)}</div>
-          <div class="d">幣價 + 求償權縮放 + mNAV,公司控制不了</div></div>
-      </div>
-
-      <div class="layer-list">
-        ${LAYER_ORDER.map((k) => {
-          const v = logOf[k];
-          const own = (Math.exp(v) - 1) * 100;
-          const share = total !== 0 ? (v / total) * 100 : 0;
-          const w = (Math.abs(v) / max) * 100;
-          return `
-            <div class="layer">
-              <div class="layer-head">
-                <span class="layer-name"><i class="swatch" style="background:${LAYER_COLOR[k]}"></i>${
-                  LAYER_LABEL[k]}${k === CONTROLLED
-                    ? ' <span class="passive-tag">公司</span>'
-                    : ' <span class="passive-tag">被動</span>'}</span>
-                <span class="layer-vals">
-                  <b class="${own >= 0 ? "up" : "down"}">${pct1(own)}</b>
-                  ${r.stable ? `<span class="layer-share">佔 ${share.toFixed(0)}%</span>` : ""}
-                </span>
-              </div>
-              <div class="layer-bar"><i style="width:${w.toFixed(1)}%;background:${LAYER_COLOR[k]};
-                ${v < 0 ? "opacity:.45" : ""}"></i></div>
-              <div class="layer-note">${LAYER_NOTE[k]}</div>
-            </div>`;
-        }).join("")}
-      </div>`;
+    });
   }
 
   function paintOps(r: StrategyRow): void {

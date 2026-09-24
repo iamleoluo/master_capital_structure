@@ -247,6 +247,26 @@ def _chain_increments(daily: dict) -> tuple:
     return pm, pd, pmL, pdL
 
 
+def _layers4(daily: dict, pmL: list, pdL: list, lo: int, hi: int) -> dict:
+    """四層對數歸因。四項相加 = ln(MSTR 報酬比),沒有殘差。
+
+    前三層直接來自股價恆等式 P = m × E/1e8 × p 取對數;
+    中間的 E 再用逐日鏈結切成「公司決策」與「求償權縮放」。
+    """
+    out = {
+        "btc": math.log(daily["btc"][hi] / daily["btc"][lo]),
+        "decision": pdL[hi] - pdL[lo],
+        "claims": pmL[hi] - pmL[lo],
+        "mnav": math.log(daily["mnav_cebe"][hi] / daily["mnav_cebe"][lo]),
+    }
+    # 恆等式查核:恆等式本身已驗到 0.019bp,這裡的門檻放在 5e-4(≈0.05%)
+    actual = math.log(daily["mstr"][hi] / daily["mstr"][lo])
+    gap = abs(sum(out.values()) - actual)
+    assert gap < 5e-4, (f"{daily['date'][lo]}→{daily['date'][hi]} "
+                        f"四層加總對不上 MSTR 報酬:{gap}")
+    return {k: round(v, 4) for k, v in out.items()}
+
+
 def build_chronicle(daily: dict, weekly: list) -> list:
     from mstr_cebe import chronicle as CH      # noqa: E402
 
@@ -329,6 +349,8 @@ def build_chronicle(daily: dict, weekly: list) -> list:
             # 兩者相加精確等於實現變化,且決策不含後見之明。
             "split": {"market": round(pm[hi] - pm[lo]),
                       "decision": round(pd[hi] - pd[lo])},
+            # 與績效歸因頁同一個口徑的四層拆解
+            "layers4": _layers4(daily, pmL, pdL, lo, hi),
             "flows": {
                 "prefRaisedM": round(pref_raised, 1),
                 "commonRaisedM": round(common_raised, 1),
@@ -451,21 +473,15 @@ def build_strategy(daily: dict, weekly: list, chronicle: list) -> dict:
         ops, opMeta = ops_for(i)
         op_parts = A.shapley_operations(a, ops)
 
-        # 總變化太小的時候,「各層佔幾%」會被放大到沒有意義(分母趨近零),
-        # 甚至出現 −100% 這種讀起來像錯誤的數字。標記起來讓前端改用
-        # 「各層自己漲跌多少」來呈現,而不是硬給佔比。
         # 恆等式:決策 + 行情 = 每股含幣量那一層的對數變化。差到 1e-7 就是有 bug
         gap = abs((pmL[end] - pmL[i]) + (pdL[end] - pdL[i]) - layers["cebe"])
         assert gap < 1e-7, f"{daily['date'][i]} 對數鏈結對不上 layers.cebe:{gap}"
 
-        total_log = sum(layers.values())
-        stable = abs(total_log) >= 0.05          # 約等於總報酬 ±5%
-
         rows.append({
             "cebe0": round(c0),
-            # 三層價格歸因:存對數變化量,佔比由前端相除(純算術,不是金融計算)
+            # 三層價格歸因:存對數變化量。前端把 cebe 那層再用 splitLog 切成兩半,
+            # 佔比也由前端算(純算術,不是金融計算)
             "layers": {k: round(v, 4) for k, v in layers.items()},
-            "stable": stable,
             "mstrRet": round((daily["mstr"][end] / daily["mstr"][i] - 1) * 100, 1),
             "btcRet": round((daily["btc"][end] / daily["btc"][i] - 1) * 100, 1),
             "bought": round(flows["btcBought"]), "sold": round(flows["btcSold"]),
@@ -526,6 +542,7 @@ def build_program(daily: dict, weekly: list) -> dict:
         "lede": CH.PROGRAM.lede,
         "split": {"market": round(pm[hi] - pm[lo]),
                   "decision": round(pd[hi] - pd[lo])},
+        "layers4": _layers4(daily, pmL, pdL, lo, hi),
         "principles": [{"t": t, "b": b} for t, b in CH.PROGRAM.principles],
         "span": [daily["date"][lo], daily["date"][hi]],
         "metrics": {
