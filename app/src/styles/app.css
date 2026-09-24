@@ -275,9 +275,8 @@ table.era-metrics td.chg.flat{color:var(--ink-3)}
   background:var(--surface-2);color:var(--ink-2);border:1px solid var(--line-2)}
 .formula-tag.key{background:var(--equity);color:var(--paper);border-color:var(--equity)}
 .formula-name{font-weight:600;font-size:.94rem;margin-bottom:5px}
-.formula-eq{font-family:var(--mono);font-size:.92rem;background:var(--surface-2);
-  border-radius:4px;padding:9px 12px;margin-bottom:7px;overflow-x:auto;
-  white-space:nowrap}
+.formula-eq{background:var(--surface-2);border-radius:4px;padding:11px 14px;
+  margin-bottom:8px;overflow-x:auto}
 .formula-note{font-size:.84rem;color:var(--ink-2);line-height:1.7}
 .tile.key{border-left:3px solid var(--equity)}
 .tile .v.up{color:var(--good)}
@@ -300,3 +299,43 @@ table.era-metrics td.chg.flat{color:var(--ink-3)}
 .split-cell .d{font-size:.72rem;color:var(--ink-3);margin-top:5px;line-height:1.55}
 .formula-alias{font-family:var(--mono);font-size:.72rem;color:var(--ink-3);
   font-weight:400;margin-left:8px}
+
+/* ------------------------------------------------------------------ 數學式
+   KaTeX(見 src/lib/math.ts)。katex.min.css 在 main.ts 裡排在這支之前,
+   所以底下的覆寫一定蓋得過它。 */
+.katex{color:var(--ink);font-size:1.06em}
+.katex-display{margin:0;overflow-x:auto;overflow-y:hidden;padding:2px 0 4px}
+.katex .mord.text{font-size:.94em}          /* \text{中文} 跟著本文字級走 */
+
+/* 獨立成行的公式卡:淺底 + 底下的白話說明 */
+.eq-card{background:var(--surface-2);border:1px solid var(--line);
+  border-radius:4px;padding:16px 18px;margin:0 0 14px}
+.eq-note{font-size:.85rem;color:var(--ink-2);line-height:1.75;
+  margin:12px 0 0;padding-top:12px;border-top:1px solid var(--line)}
+.eq-note+.eq-note{border-top:0;padding-top:0;margin-top:8px}
+
+/* 符號表 */
+.symbols{display:grid;grid-template-columns:repeat(auto-fit,minmax(238px,1fr));
+  gap:0 26px;margin:0 0 24px}
+.symbol{display:flex;gap:11px;align-items:baseline;padding:8px 0;
+  border-bottom:1px solid var(--line)}
+.symbol>.katex{flex:0 0 2.4em;text-align:right;font-size:1.1em}
+.symbol-def{font-size:.85rem;color:var(--ink-2);line-height:1.55}
+.symbol-def b{color:var(--ink);font-weight:600}
+.symbol-unit{font-family:var(--mono);font-size:.7rem;color:var(--ink-3);
+  margin-left:5px;white-space:nowrap}
+
+/* 一組並排的短推導(操作的代數) */
+.eq-rows{display:flex;flex-direction:column;gap:2px;margin:0 0 14px}
+.eq-row{display:grid;grid-template-columns:minmax(0,15em) 1fr;gap:12px 20px;
+  align-items:center;padding:13px 0;border-bottom:1px solid var(--line)}
+.eq-row:last-child{border-bottom:0}
+.eq-row-name{font-size:.88rem;font-weight:600}
+.eq-row-name .tag{display:block;font-weight:400;font-size:.74rem;
+  color:var(--ink-3);margin-top:3px}
+.eq-row .katex-display{text-align:left}
+.eq-row .katex-display>.katex{text-align:left}
+@media(max-width:640px){
+  .eq-row{grid-template-columns:1fr;gap:8px}
+  .katex{font-size:1em}
+}

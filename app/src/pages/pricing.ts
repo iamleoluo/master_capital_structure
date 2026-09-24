@@ -5,6 +5,7 @@ import {
   type ScenarioParams,
 } from "../charts/leverage";
 import { btc as fmtBtc, mult, usd, usd0 } from "../lib/format";
+import { eqCard, tex, texAlign, texBlock } from "../lib/math";
 import { zoomable } from "../lib/zoomable";
 import type { PageFn } from "../router";
 
@@ -81,7 +82,36 @@ export const pricingPage: PageFn = (root) => {
       <div class="grid3" style="margin-bottom:12px" id="tiles"></div>
       <div class="note key" id="verdict" style="margin-bottom:36px"></div>
 
-      <h2 style="margin-bottom:8px">情境對照</h2>
+      <h2 style="margin-bottom:8px">槓桿是怎麼跑出來的</h2>
+      <p class="lede" style="margin-bottom:16px">
+        上面那條曲線不是模型擬合,是代數推出來的。符號沿用
+        <a href="#/structure">資本結構</a>頁:${tex("H")} 總持幣、${tex("C")} 求償權、
+        ${tex("p")} 幣價、${tex("E")} 實得每股含幣量。先看曲線跟橫軸的交點 ——
+        普通股殘值歸零的價格:
+      </p>
+      ${eqCard(
+        texBlock("E(p_{0}) = 0 \\quad\\iff\\quad p_{0} = \\frac{C}{H}"),
+        `也就是<b>平均每顆幣背了多少美元的求償權</b>。目前是 ${usd0(be)} ——
+         幣價跌到這裡,普通股在清算意義下就什麼都不剩。
+         紅色豎線畫的就是它。`)}
+      <p class="lede" style="margin-bottom:16px">
+        再看放大倍數。每股殘值(美元)是 ${tex("(Hp - C)/S")},對幣價取彈性:
+      </p>
+      ${eqCard(texAlign([
+        "A(p) &= \\frac{d\\ln\\left((Hp - C)/S\\right)}{d\\ln p}"
+        + " = \\frac{Hp}{Hp - C} = \\frac{1}{1 - p_{0}/p}",
+        "\\frac{d\\ln E}{d\\ln p} &= A(p) - 1 = \\frac{C}{Hp - C}",
+      ]), `兩個彈性<b>剛好差一個 1</b>,這解釋了兩張圖為什麼長得不一樣:
+           以美元看,普通股是 ${mult(nowAmp)} 倍的比特幣;以幣的顆數看,
+           只有 ${mult(nowAmp - 1)} 倍。差的那 1 倍就是「幣價本身漲了」,
+           不是公司替你多賺到的幣。
+           <br><br>
+           注意 ${tex("A")} 會隨幣價上升而自然下降(分母的求償權比重變小),
+           <b>槓桿會自己衰減</b>。上面的「槓桿下限」參數模擬的就是公司持續補倉、
+           把 ${tex("A")} 釘在某個水準不放 —— 那會讓殘值改以
+           ${tex("(p/p_{\\text{觸發}})^{L}")} 的冪次成長,跟固定倍數的槓桿 ETF 是同一個數學結構。`)}
+
+      <h2 style="margin:40px 0 8px">情境對照</h2>
       <p class="lede" style="margin-bottom:16px">同一組參數,不同 BTC 價格下的結果。
         「不補倉」欄是完全不做任何事的基準;右邊三欄套用你設定的槓桿下限、mNAV 與 ATM 增發。</p>
       <div class="card flush"><div class="scroller"><table class="mini">

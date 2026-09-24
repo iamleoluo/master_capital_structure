@@ -1,4 +1,5 @@
 import "./styles/tokens.css";
+import "katex/dist/katex.min.css";
 import "./styles/app.css";
 import { startRouter, type Route } from "./router";
 

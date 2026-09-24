@@ -1,6 +1,6 @@
 /** 資本結構工具箱 —— 同一份定義的兩種呈現。
  *
- *  表格版是常設解釋(公司能動用的槓桿有哪些、各自對 CEBE 的淨效果);
+ *  表格版是常設解釋(公司能動用的槓桿有哪些、各自對實得每股含幣量的淨效果);
  *  徽章版給大事記的每一則用,標示該階段實際動用了哪幾把。
  *  兩者共用 meta.toolkit,所以不會出現清單對不上的情況。 */
 import { meta } from "../data";
@@ -22,7 +22,7 @@ export function toolkitTable(): string {
     <div class="table-wrap"><table class="toolkit">
       <thead><tr>
         <th>工具</th><th>求償權</th><th>股數</th><th>持幣</th>
-        <th>對 CEBE</th><th>說明</th>
+        <th>對實得每股</th><th>說明</th>
       </tr></thead>
       <tbody>
         ${meta.toolkit.map((t) => `

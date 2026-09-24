@@ -10,6 +10,7 @@
 import { daily, indexOfDate, N, strategy } from "../data";
 import { drawPerShare } from "../charts/timeseries";
 import { bn, btc as fmtBtc } from "../lib/format";
+import { tex } from "../lib/math";
 import { zoomable } from "../lib/zoomable";
 import type { StrategyRow } from "../types";
 import type { PageFn } from "../router";
@@ -81,9 +82,9 @@ export const strategyPage: PageFn = (root) => {
 
       <h2 style="margin:34px 0 6px">第一層:報酬來自哪裡</h2>
       <p class="lede" style="margin-bottom:16px">
-        股價可以精確拆成三個相乘的因子 ——
-        <span class="mono" style="font-size:.86rem">股價 = mNAV × 實得每股 × 幣價</span>。
+        股價可以精確拆成三個相乘的因子 —— ${tex("P = m \\times E/10^{8} \\times p")}。
         取對數之後就變成相加,所以下面的貢獻度沒有殘差、也不需要決定誰先算。
+        式子的推導見<a href="#/structure">資本結構</a>頁。
       </p>
       <div id="layers"></div>
 
@@ -92,7 +93,11 @@ export const strategyPage: PageFn = (root) => {
         這裡拆的是<b>公司的決策</b>,不是會計科目。差別很重要:一筆 ATM 增發同時動到
         「股數」與「求償權」(募到的現金抵減求償權),所以把「股數」單獨拿出來看,
         不對應任何真實決策,還會得到「增發是壞事」這種錯誤結論。
-        每一種操作對實得每股含幣量的效果都有明確的代數,下面按操作拆。
+        每一種操作對實得每股含幣量的效果都有明確的代數 ——
+        例如「用現金買幣」恆等於
+        ${tex("\\Delta\\!\\left(H - C/p\\right) = c/p - c/p = 0")},
+        而 ATM 增發是否加分完全取決於 ${tex("m > 1")}。
+        完整推導見<a href="#/structure">資本結構</a>頁,下面按操作拆。
       </p>
       <div id="ops"></div>
 
