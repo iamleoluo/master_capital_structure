@@ -8,7 +8,7 @@
  *  每股含幣量會走到哪裡?實際值減掉它,才是資本操作真正的淨貢獻。 */
 import { daily, indexOfDate, N, strategy } from "../data";
 import { drawPerShare } from "../charts/timeseries";
-import { btc as fmtBtc } from "../lib/format";
+import { bn, btc as fmtBtc } from "../lib/format";
 import { zoomable } from "../lib/zoomable";
 import type { StrategyRow } from "../types";
 import type { PageFn } from "../router";
@@ -27,6 +27,27 @@ const LAYER_NOTE: Record<string, string> = {
 };
 const LAYER_COLOR: Record<string, string> = {
   btc: "var(--btc)", cebe: "var(--equity)", mnav: "var(--senti)",
+};
+
+const OP_LABEL: Record<string, string> = {
+  price: "幣價讓求償權縮水",
+  atm: "普通股 ATM 增發",
+  pref_issue: "優先股發行",
+  buyback: "優先股折價回購",
+  converts: "可轉債變動",
+  btc: "買賣比特幣",
+  carry: "股息與債息",
+  other: "未建模殘差",
+};
+const OP_NOTE: Record<string, string> = {
+  price: "被動 —— 求償權面額固定在美元,幣價一漲它在幣計價下就自己縮小",
+  atm: "只有「發行價高於每股淨值」的溢價部分才加分,不是「增發就是壞事」",
+  pref_issue: "拿到現金但掛上面額;發行價低於 $100 面額時,淨效果是求償權增加",
+  buyback: "進得了分子的只有折價本身,不是整筆回購金額",
+  converts: "可轉債餘額變動,回購或轉股為正貢獻",
+  btc: "用現金買幣在代數上是中性的 —— 差額只來自成交價與今天幣價的落差",
+  carry: "純現金流出,槓桿的持有成本。結構上唯一必然為負的一項",
+  other: "債務贖回、營運支出、STRE 匯率、股數插值誤差、ATM 入帳時間差",
 };
 
 const FACTOR_LABEL: Record<string, string> = {
@@ -72,11 +93,20 @@ export const strategyPage: PageFn = (root) => {
       </p>
       <div id="layers"></div>
 
-      <h2 style="margin:34px 0 6px">第二層:每股含幣量是怎麼變的</h2>
+      <h2 style="margin:34px 0 6px">第二層:是哪一筆操作做的</h2>
       <p class="lede" style="margin-bottom:16px">
-        中間那一層才是公司能控制的部分。它由四個因子決定,
-        用 Shapley 值拆解(對全部 24 種先後順序取平均,所以與順序無關,
-        四項加總精確等於實際變化)。
+        這裡拆的是<b>公司的決策</b>,不是會計科目。差別很重要:一筆 ATM 增發同時動到
+        「股數」與「求償權」(募到的現金抵減求償權),所以把「股數」單獨拿出來看,
+        不對應任何真實決策,還會得到「增發是壞事」這種錯誤結論。
+        每一種操作對每股含幣量的效果都有明確的代數,下面按操作拆。
+      </p>
+      <div id="ops"></div>
+
+      <h2 style="margin:34px 0 6px">附:按會計科目拆</h2>
+      <p class="lede" style="margin-bottom:16px">
+        同一段變化改用四個會計因子(持幣 / 求償權 / 幣價 / 股數)來看。
+        這組數字本身沒錯,但<b>不要照著它下決策結論</b> —— 理由就是上面說的:
+        科目不是操作。
       </p>
       <div id="factors"></div>
 
@@ -177,6 +207,67 @@ export const strategyPage: PageFn = (root) => {
       </div>`;
   }
 
+  /** 操作層級 —— 這一段才回答「哪一筆操作是加分、哪一筆是減分」。 */
+  function paintOps(r: StrategyRow): void {
+    const order = (["price", "atm", "pref_issue", "buyback", "converts",
+                    "btc", "carry", "other"] as const);
+    const max = Math.max(...order.map((k) => Math.abs(r.ops[k])), 1e-9);
+    const delta = strategy.cebeNow - r.cebe0;
+    const m = r.opMeta;
+
+    if (!r.opsOk) {
+      el("ops").innerHTML = `
+        <div class="note warn" style="margin-top:0">
+          <b>這個起點太早,資金流資料不足以拆到操作層級。</b>
+          按操作拆解需要 8-K 完整揭露每週的 ATM 募資、回購金額與 USD Reserve 餘額 ——
+          這些欄位要到 2026 年中才齊全。更早的區間對不起來的部分會全部擠進「殘差」
+          (目前 ${sats(Math.abs(r.ops.other))} sats,已超過總變化的四分之一),
+          那時候再去讀個別操作的數字沒有意義。
+          <br><br>
+          把起點拉到 <b>2026-06</b> 之後就會顯示。上面的三層拆解與反事實不依賴資金流資料,
+          任何區間都有效。
+        </div>`;
+      return;
+    }
+
+    el("ops").innerHTML = `
+      <div class="layer-list">
+        ${order.map((k) => {
+          const v = r.ops[k];
+          const w = (Math.abs(v) / max) * 100;
+          const passive = k === "price";
+          const resid = k === "other";
+          return `
+            <div class="layer${resid ? " total" : ""}">
+              <div class="layer-head">
+                <span class="layer-name">${OP_LABEL[k]}${
+                  passive ? ' <span class="passive-tag">被動</span>' : ""}</span>
+                <span class="layer-vals"><b class="${v >= 0 ? "up" : "down"}">${signed(v)}</b>
+                  <span class="layer-share">sats</span></span>
+              </div>
+              <div class="layer-bar"><i style="width:${w.toFixed(1)}%;
+                background:${resid ? "var(--ink-3)" : v >= 0 ? "var(--good)" : "var(--bad)"}"></i></div>
+              <div class="layer-note">${OP_NOTE[k]}</div>
+            </div>`;
+        }).join("")}
+        <div class="layer total">
+          <div class="layer-head">
+            <span class="layer-name">加總 = 實際變化</span>
+            <span class="layer-vals"><b>${signed(delta)}</b><span class="layer-share">sats</span></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="note key" style="margin-top:18px">
+        <b>唯一結構上必然為負的是股息與債息。</b>
+        期間 ATM 募資 ${bn(m.raisedM / 1000)}、回購折價 ${bn(m.discountM / 1000)}、
+        股息債息約 ${bn(m.carryM / 1000)}。
+        其餘操作的正負完全取決於價格條件 —— 溢價增發加分、折價回購加分、
+        用現金買幣中性。所以「資本操作淨貢獻是負的」從來不代表公司做錯了什麼,
+        通常只是槓桿的持有成本大過那段期間操作賺到的價差。
+      </div>`;
+  }
+
   function paintFactors(r: StrategyRow): void {
     const delta = strategy.cebeNow - r.cebe0;
     const items = (["price", "claims", "held", "shares"] as const);
@@ -259,6 +350,7 @@ export const strategyPage: PageFn = (root) => {
     if (!r) return;
     paintHeadline(r);
     paintLayers(r);
+    paintOps(r);
     paintFactors(r);
     paintMethodGap(r);
     paintChart();

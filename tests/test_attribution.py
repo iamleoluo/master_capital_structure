@@ -106,3 +106,72 @@ def test_share_of_handles_zero_total():
 def test_price_layers_rejects_nonpositive(bad):
     with pytest.raises(ValueError):
         A.price_layers(1.0, 1.0, 1.0, bad, 1.0, 1.0)
+
+
+# ---------------------------------------------------------------------------
+# 操作層級拆解
+# ---------------------------------------------------------------------------
+
+def _ops_base():
+    return {"held": 846_682.0, "claims": 20.02e9, "price": 60_260.0, "shares": 371.2e6}
+
+
+def test_operations_sum_to_total_change():
+    base = _ops_base()
+    ops = A.build_operations(
+        raised=5.161e9, discount=48.5e6, obligations=401e6,
+        btc_bought_usd=445e6, btc_sold_usd=429e6,
+        d_held=-682.0, d_shares=44.8e6, end_price=86_404.0, residual=-386e6)
+    parts = A.shapley_operations(base, ops)
+
+    end = dict(base)
+    for k in ops:
+        end = A._apply(end, ops[k])
+    assert sum(parts.values()) == pytest.approx(
+        A.cebe_of(end) - A.cebe_of(base), abs=1e-6)
+
+
+def test_buying_bitcoin_with_cash_is_neutral():
+    """最反直覺、也最重要的一條:用現金買幣對每股含幣量沒有影響。
+
+    持幣 +X/p、現金 −X(求償權 +X),分子的兩項正好抵銷。
+    所以「公司又買了多少幣」本身完全不能拿來論斷對股東好不好。
+    """
+    base = _ops_base()
+    spend, p = 500e6, base["price"]
+    only_btc = {"btc": {"dclaims": spend, "dheld": spend / p}}
+    parts = A.shapley_operations(base, only_btc)
+    assert parts["btc"] == pytest.approx(0.0, abs=1e-6)
+
+
+def test_buyback_contributes_only_the_discount():
+    """回購 $1.125B 面額 $1.173B —— 進得了分子的只有 $48.5M 的折價。"""
+    base = _ops_base()
+    par, cost = 1.1733e9, 1.1248e9
+    parts = A.shapley_operations(base, {"buyback": {"dclaims": -(par - cost)}})
+    expected = (par - cost) / base["price"] / base["shares"] * 1e8
+    assert parts["buyback"] == pytest.approx(expected, rel=1e-9)
+    # 若誤把整筆回購金額當成貢獻,會高估二十幾倍
+    wrong = par / base["price"] / base["shares"] * 1e8
+    assert wrong > parts["buyback"] * 20
+
+
+def test_carry_is_the_only_structurally_negative_operation():
+    """股息與債息是純現金流出,無論幣價高低都是負貢獻。"""
+    base = _ops_base()
+    for price in (30_000.0, 60_260.0, 200_000.0):
+        st = dict(base, price=price)
+        parts = A.shapley_operations(st, {"carry": {"dclaims": 401e6}})
+        assert parts["carry"] < 0
+
+
+def test_atm_above_nav_is_accretive_below_is_dilutive():
+    """ATM 的正負完全取決於發行價與每股淨值的關係,不是「增發就是壞事」。"""
+    base = _ops_base()
+    nav_ps = A.cebe_of(base) / 1e8 * base["price"]
+    shares = 40e6
+    for mult, sign in ((1.4, 1), (0.6, -1)):
+        raised = shares * nav_ps * mult
+        parts = A.shapley_operations(
+            base, {"atm": {"dclaims": -raised, "dshares": shares}})
+        assert parts["atm"] * sign > 0, f"發行價 {mult}× 淨值時方向錯了"

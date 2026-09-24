@@ -112,6 +112,17 @@ export interface StrategyRow {
   stable: boolean;
   mstrRet: number; btcRet: number;
   bought: number; sold: number;
+  /** 操作層級拆解,各項加總 = ΔCEBE */
+  ops: {
+    price: number; atm: number; pref_issue: number; buyback: number;
+    converts: number; btc: number; carry: number; other: number;
+  };
+  opMeta: {
+    raisedM: number; discountM: number; carryM: number;
+    prefParM: number; prefProceedsM: number; debtM: number; residualM: number;
+  };
+  /** 資金流揭露是否完整到足以下結論(殘差 ≤ 總變化的 25%) */
+  opsOk: boolean;
 }
 
 export interface Strategy {

@@ -25,6 +25,7 @@
 from __future__ import annotations
 
 import math
+import random
 from itertools import permutations
 from typing import Dict, Iterable, Sequence
 
@@ -104,4 +105,108 @@ def flows_between(weekly: Iterable[dict], start: str, end: str) -> Dict[str, flo
         "btcBought": sum(w["delta"] for w in rows if (w["delta"] or 0) > 0),
         "btcSold": -sum(w["delta"] for w in rows if (w["delta"] or 0) < 0),
         "weeks": len(rows),
+    }
+
+
+# ---------------------------------------------------------------------------
+# 操作層級拆解 —— 比四因子更接近「公司到底做了什麼決策」
+#
+# 四因子(持幣/求償權/幣價/股數)拆的是**會計結果**,不是操作:一筆 ATM 增發
+# 同時動到「股數」與「求償權」(募到的現金抵減求償權),所以把「股數 −17,357」
+# 單獨拿出來看,不對應任何真實決策,而且會得到「增發是壞事」這種錯誤結論。
+#
+# 改用操作來拆之後,每一種操作對分子(held − claims/price)的效果有明確的代數:
+#
+#   用現金買幣 $X      持幣 +X/p、現金 −X ⇒ 求償權 +X   ⇒ 分子 +X/p − X/p = 0
+#                      「買比特幣」對每股含幣量是<b>中性的</b>,這點最反直覺
+#   賣幣換現金 $X      同理,也是 0
+#   折價回購優先股      付現金 Y、消滅面額 Z(Z > Y)⇒ 求償權淨減 (Z−Y)
+#                      ⇒ 只有<b>折價本身</b>進得了分子,不是整筆回購金額
+#   ATM 增發           募資 $X ⇒ 求償權 −X;股數 +ΔS
+#                      發行價 > 每股淨值時加分,低於則減分
+#   股息與債息          現金流出 ⇒ 求償權增加 ⇒ 純負項(槓桿的持有成本)
+#   幣價變動            對期初求償權:分子 +C(1/p₀ − 1/p₁)
+#
+# 同樣用 Shapley 對所有操作順序取平均,所以六項加總精確等於實際變化。
+# ---------------------------------------------------------------------------
+
+def _apply(st: Dict[str, float], op: Dict[str, float]) -> Dict[str, float]:
+    n = dict(st)
+    n["held"] += op.get("dheld", 0.0)
+    n["claims"] += op.get("dclaims", 0.0)
+    n["shares"] += op.get("dshares", 0.0)
+    if "price" in op:
+        n["price"] = op["price"]
+    return n
+
+
+# 超過這個操作數就改用抽樣:8 個操作有 40,320 種排列,乘上每個起始日會跑到不可接受。
+_EXACT_MAX_OPS = 7
+_SAMPLE_PERMS = 3000
+
+
+def _orders(keys: Sequence[str]) -> Sequence[Sequence[str]]:
+    """枚舉或抽樣排列。
+
+    抽樣不會破壞加總恆等 —— 每一個排列的邊際貢獻本來就 telescoping 到總變化,
+    所以任意一組排列取平均,總和仍然精確等於 ΔCEBE。抽樣只影響個別項的精度,
+    而 3000 組對 8 個操作已經遠超收斂所需。用固定亂數種子讓建置可重現。
+    """
+    if len(keys) <= _EXACT_MAX_OPS:
+        return list(permutations(keys))
+    rng = random.Random(20260924)
+    out = []
+    for _ in range(_SAMPLE_PERMS):
+        o = list(keys)
+        rng.shuffle(o)
+        out.append(o)
+    return out
+
+
+def shapley_operations(base: Dict[str, float],
+                       ops: Dict[str, Dict[str, float]]) -> Dict[str, float]:
+    """各操作對 ΔCEBE 的貢獻(sats)。加總精確等於「全部操作套用後」的變化。
+
+    ops 的每一項是一個狀態變換,例如
+        {"atm": {"dclaims": -5.16e9, "dshares": 44.8e6}, "price": {"price": 86404}}
+    """
+    keys = list(ops)
+    out = {k: 0.0 for k in keys}
+    perms = _orders(keys)
+    for order in perms:
+        st = dict(base)
+        prev = cebe_of(st)
+        for k in order:
+            st = _apply(st, ops[k])
+            now = cebe_of(st)
+            out[k] += now - prev
+            prev = now
+    return {k: v / len(perms) for k, v in out.items()}
+
+
+def build_operations(*, raised: float, discount: float, obligations: float,
+                     btc_bought_usd: float, btc_sold_usd: float,
+                     d_held: float, d_shares: float, end_price: float,
+                     residual: float,
+                     pref_par_issued: float = 0.0, pref_proceeds: float = 0.0,
+                     d_debt: float = 0.0) -> Dict[str, Dict[str, float]]:
+    """把區間內的資金流組成 shapley_operations 要的操作表。
+
+    residual 是對帳差額(債務贖回、營運支出、STRE 匯率、股數插值誤差、
+    ATM 入帳時間差等未建模項)。刻意獨立成一項而不是攤進其他操作 ——
+    攤進去會讓那些操作的數字看起來比實際精確。
+    """
+    return {
+        "price": {"price": end_price},
+        "atm": {"dclaims": -raised, "dshares": d_shares},
+        "buyback": {"dclaims": -discount},
+        "btc": {"dclaims": btc_bought_usd - btc_sold_usd, "dheld": d_held},
+        "carry": {"dclaims": obligations},
+        # 發優先股:拿到 proceeds(現金,抵減求償權),但掛上 par 的清算優先權。
+        # IPO 價常低於 $100 面額(例如 STRC 發行價 $90),所以 par > proceeds,
+        # 淨效果是求償權增加 —— 這就是 phantom growth 在代數上的樣子。
+        "pref_issue": {"dclaims": pref_par_issued - pref_proceeds},
+        # 可轉債餘額變動(發行為正、回購或轉股為負)
+        "converts": {"dclaims": d_debt},
+        "other": {"dclaims": residual},
     }

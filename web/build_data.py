@@ -328,6 +328,54 @@ def build_strategy(daily: dict, weekly: list, chronicle: list) -> dict:
     end_st = st(end)
     end_cebe = A.cebe_of(end_st)
 
+    atm = _load_raw("atm_weekly.json")
+    rep = (_load_raw("repurchase_weekly.json")
+           if os.path.exists(os.path.join(RAW, "repurchase_weekly.json")) else [])
+    end_date = daily["date"][end]
+
+    def ops_for(i):
+        """把區間內的資金流組成操作表。四因子拆的是會計結果,這裡拆的是決策。"""
+        a = daily["date"][i]
+        rows_w = [w for w in weekly if a <= w["week_end"] <= end_date]
+        raised = sum((x["by_security"].get("MSTR", {}).get("net_proceeds_m") or 0.0)
+                     for x in atm if a <= x["week_end"] <= end_date) * 1e6
+        discount = sum(v.get("shares", 0.0) * 100 - v.get("cost_m", 0.0) * 1e6
+                       for x in rep if a <= x["week_end"] <= end_date
+                       for sec, v in x["by_security"].items() if sec != "MSTR")
+        rep_par = sum(v.get("shares", 0.0) * 100
+                      for x in rep if a <= x["week_end"] <= end_date
+                      for sec, v in x["by_security"].items() if sec != "MSTR")
+        pref_proceeds = sum(
+            (v.get("net_proceeds_m") or 0.0)
+            for x in atm if a <= x["week_end"] <= end_date
+            for sec, v in x["by_security"].items() if sec != "MSTR") * 1e6
+        # 期間新掛上的清算優先權 = 餘額變動 + 這段期間被回購掉的面額
+        pref_par_issued = ((daily["pref_total"][end] - daily["pref_total"][i]) * 1e9
+                           + rep_par)
+        d_debt = (daily["debt"][end] - daily["debt"][i]) * 1e9
+        days = (dt.date.fromisoformat(end_date) - dt.date.fromisoformat(a)).days
+        obligations = D.FWP_2026_08_24_ANNUAL_OBLIGATIONS * max(days, 0) / 365
+        bought = sum((w["delta"] or 0) * (w["avg_price"] or 0)
+                     for w in rows_w if (w["delta"] or 0) > 0)
+        sold = sum(-(w["delta"] or 0) * (w["avg_price"] or 0)
+                   for w in rows_w if (w["delta"] or 0) < 0)
+        s0 = st(i)
+        modeled = (s0["claims"] - raised - discount + obligations + bought - sold
+                   + (pref_par_issued - pref_proceeds) + d_debt)
+        return A.build_operations(
+            raised=raised, discount=discount, obligations=obligations,
+            btc_bought_usd=bought, btc_sold_usd=sold,
+            d_held=end_st["held"] - s0["held"],
+            d_shares=end_st["shares"] - s0["shares"],
+            end_price=end_st["price"],
+            residual=end_st["claims"] - modeled,
+            pref_par_issued=pref_par_issued, pref_proceeds=pref_proceeds,
+            d_debt=d_debt,
+        ), {"raisedM": raised / 1e6, "discountM": discount / 1e6,
+            "carryM": obligations / 1e6, "prefParM": pref_par_issued / 1e6,
+            "prefProceedsM": pref_proceeds / 1e6, "debtM": d_debt / 1e6,
+            "residualM": (end_st["claims"] - modeled) / 1e6}
+
     rows = []
     for i in range(end + 1):
         a = st(i)
@@ -342,6 +390,8 @@ def build_strategy(daily: dict, weekly: list, chronicle: list) -> dict:
             daily["mnav_cebe"][i], c0, daily["btc"][i],
             daily["mnav_cebe"][end], end_cebe, daily["btc"][end])
         flows = A.flows_between(weekly, daily["date"][i], daily["date"][end])
+        ops, opMeta = ops_for(i)
+        op_parts = A.shapley_operations(a, ops)
 
         # 總變化太小的時候,「各層佔幾%」會被放大到沒有意義(分母趨近零),
         # 甚至出現 −100% 這種讀起來像錯誤的數字。標記起來讓前端改用
@@ -365,6 +415,14 @@ def build_strategy(daily: dict, weekly: list, chronicle: list) -> dict:
             "mstrRet": round((daily["mstr"][end] / daily["mstr"][i] - 1) * 100, 1),
             "btcRet": round((daily["btc"][end] / daily["btc"][i] - 1) * 100, 1),
             "bought": round(flows["btcBought"]), "sold": round(flows["btcSold"]),
+            # 操作層級:各項加總 = ΔCEBE。這才對應真實決策。
+            # 但它依賴完整的資金流揭露(ATM 表、回購表、USD Reserve),
+            # 2026-06 之前 8-K 沒有這些欄位,對不起來的部分會全部擠進殘差 ——
+            # 殘差大於總變化的四分之一時就不該拿來下結論,用 opsOk 標記。
+            "ops": {k: round(v) for k, v in op_parts.items()},
+            "opMeta": {k: round(v) for k, v in opMeta.items()},
+            "opsOk": bool(abs(op_parts.get("other", 0.0))
+                          <= 0.25 * max(abs(end_cebe - c0), 1.0)),
         })
 
     return {
