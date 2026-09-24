@@ -66,7 +66,7 @@ export const overviewPage: PageFn = (root) => {
             公司在不同階段用的是完全不同的資本工具,對股東的後果也完全相反。</p>
           <p style="font-size:.9rem;color:var(--ink-2);margin-bottom:10px">
             <a href="#/structure/model">資本結構</a> ——
-            誰排在誰前面、CEBE 怎麼算,以及公司能動用哪些工具去改變它。</p>
+            求償權怎麼算、兩個每股指標差在哪裡,以及公司能動用哪些工具去改變它。</p>
           <p style="font-size:.9rem;color:var(--ink-2);margin:0">
             <a href="#/pricing">槓桿與定價</a> ——
             求償權固定在美元,所以實得每股含幣量是一個對 BTC 有槓桿的部位。</p>

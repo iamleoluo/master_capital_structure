@@ -33,11 +33,12 @@ export const structurePage: PageFn = (root) => {
   root.innerHTML = `
     <div class="wrap">
       <div class="page-head">
-        <p class="eyebrow">資本結構</p>
-        <h1>誰排在誰前面</h1>
-        <p class="lede">MSTR 的比特幣不是全部屬於普通股股東的。可轉債與優先股排在前面,
-          各自有一筆<b>鎖死在美元的固定請求權</b>;普通股拿的是把那些扣掉之後剩下的殘值。
-          這一頁解釋這個結構怎麼運作、怎麼量化,以及公司能用哪些工具去改變它。</p>
+        <p class="eyebrow">資本結構 · 求償權與殘值</p>
+        <h1>求償權排在前面,剩下的才是股東的</h1>
+        <p class="lede">MSTR 的比特幣不是全部屬於普通股股東的。可轉債與優先股在清償順位上
+          排在前面,各自有一筆<b>鎖死在美元的固定請求權</b>;普通股拿的是把那些扣掉之後的
+          <b>殘值</b>。這一頁定義求償權怎麼算、兩個每股指標差在哪裡,並用河流圖把結構畫出來。
+          公司能用哪些工具改變它,見<a href="#/operations">資本操作</a>。</p>
       </div>
 
       <div class="grid3" style="margin-bottom:10px">

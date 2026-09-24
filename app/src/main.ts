@@ -4,14 +4,14 @@ import "./styles/app.css";
 import { startRouter, topRoutes, type Route } from "./router";
 
 /** 有 parent 的是子分頁:不進主導覽,只在上層被選中時出現在第二排。
- *  「資本結構」底下分成「買了多少」與「誰排在誰前面」——
+ *  「資本結構」底下分成「持幣與融資」與「求償權與殘值」——
  *  同一個題目的兩半,但各自夠長,合成一頁會變成很難找東西的長捲軸。 */
 const routes: Route[] = [
   { path: "/", title: "總覽", page: async () => (await import("./pages/overview")).overviewPage },
   { path: "/chronicle", title: "大事記", page: async () => (await import("./pages/chronicle")).chroniclePage },
   { path: "/structure", title: "資本結構", page: async () => (await import("./pages/structure")).structurePage },
   { path: "/structure/holdings", parent: "/structure", title: "持幣與融資", page: async () => (await import("./pages/accumulation")).accumulationPage },
-  { path: "/structure/model", parent: "/structure", title: "誰排在誰前面", page: async () => (await import("./pages/structure")).structurePage },
+  { path: "/structure/model", parent: "/structure", title: "求償權與殘值", page: async () => (await import("./pages/structure")).structurePage },
   { path: "/operations", title: "資本操作", page: async () => (await import("./pages/operations")).operationsPage },
   { path: "/strategy", title: "績效歸因", page: async () => (await import("./pages/strategy")).strategyPage },
   { path: "/pricing", title: "槓桿與定價", page: async () => (await import("./pages/pricing")).pricingPage },

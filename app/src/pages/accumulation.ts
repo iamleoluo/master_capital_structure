@@ -10,7 +10,7 @@ export const accumulationPage: PageFn = (root) => {
   root.innerHTML = `
     <div class="wrap">
       <div class="page-head">
-        <p class="eyebrow">持幣與融資</p>
+        <p class="eyebrow">資本結構 · 持幣與融資</p>
         <h1>它到底買了多少幣,錢從哪來</h1>
         <p class="lede">資料直接來自每週的 8-K:累計持有量、當週買賣量、平均成交價,
           以及該週動用了哪些 ATM。這裡是原始數字,沒有插值 ——
