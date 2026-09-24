@@ -211,9 +211,15 @@ export const strategyPage: PageFn = (root) => {
       </div>
 
       <div class="note key">
-        <b>反事實:如果從 ${daily.date[idx]} 起什麼都不做</b> ——
-        不買幣、不賣幣、不增發、不回購,結構整個凍結,只讓比特幣價格走到今天,
-        每股含幣量會是 <b>${sats(r.cf)} sats</b>。
+        <b>反事實就是「度量 C 的起點值」,不是另一個概念。</b>
+        把期初的持幣、求償權、股數原封不動代進去,但幣價用<b>今天的</b> ——
+        也就是「公司從 ${daily.date[idx]} 起什麼都不做,只有行情在走」的世界。
+        <div class="formula-eq" style="margin:10px 0">
+          反事實 = ( H₀ − C₀ ÷ p₁ ) ÷ S₀ = ${sats(r.cf)} sats<br>
+          實際　 = ( H₁ − C₁ ÷ p₁ ) ÷ S₁ = ${sats(strategy.cebeNow)} sats
+        </div>
+        兩邊的幣價都是 p₁,所以相減時<b>幣價效果整項消掉</b>,
+        剩下的純粹是持幣 H、求償權 C、股數 S 的變化 —— 也就是公司做的事。
         實際是 ${sats(strategy.cebeNow)} sats,
         所以這段期間全部資本操作的淨效果是 <b>${signed(r.vsCf)} sats／股</b>
         (${good ? "加分" : "減分"})。這個數字等同於下面的度量 C

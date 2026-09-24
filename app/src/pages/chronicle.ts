@@ -47,7 +47,10 @@ function metricsTable(e: Era): string {
     <div class="table-wrap"><table class="era-metrics">
       <thead><tr><th>指標</th><th>期初</th><th></th><th>期末</th><th>變化</th></tr></thead>
       <tbody>
-        ${row("CEBE 每股含幣量", m.cebe, sats, "扣求償權後,股東實際分到的")}
+        ${row("純操作(CEBE @ 固定幣價)", m.cebeFixed, sats,
+          "兩端同代入期末幣價 —— 評價公司作為要看這一列")}
+        ${row("實現的 CEBE 每股", m.cebe, sats,
+          "混了幣價效果,不能單獨拿來評價操作")}
         ${row("帳面每股(basic 股數)", m.grossBps, sats, "不扣求償權")}
         ${row("淨求償權", m.claims, (v) => `$${v.toFixed(2)}B`,
           "可轉債 + 優先股 − 現金。減少對普通股是好事", "downGood")}
@@ -133,16 +136,19 @@ function programPanel(): string {
     <div class="program">
       <div class="program-span">全期 ${p.span[0]} → ${p.span[1]}</div>
       <div class="grid3" style="margin-bottom:14px">
-        ${cell("CEBE 每股含幣量", m.cebe, sats)}
+        ${cell("純操作(CEBE @ 固定幣價)", m.cebeFixed, sats)}
         ${cell("BTC 價格", m.btcPrice, usd0)}
         ${cell("總持幣", m.held, (v) => fmtBtc(v) + " 顆")}
         ${cell("淨求償權", m.claims, (v) => `$${v.toFixed(2)}B`, "neutral")}
       </div>
       <p class="program-key">
-        兩年多下來,<b>普通股每股分到的比特幣成長 ${sign(m.cebe.pct)},
-        比同期 BTC 本身的 ${sign(m.btcPrice.pct)} 還高</b> ——
-        這是整套結構到底有沒有替普通股股東做事的答案。
-        任何單一階段都只是這台機器的某一個轉速。
+        兩年多下來,<b>純操作讓普通股每股分到的比特幣成長 ${sign(m.cebeFixed.pct)},
+        比同期 BTC 本身的 ${sign(m.btcPrice.pct)} 還高</b>。
+        這裡用的是「兩端同代入期末幣價」的口徑,<b>幣價效果已經被消掉</b> ——
+        所以這個結論不能用「那只是幣價漲」來打掉。
+        實現值是 ${sign(m.cebe.pct)}(含幣價貢獻)。
+        任何單一階段都只是這台機器的某一個轉速,
+        各階段的純操作成績見下方每一則的第一列。
       </p>
       <p class="lede" style="margin:0">${p.lede}</p>
       <div class="grid2" style="margin-top:18px">

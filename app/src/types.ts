@@ -84,7 +84,10 @@ export interface Era {
   toolsActive: string[];
   metrics: {
     btcPrice: Delta; held: Delta; claims: Delta; pref: Delta; shares: Delta;
-    cebe: Delta; grossBps: Delta; mnavCebe: Delta; mstrPrice: Delta;
+    cebe: Delta;
+    /** 度量 C:兩端同代入期末幣價,幣價效果消掉 —— 評價操作看這個 */
+    cebeFixed: Delta;
+    grossBps: Delta; mnavCebe: Delta; mstrPrice: Delta;
     strcPrice: (Delta & { low: number; lowDate: string }) | null;
   };
   flows: {
@@ -148,7 +151,10 @@ export interface Meta {
     principles: { t: string; b: string }[];
     span: [string, string];
     metrics: {
-      cebe: Delta; held: Delta; btcPrice: Delta; mstrPrice: Delta; claims: Delta;
+      cebe: Delta;
+      /** 度量 C:純操作,不含幣價效果 */
+      cebeFixed: Delta;
+      held: Delta; btcPrice: Delta; mstrPrice: Delta; claims: Delta;
     };
     btcSoldEver: number; btcBoughtEver: number;
     soldPctOfHoldings: number; reserveYears: number;
