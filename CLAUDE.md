@@ -30,7 +30,8 @@
 | [`reference/02-operations.md`](reference/02-operations.md) | 七把工具 + 三個組合的代數 |
 | [`reference/03-data.md`](reference/03-data.md) | 實測 / 插值 / 沒有資料的邊界 |
 | [`reference/04-decisions.md`](reference/04-decisions.md) | **被換掉的方法與為什麼換** |
-| [`reference/05-toolbox.md`](reference/05-toolbox.md) | 系統的建構邏輯:工具 = 狀態轉移,七層架構 |
+| [`reference/05-toolbox.md`](reference/05-toolbox.md) | 系統的建構邏輯:工具 = 狀態轉移 |
+| [`reference/06-architecture.md`](reference/06-architecture.md) | **重建設計圖**:採集／事件／資本操作／階段,四層規格與施工順序 |
 
 `MSTR_CEBE_歷史分析_建置規格.md` 是 2026-08 的建置規格(要蓋什麼);
 `reference/` 是模型本身(為什麼是這個形狀)。兩者不重複。

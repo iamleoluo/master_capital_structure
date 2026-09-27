@@ -35,6 +35,7 @@ ORDER = [
     ("03-data.md", "資料的邊界"),
     ("04-decisions.md", "走過的彎路"),
     ("05-toolbox.md", "工具箱:系統怎麼建構"),
+    ("06-architecture.md", "系統重建設計圖"),
 ]
 
 
