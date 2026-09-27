@@ -258,3 +258,48 @@ def test_gross_bps_ops_signs():
     assert only_buy["held"] > 0 and abs(only_buy["shares"]) < 1e-9
     only_issue = A.gross_bps_ops(600_000.0, 250e6, 600_000.0, 300e6)
     assert only_issue["shares"] < 0 and abs(only_issue["held"]) < 1e-9
+
+
+def test_operations_table_agrees_with_the_toolbox_tools():
+    """操作表的狀態變化要跟 toolbox 那幾把工具說的一致。
+
+    只驗得了三項 —— atm 與 btc 是**聚合差分**,不是單一工具套用
+    (見 check_operations_against_tools 的說明)。但這三項一旦有人
+    把符號寫反或把參數接錯,這裡就會紅。
+    """
+    kw = dict(raised=5.0e9, discount=0.3e9, obligations=0.25e9,
+              btc_bought_usd=2.0e9, btc_sold_usd=0.4e9,
+              d_held=5_000.0, d_shares=30e6, end_price=86_404.0,
+              residual=-0.12e9, pref_par_issued=1.2e9,
+              pref_proceeds=1.0e9, d_debt=-0.5e9)
+    ops = A.build_operations(**kw)
+    bad = A.check_operations_against_tools(
+        ops, discount=kw["discount"], obligations=kw["obligations"],
+        pref_par_issued=kw["pref_par_issued"],
+        pref_proceeds=kw["pref_proceeds"])
+    assert bad == {}, bad
+
+
+def test_the_tool_check_catches_a_flipped_sign():
+    """反證:把折價的符號寫反,檢查必須抓到 —— 否則它沒有鑑別力。"""
+    ops = {"buyback": {"dclaims": +0.3e9},        # 應該是 −0.3e9
+           "carry": {"dclaims": 0.25e9},
+           "pref_issue": {"dclaims": 0.2e9}}
+    bad = A.check_operations_against_tools(
+        ops, discount=0.3e9, obligations=0.25e9,
+        pref_par_issued=1.2e9, pref_proceeds=1.0e9)
+    assert "buyback" in bad
+    assert bad["buyback"] == (0.3e9, -0.3e9)
+
+
+def test_preferred_issuance_is_dilutive_when_issued_below_par():
+    """發行價低於面額時 pref_issue 讓求償權增加 —— phantom growth 的來源。
+    這一項由 ISSUE_PREFERRED 驗,所以代數與歸因不可能各說各話。"""
+    ops = A.build_operations(
+        raised=0.0, discount=0.0, obligations=0.0, btc_bought_usd=0.0,
+        btc_sold_usd=0.0, d_held=0.0, d_shares=0.0, end_price=86_404.0,
+        residual=0.0, pref_par_issued=1.0e9, pref_proceeds=0.9e9)
+    assert ops["pref_issue"]["dclaims"] > 0
+    assert A.check_operations_against_tools(
+        ops, discount=0.0, obligations=0.0,
+        pref_par_issued=1.0e9, pref_proceeds=0.9e9) == {}

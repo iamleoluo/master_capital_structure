@@ -30,6 +30,7 @@ sys.path.insert(0, ROOT)
 from mstr_cebe import core as C          # noqa: E402
 from mstr_cebe import data as D          # noqa: E402
 from mstr_cebe import db as DB           # noqa: E402
+from mstr_cebe import events as EV       # noqa: E402
 from mstr_cebe import interpolate as I   # noqa: E402
 
 WEB = os.path.join(ROOT, "web")
@@ -411,37 +412,26 @@ def build_strategy(daily: dict, weekly: list, chronicle: list) -> dict:
     end_cebe = A.cebe_of(end_st)
     pm, pd, pmL, pdL = _chain_increments(daily)
 
-    atm = _load_raw("atm_weekly.json")
-    rep = (_load_raw("repurchase_weekly.json")
-           if os.path.exists(os.path.join(RAW, "repurchase_weekly.json")) else [])
     end_date = daily["date"][end]
+    # L2:資金流由事件的週聚合視圖算出來,不再讀 web/raw/*.json。
+    # 這樣歸因的每一個參數都能沿著 事件 → 文件 追回出處。
+    ev = EV.connect()
 
     def ops_for(i):
         """把區間內的資金流組成操作表。四因子拆的是會計結果,這裡拆的是決策。"""
         a = daily["date"][i]
-        rows_w = [w for w in weekly if a <= w["week_end"] <= end_date]
-        raised = sum((x["by_security"].get("MSTR", {}).get("net_proceeds_m") or 0.0)
-                     for x in atm if a <= x["week_end"] <= end_date) * 1e6
-        discount = sum(v.get("shares", 0.0) * 100 - v.get("cost_m", 0.0) * 1e6
-                       for x in rep if a <= x["week_end"] <= end_date
-                       for sec, v in x["by_security"].items() if sec != "MSTR")
-        rep_par = sum(v.get("shares", 0.0) * 100
-                      for x in rep if a <= x["week_end"] <= end_date
-                      for sec, v in x["by_security"].items() if sec != "MSTR")
-        pref_proceeds = sum(
-            (v.get("net_proceeds_m") or 0.0)
-            for x in atm if a <= x["week_end"] <= end_date
-            for sec, v in x["by_security"].items() if sec != "MSTR") * 1e6
+        f = EV.flows_between(ev, a, end_date)
+        raised = f["common_raised"]
+        discount = f["repurchase_discount"]
+        pref_proceeds = f["pref_proceeds"]
         # 期間新掛上的清算優先權 = 餘額變動 + 這段期間被回購掉的面額
         pref_par_issued = ((daily["pref_total"][end] - daily["pref_total"][i]) * 1e9
-                           + rep_par)
+                           + f["repurchase_par"])
         d_debt = (daily["debt"][end] - daily["debt"][i]) * 1e9
         days = (dt.date.fromisoformat(end_date) - dt.date.fromisoformat(a)).days
         obligations = D.FWP_2026_08_24_ANNUAL_OBLIGATIONS * max(days, 0) / 365
-        bought = sum((w["delta"] or 0) * (w["avg_price"] or 0)
-                     for w in rows_w if (w["delta"] or 0) > 0)
-        sold = sum(-(w["delta"] or 0) * (w["avg_price"] or 0)
-                   for w in rows_w if (w["delta"] or 0) < 0)
+        bought = f["btc_bought_usd"]
+        sold = f["btc_sold_usd"]
         s0 = st(i)
         modeled = (s0["claims"] - raised - discount + obligations + bought - sold
                    + (pref_par_issued - pref_proceeds) + d_debt)

@@ -214,7 +214,9 @@ def derive(conn: sqlite3.Connection, *, since: dt.date = dt.date(2024, 7, 1),
 
         # --- ATM 發行:動作(普通股與優先股對應不同工具)---
         for rec in fetch_8k_atm.parse_atm_table(html):
-            for sec, v in rec["by_security"].items():
+            # 列序放進 locator:排序後就還原文件裡的表格順序。
+            # 順序會影響浮點加總,而且這讓 locator 更接近「文件裡的實體位置」。
+            for row_no, (sec, v) in enumerate(rec["by_security"].items()):
                 out.append(Event(
                     kind="atm_issue", instrument=sec,
                     effective_at=rec["week_end"],
@@ -224,19 +226,21 @@ def derive(conn: sqlite3.Connection, *, since: dt.date = dt.date(2024, 7, 1),
                          if v.get("net_proceeds_m") is not None else None),
                     attrs={"notional_m": v.get("notional_m"),
                            "total_m": rec.get("total_m")},
-                    doc_id=doc, locator=f"atm/{rec['week_end']}/{sec}"))
+                    doc_id=doc,
+                    locator=f"atm/{rec['week_end']}/{row_no:02d}/{sec}"))
                 if v.get("available_m") is not None:
                     out.append(Event(
                         kind="atm_capacity", instrument=sec,
                         effective_at=rec["week_end"],
                         qty=v["available_m"] * 1e6, unit="USD",
                         doc_id=doc,
-                        locator=f"atm-capacity/{rec['week_end']}/{sec}"))
+                        locator=f"atm-capacity/{rec['week_end']}"
+                                f"/{row_no:02d}/{sec}"))
 
         # --- 優先股回購:動作 ---
         authority = fetch_8k_repurchase.parse_remaining_authority(html)
         for rec in fetch_8k_repurchase.parse_repurchase_table(html):
-            for sec, v in rec["by_security"].items():
+            for row_no, (sec, v) in enumerate(rec["by_security"].items()):
                 out.append(Event(
                     kind="preferred_repurchase", instrument=sec,
                     effective_at=rec["week_end"],
@@ -249,7 +253,8 @@ def derive(conn: sqlite3.Connection, *, since: dt.date = dt.date(2024, 7, 1),
                     attrs={"total_shares": rec.get("total_shares"),
                            "total_cost_m": rec.get("total_cost_m")},
                     doc_id=doc,
-                    locator=f"repurchase/{rec['week_end']}/{sec}"))
+                    locator=f"repurchase/{rec['week_end']}"
+                            f"/{row_no:02d}/{sec}"))
             # 剩餘授權是逐計畫揭露的(preferred / mstr),所以一個計畫一筆觀測
             for plan, amount_m in (authority or {}).items():
                 out.append(Event(
@@ -410,6 +415,68 @@ def weekly_reserve(conn: sqlite3.Connection) -> List[dict]:
                 "as_of": r["effective_at"], "usd_reserve": r["qty"],
                 "usd_cash": r["attrs"].get("usd_cash"), "filed": r["filed"]}
     return [seen[k] for k in sorted(seen)]
+
+
+# --------------------------------------------------------------- 資金流
+
+def flows_between(conn: sqlite3.Connection, lo: str, hi: str) -> Dict[str, float]:
+    """區間 [lo, hi] 內的資金流,單位美元。歸因層要的參數就是這些。
+
+    **不能直接加總事件** —— 同一週被多份 8-K 提到時會重複計算。所以這裡
+    走週聚合視圖,也就是「後蓋前」之後的那一份,與 `_latest_per_period()`
+    同一個語意。
+    """
+    def in_range(week_end: str) -> bool:
+        return lo <= week_end <= hi
+
+    # 刻意以百萬為單位累加、最後才乘 1e6 —— 與既有管線的加總順序一致。
+    # 先乘再加會在 1e-6 美元的量級上產生浮點差異,雖然毫無實質意義,
+    # 但「重構不改變任何數字」這個驗收條件值得守到位。
+    common_m = pref_m = 0.0
+    for rec in weekly_atm(conn):
+        if not in_range(rec["week_end"]):
+            continue
+        for sec, v in rec["by_security"].items():
+            m = v.get("net_proceeds_m") or 0.0
+            if sec == "MSTR":
+                common_m += m
+            else:
+                pref_m += m
+    common_raised, pref_proceeds = common_m * 1e6, pref_m * 1e6
+
+    # 折價同樣是逐列算完再加總(而不是分別加總後相減),與既有管線一致
+    repurchase_par = repurchase_cost = repurchase_discount = 0.0
+    for rec in weekly_repurchase(conn):
+        if not in_range(rec["week_end"]):
+            continue
+        for sec, v in rec["by_security"].items():
+            if sec == "MSTR":                 # 普通股庫藏不是求償權回購
+                continue
+            par = (v.get("shares") or 0.0) * 100
+            cost = (v.get("cost_m") or 0.0) * 1e6
+            repurchase_par += par
+            repurchase_cost += cost
+            repurchase_discount += par - cost
+
+    bought = sold = 0.0
+    for rec in weekly_activity(conn):
+        if not in_range(rec["week_end"]):
+            continue
+        delta, px = rec["btc_delta"], (rec["avg_price"] or 0.0)
+        if delta > 0:
+            bought += delta * px
+        else:
+            sold += -delta * px
+
+    return {
+        "common_raised": common_raised,     # 普通股 ATM 募得(抵減求償權)
+        "pref_proceeds": pref_proceeds,     # 優先股 ATM 募得
+        "repurchase_par": repurchase_par,   # 買回的面額
+        "repurchase_cost": repurchase_cost,  # 買回付出的現金
+        "repurchase_discount": repurchase_discount,
+        "btc_bought_usd": bought,
+        "btc_sold_usd": sold,
+    }
 
 
 # --------------------------------------------------------------- CLI

@@ -209,3 +209,71 @@ def test_named_actions_can_be_queried_by_month():
     assert rows
     kinds = {r["kind"] for r in rows}
     assert "preferred_repurchase" in kinds     # 2026-08 確實有回購
+
+
+# --------------------------------------------- 驗收:歸因參數改由事件來源
+
+def test_flows_between_matches_the_legacy_aggregation():
+    """第 4 步的驗收條件:歸因的資金流參數改由事件算出來,數字不能變。
+
+    位元級比對,不是近似 —— 加總順序不同就會在 1e-6 美元的量級上分岔,
+    而「重構不改變任何數字」值得守到位。
+    """
+    import os
+    conn = _real()
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    def raw(name):
+        with open(os.path.join(root, "web", "raw", name), encoding="utf-8") as f:
+            return json.load(f)
+
+    def app(name):
+        with open(os.path.join(root, "app", "data", name), encoding="utf-8") as f:
+            return json.load(f)
+
+    try:
+        atm, rep = raw("atm_weekly.json"), raw("repurchase_weekly.json")
+        weekly, daily = app("weekly.json"), app("daily.json")
+        end = daily["date"][-1]
+        for a in daily["date"][::13]:            # 取樣即可,全量在 CLI 驗過
+            legacy = {
+                "common_raised": sum(
+                    (x["by_security"].get("MSTR", {}).get("net_proceeds_m") or 0.0)
+                    for x in atm if a <= x["week_end"] <= end) * 1e6,
+                "pref_proceeds": sum(
+                    (v.get("net_proceeds_m") or 0.0) for x in atm
+                    if a <= x["week_end"] <= end
+                    for sec, v in x["by_security"].items() if sec != "MSTR") * 1e6,
+                "repurchase_discount": sum(
+                    v.get("shares", 0.0) * 100 - v.get("cost_m", 0.0) * 1e6
+                    for x in rep if a <= x["week_end"] <= end
+                    for sec, v in x["by_security"].items() if sec != "MSTR"),
+                "repurchase_par": sum(
+                    v.get("shares", 0.0) * 100 for x in rep
+                    if a <= x["week_end"] <= end
+                    for sec, v in x["by_security"].items() if sec != "MSTR"),
+                "btc_bought_usd": sum(
+                    (w["delta"] or 0) * (w["avg_price"] or 0) for w in weekly
+                    if a <= w["week_end"] <= end and (w["delta"] or 0) > 0),
+                "btc_sold_usd": sum(
+                    -(w["delta"] or 0) * (w["avg_price"] or 0) for w in weekly
+                    if a <= w["week_end"] <= end and (w["delta"] or 0) < 0),
+            }
+            got = E.flows_between(conn, a, end)
+            for k, want in legacy.items():
+                assert got[k] == want, f"{a} {k}: {got[k]!r} != {want!r}"
+    finally:
+        conn.close()
+
+
+def test_security_order_inside_a_week_follows_the_document():
+    """券種順序會影響浮點加總,所以 locator 帶著表格列序。
+
+    這同時讓 locator 更接近「文件裡的實體位置」,而不只是邏輯位置。
+    """
+    conn = _real()
+    try:
+        rec = next(r for r in E.weekly_atm(conn) if r["week_end"] == "2025-06-01")
+    finally:
+        conn.close()
+    assert list(rec["by_security"]) == ["STRK", "STRF"]   # 文件裡就是這個順序

@@ -212,6 +212,48 @@ def build_operations(*, raised: float, discount: float, obligations: float,
     }
 
 
+def check_operations_against_tools(
+        ops: Dict[str, Dict[str, float]], *, discount: float,
+        obligations: float, pref_par_issued: float, pref_proceeds: float,
+        tol: float = 1e-9) -> Dict[str, tuple]:
+    """拿 toolbox 的工具驗證操作表的狀態變化,回傳對不上的項目。
+
+    為什麼不是「改用工具產生操作表」:**這張表並不是一組工具套用**,
+    它是一組長得像工具的<b>聚合差分</b>。實測有兩項無法用單一工具表示 ——
+
+      atm  參數是 (n, P),但這裡只有「整段期間的募資總額」與「股數淨變動」,
+           而股數淨變動混了轉股與庫藏,本來就不等於 ATM 發出的股數。
+           實測有 6 個區間 d_shares 為零卻募了上億美元,硬套 n=0 會讓
+           求償權的減少整個消失。
+      btc  是買進與賣出的淨額,加上獨立觀測到的持幣變動,不是單一動作。
+
+    真正的「由工具產生」要等到**逐事件套用**(設計圖第 5 步),
+    那會改變數字,所以不屬於這一步。
+
+    其餘三項的參數化是精確的,這裡就精確驗:符號寫反、參數接錯,
+    都會在這裡被抓到。
+    """
+    from . import toolbox as T
+
+    base = T.State(held=1.0, claims=1.0, shares=1.0, price=1.0)
+    expect = {
+        # 折價回購:只有折價進得了分子
+        "buyback": T.BUYBACK_PREFERRED(base, c=0.0, F=discount),
+        # 股息債息:純流出,求償權增加
+        "carry": T.CARRY(base, c=obligations),
+        # 發優先股:拿到 proceeds、掛上 par
+        "pref_issue": T.ISSUE_PREFERRED(base, c=pref_proceeds,
+                                        F=pref_par_issued),
+    }
+    bad = {}
+    for name, after in expect.items():
+        want = after.claims - base.claims
+        got = ops.get(name, {}).get("dclaims", 0.0)
+        if abs(got - want) > tol:
+            bad[name] = (got, want)
+    return bad
+
+
 # ---------------------------------------------------------------------------
 # Gross BPS(公司自己的 BTC Yield)—— 公式裡沒有幣價,所以天生乾淨
 #
