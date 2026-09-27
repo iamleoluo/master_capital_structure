@@ -726,8 +726,8 @@ L4  Phase(mix, layers4, efficiency, price, residual_pct)</code></pre>
 <p><b>L2 與 L3 最後都收斂成同一個型別 <code>(Tool, Params)</code></b> —— 這就是 05 那份工具箱「組合在型別上封閉」的用處: 歸因與模擬完全不需要知道手上拿的是一個事件還是一組配對。</p>
 <hr>
 <h2 id="06-9">8. 現況 vs 設計圖</h2>
-<blockquote><b>進度</b>:第 1–4 步已完成(分支 <code>rebuild/l1-document-archive</code>)。 160 份 8-K 已歸檔並內容定址,四支解析器改讀檔案庫(斷網可跑), 916 個事件由文件推出,週聚合改成視圖。下面的表格反映完成後的狀態。</blockquote>
-<table><thead><tr><th>層</th><th>現況</th><th>缺口</th></tr></thead><tbody><tr><td>L1 採集</td><td>✅ 8-K 內容定址歸檔、有出處、解析與抓取已分離</td><td>⚠️ 報價 API 尚未歸檔</td></tr><tr><td>L2 事件</td><td>✅ 916 個事件、動作／觀測分家、冪等 id、可重放</td><td>⚠️ locator 是邏輯位置(<code>repurchase/2026-08-02/STRC</code>)而非文件內的實體位置</td></tr><tr><td>L3 操作</td><td>代數定義完成(<code>toolbox.py</code>);歸因參數已改由事件來源</td><td>❌ 沒有配對器;操作表仍是聚合差分(見下方第 4 步)</td></tr><tr><td>L4 階段</td><td>四層歸因完整且有斷言</td><td>⚠️ 分期是手寫常數,不是從組合算出來</td></tr></tbody></table>
+<blockquote><b>進度</b>:第 1–5 步已完成(分支 <code>rebuild/l1-document-archive</code>)。 160 份 8-K 已歸檔並內容定址,四支解析器改讀檔案庫(斷網可跑), 916 個事件由文件推出,週聚合改成視圖。下面的表格反映完成後的狀態。</blockquote>
+<table><thead><tr><th>層</th><th>現況</th><th>缺口</th></tr></thead><tbody><tr><td>L1 採集</td><td>✅ 8-K 內容定址歸檔、有出處、解析與抓取已分離</td><td>⚠️ 報價 API 尚未歸檔</td></tr><tr><td>L2 事件</td><td>✅ 916 個事件、動作／觀測分家、冪等 id、可重放</td><td>⚠️ locator 是邏輯位置(<code>repurchase/2026-08-02/STRC</code>)而非文件內的實體位置</td></tr><tr><td>L3 操作</td><td>✅ 配對器與 <code>operations</code> 表;192 個操作,對帳零差額</td><td>⚠️ 只實作 <code>sell_to_buyback</code>;歸因尚未改吃操作(仍是聚合差分)</td></tr><tr><td>L4 階段</td><td>四層歸因完整且有斷言</td><td>⚠️ 分期是手寫常數,不是從組合算出來</td></tr></tbody></table>
 <p><b><code>toolbox.py</code> 是唯一已經符合設計圖的部分。</b> 其餘三層都要重做, 但不是重寫 —— 是把既有的解析邏輯搬到新的資料結構上。</p>
 <hr>
 <h2 id="06-10">9. 施工順序</h2>
@@ -740,7 +740,14 @@ L4  Phase(mix, layers4, efficiency, price, residual_pct)</code></pre>
 <p>沒完成的部分,以及為什麼:<b>現行的操作表根本不是一組工具套用</b>, 它是一組長得像工具的&lt;b&gt;聚合差分&lt;/b&gt;。實際改寫時撞到兩堵牆:</p>
 <ul><li><code>atm</code> 的參數是 (n, P),但這裡只有「整段期間的募資總額」與「股數淨變動」, 而股數淨變動混了轉股與庫藏,<b>本來就不等於 ATM 發出的股數</b>。 實測有 6 個區間 <code>d_shares</code> 為零卻募了上億美元(例如起點 2026-08-21, 募資 <span class="nomath">$</span>2,609M),硬套 <code>n=0</code> 會讓求償權的減少整個消失。 - 即使 <code>d_shares</code> 不為零,<code>n × (raised/n) ≠ raised</code>,來回一趟就掉精度。 - <code>btc</code> 是買進與賣出的淨額加上獨立觀測到的持幣變動,不是單一動作。</li></ul>
 <p>所以這一步改成:<b>算術路徑維持精確,工具的對應關係改成可驗證的斷言</b> (<code>check_operations_against_tools</code>)。三項參數化精確的(<code>buyback</code>、 <code>carry</code>、<code>pref_issue</code>)精確驗,符號寫反會被抓到 —— 測試帶反證。</p>
-<p>真正的「由工具產生」要等<b>逐事件套用</b>,而那會改變數字, 所以它屬於第 5 步之後,不屬於這一步。這件事本身就是設計圖該記的東西: <b>聚合差分與工具套用不是同一種東西</b>,先前把它們看成一樣是判斷錯誤。 5. <b>建 <code>operations</code> 表與配對器。</b> 先只實作 <code>sell_to_buyback</code>, 其餘維持單工具操作。 驗收:現金流對帳等式成立,殘差不大於現況。 6. <b>階段改由組合向量算出。</b> 先跑出來與現在的四段比對, 差異要能解釋才換掉。 7. <b>前端的 <code>leverage.ts</code> 改讀 JSON。</b> 修掉 CLAUDE.md 第一條規則的違反。</p>
+<p>真正的「由工具產生」要等<b>逐事件套用</b>,而那會改變數字, 所以它屬於第 5 步之後,不屬於這一步。這件事本身就是設計圖該記的東西: <b>聚合差分與工具套用不是同一種東西</b>,先前把它們看成一樣是判斷錯誤。 5. ~~<b>建 <code>operations</code> 表與配對器。</b>~~ ✅ <b>已完成</b> 192 個操作。驗收通過:<b>193 個動作全部被涵蓋、現金流差額 <span class="nomath">$</span>0.00、 沒有重複計算</b>。</p>
+<p>最重要的決定是規則的依據換了:<b>配對看文件寫的用途,不看金額相似度。</b></p>
+<p>理由是資料說的。把「同一週同時出現賣幣與回購」當訊號,只有 1 週金額對得上 (2026-08-09,差 0.0026%),其餘來源都遠大於用途 —— 因為一週裡多個來源 同時供給多個用途。用金額去配等於在猜,那正是 §5 禁止的「無中生有」。</p>
+<p>但 8-K 的敘述句直接寫了用途,有時連金額都逐筆寫: *"<span class="nomath">$</span>52.4 million ... to fund dividends ... and <span class="nomath">$</span>52.3 million ... to fund repurchases of STRC Stock"*。那是 <code>stated</code>,不是推論。所以分配句式的解析 放進 L2(文件事實),L3 只讀事件。</p>
+<p>第二個決定來自 2026-08-02:文件寫明 <span class="nomath">$</span>52.3M 用於回購,但<b>那週回購總額 <span class="nomath">$</span>81.2M</b> —— 賣幣只支應了約 64%,其餘來自 ATM。所以記帳分兩種:</p>
+<ul><li><b>全額支應</b>(金額差 &lt; 5%)→ 兩邊合併成組合操作,各自不再單獨出現 - <b>只支應一部分</b> → 兩邊維持獨立,文件的說法掛在賣幣那一筆上</li></ul>
+<p>硬合併會吃掉另一個資金來源;讓兩邊各算一次又會重複計算。 記帳規則因此是<b>每個動作事件恰好屬於一個操作</b>。</p>
+<p>用詞修正:原本寫成「部分資助」是錯的 —— 中文的「資助」是贊助、補助, 而這裡講的是「這筆錢拿去支付那筆開銷」,應該是<b>支應</b>。 6. <b>階段改由組合向量算出。</b> 先跑出來與現在的四段比對, 差異要能解釋才換掉。 7. <b>前端的 <code>leverage.ts</code> 改讀 JSON。</b> 修掉 CLAUDE.md 第一條規則的違反。</p>
 <p>前三步只動地基不動結論,<b>可以先做而不影響任何現有頁面</b>。</p>
 <hr>
 <h2 id="06-11">10. 這份設計刻意不做的</h2>

@@ -47,6 +47,7 @@ python3 -m pytest tests/ -q      # 227 個測試
 python3 -m mstr_cebe.archive backfill   # L1:補抓 SEC 文件到 web/archive.sqlite
 python3 -m mstr_cebe.archive stats      # 檔案庫現況
 python3 -m mstr_cebe.events rebuild    # L2:由文件重算事件(可重放)
+python3 -m mstr_cebe.operations rebuild # L3:由事件重算資本操作 + 對帳
 python3 web/build_data.py        # 重算 app/data/*.json,含兩個黃金錨點
 python3 reference/build.py       # reference/*.md → reference/index.html
 cd app && npm run build          # 一般建置(Cloudflare 用)

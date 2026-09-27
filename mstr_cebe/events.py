@@ -22,6 +22,7 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 import json
+import re
 import sqlite3
 from dataclasses import dataclass, field
 from typing import Dict, Iterable, List, Optional, Sequence
@@ -165,7 +166,54 @@ def all_events(conn: sqlite3.Connection, *, kind: Optional[str] = None,
     return rows
 
 
+# --------------------------------------------------------------- 賣幣用途
+
+# 8-K 有時會逐筆寫出賣幣所得的去向,例如 2026-08-02 那份:
+#   "(1) $52.4 million in proceeds from the bitcoin sales were used to fund
+#    dividends on Strategy's preferred stock and $52.3 million ... were used to
+#    fund repurchases of STRC Stock under the Digital Credit Securities
+#    Repurchase Program."
+# 這是**文件自己寫的分配**,比任何金額相似度推論都強 —— L3 的配對要靠它,
+# 所以在 L2 就解析成結構,而不是留一段自由文字給上層去猜。
+_ALLOC_PAT = re.compile(
+    r"\$([\d,.]+)\s*(million|billion)\s+in proceeds from the bitcoin sales?\s+"
+    r"were used to\s+(.{0,160}?)(?=\s+and\s+\$[\d,.]+\s*(?:million|billion)|\.|\()",
+    re.I)
+
+# 用途字串 → 這筆錢流向哪一種動作。關鍵字取自申報文件的實際用語。
+_PURPOSE_RULES = (
+    ("preferred_repurchase", ("repurchase", "repurchases")),
+    ("carry", ("dividend", "dividends", "distribution", "distributions")),
+    ("reserve", ("usd reserve", "replenish")),
+)
+
+
+def classify_purpose(text: str) -> Optional[str]:
+    """把文件寫的用途歸到一種動作。認不出來就回 None —— 不猜。"""
+    low = (text or "").lower()
+    for kind, words in _PURPOSE_RULES:
+        if any(w in low for w in words):
+            return kind
+    return None
+
+
+def parse_sale_allocation(html: str) -> List[Dict]:
+    """解析「$X 用於 A、$Y 用於 B」的逐筆分配。沒有就回空清單。"""
+    out = []
+    for amount, unit, what in _ALLOC_PAT.findall(html):
+        usd = float(amount.replace(",", "")) * (1e9 if unit.lower() == "billion"
+                                                else 1e6)
+        out.append({"usd": usd, "purpose": what.strip(),
+                    "kind": classify_purpose(what)})
+    return out
+
+
 # --------------------------------------------------------------- 由文件推導
+
+def _plain_text(html: str) -> str:
+    """去標籤、壓空白。分配句式橫跨多個標籤,所以要先攤平。"""
+    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", html))
+
 
 def derive(conn: sqlite3.Connection, *, since: dt.date = dt.date(2024, 7, 1),
            verbose: bool = False) -> int:
@@ -190,6 +238,7 @@ def derive(conn: sqlite3.Connection, *, since: dt.date = dt.date(2024, 7, 1),
                 doc_id=doc, locator=f"holdings/{d.isoformat()}"))
 
         # --- 買賣比特幣:動作 ---
+        alloc = parse_sale_allocation(_plain_text(html))
         for rec in fetch_8k_btc.parse_activity(html):
             delta = rec["btc_delta"]
             px = rec.get("avg_price")
@@ -202,8 +251,11 @@ def derive(conn: sqlite3.Connection, *, since: dt.date = dt.date(2024, 7, 1),
                 usd=(-abs(delta) * px if delta > 0 else abs(delta) * px)
                     if px else None,
                 unit_price=px,
-                attrs={k: rec[k] for k in ("funding", "funding_raw", "sale_use")
-                       if k in rec},
+                attrs={**{k: rec[k] for k in
+                          ("funding", "funding_raw", "sale_use") if k in rec},
+                       # 文件逐筆寫出的用途分配(有才放)。L3 的配對靠這個。
+                       **({"sale_allocation": alloc}
+                          if kind == "btc_sale" and alloc else {})},
                 doc_id=doc, locator=f"activity/{rec['week_end']}"))
             if rec.get("holdings") is not None:
                 out.append(Event(
