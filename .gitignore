@@ -10,3 +10,7 @@ files/
 
 # archify visual-check 的瀏覽器證據(每次重跑都會變,不進版控)
 diagrams/*.visual-check.*
+
+# L1 文件檔案庫:不可變的公開文件,一道指令可重建(見 mstr_cebe/archive.py)。
+# 稽核軌跡 web/archive/manifest.json 有進版控 —— 每列都有 url 與 sha256。
+web/archive.sqlite
