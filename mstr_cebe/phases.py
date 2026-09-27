@@ -10,7 +10,7 @@
 可轉債發行與優先股 IPO。`explained_share()` 把這個缺口算成數字。
 
 所以偵測器可以跑、可以比對,但**還不能取代人工分期**。
-要能取代,缺的不是演算法,是 L1 的涵蓋範圍(見 06-architecture.md §9 第 6 步)。
+要能取代,缺的不是演算法,是 L1 的涵蓋範圍(見 reference/08-status.md §3 第 6 步)。
 """
 from __future__ import annotations
 

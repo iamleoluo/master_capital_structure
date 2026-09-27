@@ -32,11 +32,12 @@ ORDER = [
     ("00-purpose.md", "這個系統是拿來做什麼的"),
     ("01-model.md", "模型怎麼一步一步長出來"),
     ("02-operations.md", "每一種操作的代數"),
-    ("03-data.md", "資料的邊界"),
+    ("03-data.md", "資料的血統、顆粒與邊界"),
     ("04-decisions.md", "走過的彎路"),
-    ("05-toolbox.md", "工具箱:系統怎麼建構"),
-    ("06-architecture.md", "系統重建設計圖"),
+    ("05-toolbox.md", "工具箱:代數怎麼變成可執行的宣告"),
+    ("06-architecture.md", "四層架構規格"),
     ("07-data-gaps.md", "資料缺口清單"),
+    ("08-status.md", "現況與施工紀錄"),
 ]
 
 

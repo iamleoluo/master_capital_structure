@@ -28,11 +28,19 @@
 | [`reference/00-purpose.md`](reference/00-purpose.md) | 這個系統要回答什麼、決策問題對照表、刻意不做的事 |
 | [`reference/01-model.md`](reference/01-model.md) | 從四個原始量到四層歸因,逐步推導 |
 | [`reference/02-operations.md`](reference/02-operations.md) | 七把工具 + 三個組合的代數 |
-| [`reference/03-data.md`](reference/03-data.md) | 實測 / 插值 / 沒有資料的邊界 |
+| [`reference/03-data.md`](reference/03-data.md) | **資料的血統、顆粒與邊界**:三種顆粒怎麼不重複計算 |
 | [`reference/04-decisions.md`](reference/04-decisions.md) | **被換掉的方法與為什麼換** |
-| [`reference/05-toolbox.md`](reference/05-toolbox.md) | 系統的建構邏輯:工具 = 狀態轉移 |
-| [`reference/06-architecture.md`](reference/06-architecture.md) | **重建設計圖**:採集／事件／資本操作／階段,四層規格與施工順序 |
-| [`reference/07-data-gaps.md`](reference/07-data-gaps.md) | 資料缺口:缺什麼、缺多少、哪些 EDGAR 表單補得起來 |
+| [`reference/05-toolbox.md`](reference/05-toolbox.md) | 代數怎麼變成可執行的宣告(**另一條軸**,見下) |
+| [`reference/06-architecture.md`](reference/06-architecture.md) | **四層架構規格**:L1 採集／L2 事件／L3 操作／L4 階段 |
+| [`reference/07-data-gaps.md`](reference/07-data-gaps.md) | 資料缺口:今天的資料夠不夠支撐今天的結論 |
+| [`reference/08-status.md`](reference/08-status.md) | **唯一的進度來源**:現況、施工紀錄、下一步 |
+
+⚠️ **兩條軸都叫「層」。** 06 的 `L1–L4` 是**資料怎麼流**(程式模組
+`archive`/`events`/`operations`/`phases` 與所有 commit 用這套);
+05 的分層是**一把工具由什麼組成**(量→尺→工具→組合→歸因→判斷→決策),
+刻意不用 `L` 編號。`L4` 只有一個意思:階段。
+
+⚠️ **進度只寫在 08。** 不要在 05/06/07 再寫一份現況 —— 以前三份各自過時過。
 
 `MSTR_CEBE_歷史分析_建置規格.md` 是 2026-08 的建置規格(要蓋什麼);
 `reference/` 是模型本身(為什麼是這個形狀)。兩者不重複。
