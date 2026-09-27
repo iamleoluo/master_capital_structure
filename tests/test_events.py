@@ -277,3 +277,113 @@ def test_security_order_inside_a_week_follows_the_document():
     finally:
         conn.close()
     assert list(rec["by_security"]) == ["STRK", "STRF"]   # 文件裡就是這個順序
+
+
+# ------------------------------------------- 季頻(XBRL):年初累計的陷阱
+
+def test_ytd_cumulative_facts_are_differenced_into_quarters():
+    """XBRL 的期間從會計年度起算,是**累計值**。直接加總會把同一筆錢算好幾次。
+
+    這條測試用真實的數字:優先股募資 2025 年的四個累計值,
+    還原之後各季應該是 1337 / 1611 / 2940 / 1148。
+    """
+    facts = [
+        {"start": "2025-01-01", "end": "2025-03-31", "val": 1336.9, "accn": "a"},
+        {"start": "2025-01-01", "end": "2025-06-30", "val": 2947.6, "accn": "a"},
+        {"start": "2025-01-01", "end": "2025-09-30", "val": 5888.4, "accn": "a"},
+        {"start": "2025-01-01", "end": "2025-12-31", "val": 7036.1, "accn": "a"},
+    ]
+    got = [(f["period_start"], f["period_end"], round(f["val"], 1))
+           for f in E._discrete_periods(facts)]
+    assert got == [
+        ("2025-01-01", "2025-03-31", 1336.9),
+        ("2025-03-31", "2025-06-30", 1610.7),
+        ("2025-06-30", "2025-09-30", 2940.8),
+        ("2025-09-30", "2025-12-31", 1147.7),
+    ]
+    # 各季相加要等於全年累計 —— 這才是「沒有重複也沒有遺漏」
+    assert sum(x[2] for x in got) == pytest.approx(7036.1, abs=0.1)
+
+
+def test_a_natively_quarterly_fact_wins_over_the_differenced_one():
+    """有些事實本身就是單季(起日不是年度起日)。公司自己報的優先,
+    否則兩者期間重疊會重複計算。"""
+    facts = [
+        {"start": "2025-01-01", "end": "2025-03-31", "val": 9.2, "accn": "a"},
+        {"start": "2025-01-01", "end": "2025-06-30", "val": 58.1, "accn": "a"},
+        {"start": "2025-04-01", "end": "2025-06-30", "val": 49.0, "accn": "b"},
+    ]
+    got = {f["period_end"]: f for f in E._discrete_periods(facts)}
+    q2 = got["2025-06-30"]
+    assert q2["extraction"] == "stated"          # 不是相減出來的
+    assert q2["period_start"] == "2025-04-01"
+    assert q2["val"] == pytest.approx(49.0)
+    assert got["2025-03-31"]["extraction"] == "derived"
+
+
+def test_restated_periods_take_the_latest_filing():
+    facts = [
+        {"start": "2025-01-01", "end": "2025-03-31", "val": 100.0,
+         "accn": "0001-25-1", "filed": "2025-05-05"},
+        {"start": "2025-01-01", "end": "2025-03-31", "val": 111.0,
+         "accn": "0001-26-1", "filed": "2026-05-06"},
+    ]
+    (f,) = E._discrete_periods(facts)
+    assert f["val"] == pytest.approx(111.0)
+
+
+def test_quarterly_periods_never_overlap():
+    """重疊就是重複計算。用真實資料掃一遍。"""
+    conn = _real()
+    try:
+        rows = E.all_events(conn, granularity="quarter")
+    finally:
+        conn.close()
+    seen = {}
+    for r in rows:
+        seen.setdefault((r["kind"], r["instrument"]), []).append(
+            (r["period_start"], r["period_end"]))
+    for key, spans in seen.items():
+        spans.sort()
+        for a, b in zip(spans, spans[1:]):
+            assert b[0] >= a[1], f"{key} 期間重疊:{a} vs {b}"
+
+
+def test_weekly_views_ignore_quarterly_events():
+    """季頻與週頻描述同一批動作。混在一起就會重複計算,
+    所以週聚合視圖只能看得到週顆粒。"""
+    conn = _real()
+    try:
+        assert E.all_events(conn, granularity="quarter")      # 確實有季頻資料
+        for r in E.all_events(conn, kind="atm_issue"):        # 預設只取週
+            assert r["granularity"] == "week"
+    finally:
+        conn.close()
+
+
+def test_xbrl_fills_the_tool_that_had_no_events():
+    """可轉債的事件數原本是 0 —— 那是階段偵測器失敗的主因之一。"""
+    conn = _real()
+    try:
+        issues = [r for r in E.all_events(conn, kind="convert_issue",
+                                          granularity="quarter")]
+        repays = [r for r in E.all_events(conn, kind="convert_repurchase",
+                                          granularity="quarter")]
+    finally:
+        conn.close()
+    assert issues and repays
+    assert all(r["usd"] > 0 for r in issues)      # 發行是現金流入
+    assert all(r["usd"] < 0 for r in repays)      # 償還是流出
+
+
+def test_every_quarterly_event_points_at_its_source_filing():
+    """出處往上流:季頻事件要能指回原始的 10-Q/10-K accession。"""
+    conn = _real()
+    try:
+        rows = E.all_events(conn, granularity="quarter")
+    finally:
+        conn.close()
+    for r in rows:
+        assert r["attrs"]["xbrl_tag"]
+        assert r["attrs"]["source_accession"]
+        assert r["attrs"]["form"] in ("10-Q", "10-K")

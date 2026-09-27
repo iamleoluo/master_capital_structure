@@ -2350,5 +2350,17 @@
   "sha256": "07d7c6513fc779c3051d445214237f9fa09fcb12fd750658a7180b932ae3f8c0",
   "byte_len": 157057,
   "items": null
+ },
+ {
+  "doc_id": "eb05f38286048d65",
+  "source": "sec_xbrl",
+  "url": "https://data.sec.gov/api/xbrl/companyfacts/CIK0001050446.json",
+  "accession": null,
+  "filed_at": "2026-09-27",
+  "fetched_at": "2026-09-27T14:29:50+00:00",
+  "media_type": "application/json",
+  "sha256": "eb05f38286048d652aa8e05feb66abb1d94025214a85cf9c7d0edbfb9a3283e8",
+  "byte_len": 3014282,
+  "items": null
  }
 ]

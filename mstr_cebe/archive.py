@@ -315,6 +315,22 @@ def sync_filing_metadata(conn: sqlite3.Connection,
     return n
 
 
+def fetch_company_facts(conn: sqlite3.Connection) -> str:
+    """歸檔 SEC 的 XBRL companyfacts。
+
+    為什麼不解析 10-Q 的 HTML 表格:同樣的數字 SEC 已經以 XBRL 結構化發布,
+    連期間起訖與來源 accession 都標好了。硬解 HTML 表格是自找的麻煩 ——
+    「三個月」與「九個月」兩欄長得一模一樣,弄錯就是嚴重錯誤。
+
+    這份檔案會隨每次申報而變,內容定址會自然留下每一版。
+    """
+    url = (f"https://data.sec.gov/api/xbrl/companyfacts/CIK{CIK}.json")
+    r = _get(url)
+    return store(conn, source="sec_xbrl", url=url, content=r.content,
+                 media_type="application/json",
+                 filed_at=dt.date.today().isoformat())
+
+
 def backfill(conn: sqlite3.Connection, *, since: dt.date,
              forms: Iterable[str] = ("8-K",),
              progress: bool = True) -> Iterator[DocMeta]:
@@ -365,6 +381,14 @@ def _cmd_backfill(argv: List[str]) -> int:
     return 0
 
 
+def _cmd_facts(_argv: List[str]) -> int:
+    conn = connect()
+    doc_id = fetch_company_facts(conn)
+    export_manifest(conn)
+    print(f"XBRL companyfacts 已歸檔:{doc_id}")
+    return 0
+
+
 def _cmd_manifest(_argv: List[str]) -> int:
     n = export_manifest(connect())
     print(f"web/archive/manifest.json  {n} 列")
@@ -394,7 +418,7 @@ def _cmd_stats(_argv: List[str]) -> int:
 def main(argv: Optional[List[str]] = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     cmds = {"backfill": _cmd_backfill, "stats": _cmd_stats,
-            "manifest": _cmd_manifest}
+            "manifest": _cmd_manifest, "facts": _cmd_facts}
     if not argv or argv[0] not in cmds:
         print(f"用法:python3 -m mstr_cebe.archive {{{'|'.join(cmds)}}}")
         return 1

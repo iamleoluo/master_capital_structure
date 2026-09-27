@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS events (
   doc_id       TEXT NOT NULL REFERENCES documents(doc_id),
   locator      TEXT NOT NULL,      -- 這筆在文件裡對應哪一列
   extraction   TEXT NOT NULL,      -- 'stated' | 'derived'
+  granularity  TEXT NOT NULL DEFAULT 'week',   -- 'week' | 'quarter'
   confidence   REAL NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_ev_kind_date ON events(kind, effective_at);
@@ -60,6 +61,9 @@ KINDS: Dict[str, tuple] = {
     "btc_sale":               ("action", "sell_btc"),
     "atm_issue":              ("action", None),   # 工具看 instrument,見 tool_for()
     "preferred_repurchase":   ("action", "buyback_preferred"),
+    "convert_issue":          ("action", "issue_preferred"),
+    "convert_repurchase":     ("action", "buyback_preferred"),
+    "dividend_payment":       ("action", "carry"),
     "holdings_observation":   ("observation", None),
     "reserve_observation":    ("observation", None),
     "atm_capacity":           ("observation", None),
@@ -96,6 +100,9 @@ class Event:
     unit_price: Optional[float] = None
     attrs: Dict = field(default_factory=dict)
     extraction: str = "stated"
+    # 週揭露(8-K)與季揭露(XBRL)描述的是同一批動作,顆粒不同。
+    # 視圖要能分辨,才不會把兩種顆粒疊在一起重複計算。
+    granularity: str = "week"
     confidence: float = 1.0
 
     @property
@@ -115,6 +122,14 @@ class Event:
 
 # --------------------------------------------------------------- 儲存
 
+def _migrate(conn: sqlite3.Connection) -> None:
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(events)")}
+    if cols and "granularity" not in cols:
+        conn.execute("ALTER TABLE events ADD COLUMN granularity TEXT"
+                     " NOT NULL DEFAULT 'week'")
+        conn.commit()
+
+
 def connect(path: str = A.DEFAULT_PATH) -> sqlite3.Connection:
     """事件與文件放同一個檔案 —— 出處的外鍵才是真的。
 
@@ -123,6 +138,7 @@ def connect(path: str = A.DEFAULT_PATH) -> sqlite3.Connection:
     """
     conn = A.connect(path)
     conn.executescript(SCHEMA)
+    _migrate(conn)
     return conn
 
 
@@ -132,21 +148,29 @@ def insert(conn: sqlite3.Connection, events: Iterable[Event]) -> int:
         conn.execute(
             "INSERT OR REPLACE INTO events (event_id, kind, family, instrument,"
             " effective_at, period_start, period_end, qty, unit, usd,"
-            " unit_price, attrs, doc_id, locator, extraction, confidence)"
-            " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            " unit_price, attrs, doc_id, locator, extraction, granularity,"
+            " confidence) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             (e.event_id, e.kind, e.family, e.instrument, e.effective_at,
              e.period_start, e.period_end, e.qty, e.unit, e.usd, e.unit_price,
              json.dumps(e.attrs, ensure_ascii=False, sort_keys=True),
-             e.doc_id, e.locator, e.extraction, e.confidence))
+             e.doc_id, e.locator, e.extraction, e.granularity, e.confidence))
         n += 1
     conn.commit()
     return n
 
 
 def all_events(conn: sqlite3.Connection, *, kind: Optional[str] = None,
-               family: Optional[str] = None) -> List[dict]:
-    """取事件,附上該文件的申報日 —— 「後蓋前」的排序要靠它。"""
+               family: Optional[str] = None,
+               granularity: Optional[str] = "week") -> List[dict]:
+    """取事件,附上該文件的申報日 —— 「後蓋前」的排序要靠它。
+
+    granularity 預設只取週顆粒。季顆粒(XBRL)描述的是同一批動作,
+    兩種混在一起會重複計算 —— 要取季的就明講,或傳 None 取全部。
+    """
     where, args = [], []
+    if granularity:
+        where.append("e.granularity = ?")
+        args.append(granularity)
     if kind:
         where.append("e.kind = ?")
         args.append(kind)
@@ -330,11 +354,141 @@ def derive(conn: sqlite3.Connection, *, since: dt.date = dt.date(2024, 7, 1),
     return total
 
 
-def rebuild(conn: sqlite3.Connection, **kw) -> int:
+# --------------------------------------------------------------- 季頻(XBRL)
+
+# XBRL 標籤 → (事件種類, 標的)。設計圖 §4 的事件種類表早就列了這幾項,
+# 所以這不是為了 10-Q 開的特例 —— 是同一套模型換一個來源填。
+XBRL_FLOWS = {
+    "ProceedsFromIssuanceOfCommonStock":
+        ("atm_issue", "MSTR"),
+    "ProceedsFromIssuanceOfPreferredStockAndPreferenceStock":
+        ("atm_issue", "PREFERRED"),      # XBRL 是各系列合計,沒有拆開
+    "ProceedsFromConvertibleDebt":
+        ("convert_issue", "CONVERTIBLE"),
+    "RepaymentsOfConvertibleDebt":
+        ("convert_repurchase", "CONVERTIBLE"),
+    "PaymentsOfDividendsPreferredStockAndPreferenceStock":
+        ("dividend_payment", "PREFERRED"),
+    "PaymentsOfDividendsCommonStock":
+        ("dividend_payment", "MSTR"),
+}
+
+# 現金流的方向:募資流入為正,付款流出為負。
+_XBRL_SIGN = {"atm_issue": +1, "convert_issue": +1,
+              "convert_repurchase": -1, "dividend_payment": -1}
+
+
+def _discrete_periods(facts: List[dict]) -> List[dict]:
+    """把 XBRL 的期間整理成互不重疊的單季金額。
+
+    **這是這一層最容易出錯的地方**,而且錯法有兩種。
+
+    第一種:大部分事實是**年初至今的累計**,不是單季 ——
+
+        2025-01-01 → 03-31  $1,337M   (Q1)
+        2025-01-01 → 06-30  $2,948M   (上半年,不是 Q2!)
+        2025-01-01 → 09-30  $5,888M
+
+    直接加總會把同一筆錢算好幾次,所以同年度內要逐筆相減:
+    Q2 = 2,948 − 1,337 = 1,611。
+
+    第二種:**有些事實本身就是單季**(起日不是年度起日)。它們與上面
+    相減出來的結果期間重疊,一起收下就會重複。公司自己報的單季值優先 ——
+    那是 stated,相減出來的是 derived。
+
+    同一個期間被多份申報重述時取最新的(與週資料的「後蓋前」同規則)。
+    """
+    # 去重:同一個 (start, end) 取申報最新的那一筆
+    best: Dict[tuple, dict] = {}
+    for f in facts:
+        if not f.get("start"):
+            continue
+        key = (f["start"], f["end"])
+        prev = best.get(key)
+        if prev is None or (f.get("filed", ""), f.get("accn", "")) > \
+                (prev.get("filed", ""), prev.get("accn", "")):
+            best[key] = f
+
+    # 會計年度起日 = 每年最早出現的起日
+    fy_start = {}
+    for f in best.values():
+        y = f["start"][:4]
+        fy_start[y] = min(fy_start.get(y, f["start"]), f["start"])
+
+    cumulative, discrete = [], []
+    for f in best.values():
+        (cumulative if f["start"] == fy_start[f["start"][:4]]
+         else discrete).append(f)
+
+    out = []
+    by_year: Dict[str, List[dict]] = {}
+    for f in cumulative:
+        by_year.setdefault(f["start"], []).append(f)
+    for start, rows in by_year.items():
+        rows.sort(key=lambda x: x["end"])
+        prev_end, prev_val = start, 0.0
+        for f in rows:
+            out.append({**f, "period_start": prev_end, "period_end": f["end"],
+                        "val": f["val"] - prev_val, "ytd_val": f["val"],
+                        "extraction": "derived"})   # 相減出來的
+            prev_end, prev_val = f["end"], f["val"]
+
+    # 公司自己報的單季值蓋掉相減出來的(以結束日為準)
+    by_end = {f["period_end"]: f for f in out}
+    for f in discrete:
+        by_end[f["end"]] = {**f, "period_start": f["start"],
+                            "period_end": f["end"], "ytd_val": None,
+                            "extraction": "stated"}
+    return sorted(by_end.values(), key=lambda x: x["period_end"])
+
+
+def derive_xbrl(conn: sqlite3.Connection, *, verbose: bool = False) -> int:
+    """把 XBRL companyfacts 的資金流拆成季頻事件。
+
+    補的是週 8-K 看不到的那些:可轉債發行與償還(事件數原本是 0)、
+    早於逐週揭露的募資、以及實際付出的股息(原本只有用年率估的常數)。
+    """
+    docs = [m for m in A.find(conn, source="sec_xbrl")]
+    if not docs:
+        raise RuntimeError("檔案庫裡沒有 XBRL —— 先跑 "
+                           "python3 -m mstr_cebe.archive facts")
+    doc = max(docs, key=lambda m: m.fetched_at)
+    facts = json.loads(A.text(conn, doc.doc_id))["facts"]["us-gaap"]
+
+    out: List[Event] = []
+    for tag, (kind, instrument) in XBRL_FLOWS.items():
+        if tag not in facts:
+            continue
+        rows = facts[tag]["units"].get("USD", [])
+        for f in _discrete_periods(rows):
+            if not f["val"]:
+                continue
+            usd = abs(f["val"]) * _XBRL_SIGN[kind]
+            out.append(Event(
+                kind=kind, instrument=instrument,
+                effective_at=f["period_end"],
+                period_start=f["period_start"], period_end=f["period_end"],
+                qty=abs(f["val"]), unit="USD", usd=usd,
+                attrs={"xbrl_tag": tag, "ytd_usd": f["ytd_val"],
+                       "source_accession": f.get("accn"),
+                       "form": f.get("form"), "fp": f.get("fp")},
+                doc_id=doc.doc_id,
+                locator=f"xbrl/{tag}/{f['period_start']}..{f['period_end']}",
+                extraction=f["extraction"], granularity="quarter"))
+            if verbose:
+                print(f"  {f['period_start']} → {f['period_end']}  {kind:<20}"
+                      f"{instrument:<12}${usd/1e6:>10,.1f}M")
+    return insert(conn, out)
+
+
+def rebuild(conn: sqlite3.Connection, *, with_xbrl: bool = True, **kw) -> int:
     """整批刪掉再由文件重算 —— 這就是「每層可獨立重放」的實證。"""
     conn.execute("DELETE FROM events")
     conn.commit()
-    return derive(conn, **kw)
+    n = derive(conn, **kw)
+    if with_xbrl and A.find(conn, source="sec_xbrl"):
+        n += derive_xbrl(conn, verbose=kw.get("verbose", False))
+    return n
 
 
 # --------------------------------------------------------------- 週聚合視圖
@@ -541,15 +695,16 @@ def main(argv: Optional[List[str]] = None) -> int:
         n = rebuild(conn, verbose="-v" in argv)
         print(f"由 {len(A.find(conn, source='sec_8k'))} 份文件推出 {n} 個事件")
     rows = conn.execute(
-        "SELECT family, kind, COUNT(*), MIN(effective_at), MAX(effective_at)"
-        " FROM events GROUP BY family, kind ORDER BY family DESC, kind").fetchall()
+        "SELECT granularity, family, kind, COUNT(*), MIN(effective_at),"
+        " MAX(effective_at) FROM events GROUP BY granularity, family, kind"
+        " ORDER BY granularity, family DESC, kind").fetchall()
     if not rows:
         print("還沒有事件 —— 先跑 python3 -m mstr_cebe.events rebuild")
         return 0
-    print(f"{'家族':<12}{'種類':<24}{'筆數':>6}   期間")
-    for fam, kind, n, lo, hi in rows:
-        print(f"{fam:<12}{kind:<24}{n:>6}   {lo} → {hi}")
-    print(f"{'合計':<36}{sum(r[2] for r in rows):>6}")
+    print(f"{'顆粒':<10}{'家族':<12}{'種類':<22}{'筆數':>6}   期間")
+    for gran, fam, kind, n, lo, hi in rows:
+        print(f"{gran:<10}{fam:<12}{kind:<22}{n:>6}   {lo} → {hi}")
+    print(f"{'合計':<50}{sum(r[3] for r in rows):>6}")
     return 0
 
 
