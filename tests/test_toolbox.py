@@ -1,0 +1,282 @@
+"""工具箱的測試。
+
+這支的重點不是「函式會不會跑」,而是**代數宣告不能說謊**:
+每一把工具的 `accretive` 謂詞都拿 `apply` 去驗,門檻兩側各驗一次。
+改了 apply 卻沒改謂詞(或反過來),這裡就會紅。
+
+reference/05-toolbox.md 的論述成不成立,看這支過不過。
+"""
+from __future__ import annotations
+
+import math
+
+import pytest
+
+from mstr_cebe import toolbox as T
+
+
+# 用接近真實的結構當基準:846k 顆幣、$14.84B 求償權、416M 股、$86k 幣價
+BASE = T.State(held=846_000.0, claims=14.84e9, shares=415.9e6, price=86_404.0)
+
+
+def test_state_reproduces_the_site_numbers():
+    """L1 的尺要跟網站上的數字對得起來,否則底下全部免談。"""
+    assert T.gross_bps(BASE) == pytest.approx(203_414, rel=1e-3)
+    assert T.cebe(BASE) == pytest.approx(162_122, rel=1e-3)
+    assert T.claims_per_share(BASE) == pytest.approx(
+        T.gross_bps(BASE) - T.cebe(BASE), rel=1e-9)
+
+
+def test_leverage_and_wipeout_are_consistent():
+    """A(p) = 1/(1 − p₀/p) —— 兩個式子必須是同一件事。"""
+    p0 = T.wipeout_price(BASE)
+    assert T.leverage(BASE) == pytest.approx(1 / (1 - p0 / BASE.price), rel=1e-12)
+    # 幣價正好跌到 p₀ 時,殘值歸零
+    at_zero = T.State(BASE.held, BASE.claims, BASE.shares, p0)
+    assert T.cebe(at_zero) == pytest.approx(0.0, abs=1e-6)
+
+
+# --------------------------------------------------------------- 結構上的零
+
+def test_buying_btc_with_cash_is_exactly_neutral():
+    """不是「幾乎是零」,是零。這條錯了,phantom growth 整個論述就垮了。"""
+    e = T.effect(T.BUY_BTC, BASE, c=1e9)
+    assert e["dE"] == pytest.approx(0.0, abs=1e-9)
+    assert e["dB"] > 0
+
+
+def test_selling_btc_into_reserve_is_exactly_neutral():
+    e = T.effect(T.SELL_BTC, BASE, x=1_000.0)
+    assert e["dE"] == pytest.approx(0.0, abs=1e-9)
+    assert e["dB"] < 0
+
+
+def test_preferred_buyback_is_invisible_to_gross_bps():
+    """B 的式子裡沒有求償權,所以這裡的零是結構性的,不是數值巧合。"""
+    e = T.effect(T.BUYBACK_PREFERRED, BASE, c=0.73e9, F=1e9)
+    assert e["dB"] == pytest.approx(0.0, abs=1e-12)
+    assert e["dE"] > 0
+
+
+def test_carry_is_the_only_unconditional_negative():
+    """其餘工具的正負都取決於價格條件,只有這一項無論如何都是負的。"""
+    for price in (30_000.0, 86_404.0, 250_000.0):
+        s = T.State(BASE.held, BASE.claims, BASE.shares, price)
+        assert T.effect(T.CARRY, s, c=1e8)["dE"] < 0
+
+
+# --------------------------------------------------------------- 謂詞不能說謊
+
+def _params_at_mnav(s: T.State, m: float) -> float:
+    """由恆等式反解:要讓 mNAV 等於 m,股價該是多少。"""
+    return m * T.cebe(s) / T.SATS * s.price
+
+
+@pytest.mark.parametrize("m,expected", [(1.30, True), (1.05, True),
+                                        (0.95, False), (0.70, False)])
+def test_atm_predicate_matches_reality(m, expected):
+    """ATM 的宣告是 m > 1。拿 apply 驗,門檻兩側都要對。"""
+    P = _params_at_mnav(BASE, m)
+    assert T.COMMON_ATM.accretive(BASE, {"n": 1e6, "P": P}) is expected
+    assert (T.effect(T.COMMON_ATM, BASE, n=1e6, P=P)["dE"] > 0) is expected
+
+
+@pytest.mark.parametrize("m,expected", [(0.70, True), (0.95, True),
+                                        (1.05, False), (1.30, False)])
+def test_common_buyback_predicate_matches_reality(m, expected):
+    """庫藏股是反過來的:m < 1 才加分。這就是授權掛著不動用的原因。"""
+    P = _params_at_mnav(BASE, m)
+    assert T.COMMON_BUYBACK.accretive(BASE, {"n": 1e6, "P": P}) is expected
+    assert (T.effect(T.COMMON_BUYBACK, BASE, n=1e6, P=P)["dE"] > 0) is expected
+
+
+def test_common_buyback_always_lifts_gross_bps():
+    """兩個指標正面打架:m > 1 時 E 下降,但 B 照樣上升。"""
+    P = _params_at_mnav(BASE, 1.30)
+    e = T.effect(T.COMMON_BUYBACK, BASE, n=1e6, P=P)
+    assert e["dB"] > 0 and e["dE"] < 0
+
+
+@pytest.mark.parametrize("d,m,expected", [
+    (0.27, 0.78, True), (0.27, 0.68, False),      # 門檻 0.73 兩側
+    (0.10, 0.95, True), (0.10, 0.85, False),      # 門檻 0.90 兩側
+    (0.00, 1.05, True), (0.00, 0.95, False),      # 退化成純 ATM
+])
+def test_atm_to_buyback_threshold_is_one_minus_d(d, m, expected):
+    """組合 C 的宣告是 m > 1 − d。折價越深,適用區間越寬。"""
+    P = _params_at_mnav(BASE, m)
+    kw = {"n": 1e6, "P": P, "d": d}
+    assert T.ATM_TO_BUYBACK.accretive(BASE, kw) is expected
+    assert (T.effect(T.ATM_TO_BUYBACK, BASE, **kw)["dE"] > 0) is expected
+
+
+def test_every_tool_predicate_agrees_with_applying_it():
+    """掃過所有工具與組合:有謂詞的,就得跟實際套用的結果一致。
+
+    這是整個設計的保險絲 —— 新增工具時忘了同步謂詞,這裡會抓到。
+    """
+    cases = {
+        "issue_preferred": [{"c": 0.9e9, "F": 1e9}, {"c": 1.1e9, "F": 1e9}],
+        "buyback_preferred": [{"c": 0.73e9, "F": 1e9}, {"c": 1.2e9, "F": 1e9}],
+        "carry": [{"c": 1e8}],
+        "common_atm": [{"n": 1e6, "P": _params_at_mnav(BASE, 1.3)},
+                       {"n": 1e6, "P": _params_at_mnav(BASE, 0.7)}],
+        "common_buyback": [{"n": 1e6, "P": _params_at_mnav(BASE, 1.3)},
+                           {"n": 1e6, "P": _params_at_mnav(BASE, 0.7)}],
+        "convert_conversion": [{"F": 1e9, "n": 2e6}, {"F": 1e9, "n": 20e6}],
+        "sell_to_buyback": [{"x": 5_000.0, "F": 1e9},
+                            {"x": 5_000.0, "F": 0.2e9}],
+        "preferred_to_btc": [{"c": 0.9e9, "F": 1e9}, {"c": 1.1e9, "F": 1e9}],
+        "atm_to_buyback": [{"n": 1e6, "P": _params_at_mnav(BASE, 0.78), "d": 0.27},
+                           {"n": 1e6, "P": _params_at_mnav(BASE, 0.68), "d": 0.27}],
+    }
+    checked = 0
+    for tool in T.TOOLS + T.COMBOS:
+        if tool.accretive is None:
+            # 宣告恆中性的,就必須真的恆中性
+            neutral = {"buy_btc": {"c": 1e9}, "sell_btc": {"x": 1_000.0}}[tool.id]
+            assert T.effect(tool, BASE, **neutral)["dE"] == pytest.approx(0, abs=1e-9)
+            checked += 1
+            continue
+        for kw in cases[tool.id]:
+            claimed = tool.accretive(BASE, kw)
+            actual = T.effect(tool, BASE, **kw)["dE"] > 0
+            assert claimed is actual, f"{tool.id} 的謂詞與實際不符:{kw}"
+            checked += 1
+    assert checked >= len(T.TOOLS) + len(T.COMBOS)
+
+
+# --------------------------------------------------------------- 組合
+
+def test_combo_equals_applying_its_parts_in_order():
+    """組合沒有魔法:就是依序套用。這條守住 compose() 的語意。"""
+    manual = T.BUYBACK_PREFERRED(
+        T.SELL_BTC(BASE, x=5_000.0), c=5_000.0 * BASE.price, F=1e9)
+    combo = T.SELL_TO_BUYBACK(BASE, x=5_000.0, F=1e9)
+    assert combo == manual
+
+
+def test_phantom_growth_has_opposite_signs():
+    """發優先股買幣:B 上升而 E 下降。這兩行並排就是 phantom growth。"""
+    e = T.effect(T.PREFERRED_TO_BTC, BASE, c=0.9e9, F=1e9)
+    assert e["dB"] > 0 and e["dE"] < 0
+
+
+def test_sell_to_buyback_gain_is_the_discount_only():
+    """組合 B 的加分恰好等於折價本身,跟賣了多少幣無關。"""
+    F = 1e9
+    for x in (2_000.0, 5_000.0, 9_000.0):
+        c = x * BASE.price
+        gain = T.effect(T.SELL_TO_BUYBACK, BASE, x=x, F=F)["dE"]
+        expected = (F - c) / (BASE.price * BASE.shares) * T.SATS
+        assert gain == pytest.approx(expected, rel=1e-9)
+
+
+def test_atm_to_buyback_nets_to_claims_down_shares_up():
+    """兩步加總的淨效果:求償權 −F、股數 +n、持幣不動。"""
+    n, P, d = 1e6, 150.0, 0.27
+    after = T.ATM_TO_BUYBACK(BASE, n=n, P=P, d=d)
+    assert after.held == BASE.held
+    assert after.shares == pytest.approx(BASE.shares + n)
+    assert after.claims == pytest.approx(BASE.claims - n * P / (1 - d))
+
+
+def test_combos_are_closed_under_composition():
+    """組合回傳的還是 Tool,所以可以再被組進另一個組合。"""
+    twice = T.compose(
+        id="buyback_twice", label="回購兩次", params=("c", "F"),
+        steps=(T.Step(T.BUYBACK_PREFERRED, lambda s, k: {"c": k["c"], "F": k["F"]}),
+               T.Step(T.BUYBACK_PREFERRED, lambda s, k: {"c": k["c"], "F": k["F"]})),
+        latex_b=r"\Delta B = 0", latex_e=r"2 \times \Delta E")
+    once = T.effect(T.BUYBACK_PREFERRED, BASE, c=0.73e9, F=1e9)["dE"]
+    assert T.effect(twice, BASE, c=0.73e9, F=1e9)["dE"] == pytest.approx(
+        2 * once, rel=1e-9)
+
+
+# --------------------------------------------------------------- 資本效率
+
+@pytest.mark.parametrize("d", [0.05, 0.10, 0.27, 0.40])
+def test_buyback_efficiency_is_d_over_one_minus_d(d):
+    """折價回購的資本報酬率就是 d/(1−d):折價 27% 換到 37% 的報酬。
+
+    這是決策層真正要比較的數字 —— 同一塊錢拿去買幣的報酬是 0。
+    """
+    F = 1e9
+    c = F * (1 - d)
+    eff = T.efficiency(T.BUYBACK_PREFERRED, BASE, capital=c, c=c, F=F)
+    assert eff == pytest.approx(d / (1 - d), rel=1e-9)
+
+
+def test_buying_btc_has_zero_capital_efficiency():
+    assert T.efficiency(T.BUY_BTC, BASE, capital=1e9, c=1e9) == pytest.approx(
+        0.0, abs=1e-12)
+
+
+def test_efficiency_rejects_zero_capital():
+    with pytest.raises(ValueError):
+        T.efficiency(T.BUY_BTC, BASE, capital=0.0, c=1e9)
+
+
+# --------------------------------------------------------------- 介面健全性
+
+def test_missing_parameter_is_caught_early():
+    with pytest.raises(TypeError, match="common_atm"):
+        T.COMMON_ATM(BASE, n=1e6)          # 少了 P
+
+
+def test_every_tool_declares_both_rulers():
+    """兩把尺都要有代數,不能只寫一邊 —— 兩欄並排才是重點。"""
+    for tool in T.TOOLS + T.COMBOS:
+        assert tool.latex_b.strip(), f"{tool.id} 缺 latex_b"
+        assert tool.latex_e.strip(), f"{tool.id} 缺 latex_e"
+        assert tool.params, f"{tool.id} 沒宣告參數"
+
+
+def test_tools_do_not_mutate_the_input_state():
+    """State 是 frozen,套用只產生新狀態 —— 歸因會反覆重放,不能有副作用。"""
+    before = T.State(**vars(BASE))
+    T.ATM_TO_BUYBACK(BASE, n=1e6, P=150.0, d=0.27)
+    assert BASE == before
+
+
+def test_price_is_untouched_by_every_tool():
+    """工具只動結構,不動幣價。幣價是行情,不是決策 —— 這是四層拆解的前提。"""
+    for tool, kw in ((T.BUY_BTC, {"c": 1e9}), (T.SELL_BTC, {"x": 1e3}),
+                     (T.COMMON_ATM, {"n": 1e6, "P": 150.0}),
+                     (T.ATM_TO_BUYBACK, {"n": 1e6, "P": 150.0, "d": 0.2})):
+        assert tool(BASE, **kw).price == BASE.price
+
+
+def test_effect_matches_closed_form_for_buyback():
+    """把 latex_e 宣告的封閉式子真的算一次,跟 apply 的結果比對。"""
+    c, F = 0.73e9, 1e9
+    closed = (F - c) / (BASE.price * BASE.shares) * T.SATS
+    assert T.effect(T.BUYBACK_PREFERRED, BASE, c=c, F=F)["dE"] == pytest.approx(
+        closed, rel=1e-9)
+
+
+def test_atm_closed_form_threshold_equals_predicate():
+    """latex_e 說門檻是 P/p×1e8 > E,謂詞說是 m > 1。兩者必須等價。"""
+    for m in (0.8, 0.99, 1.01, 1.5):
+        P = _params_at_mnav(BASE, m)
+        by_formula = P / BASE.price * T.SATS > T.cebe(BASE)
+        by_predicate = T.COMMON_ATM.accretive(BASE, {"n": 1e6, "P": P})
+        assert by_formula is by_predicate, f"m={m} 兩種寫法不一致"
+
+
+def test_log_decomposition_of_a_sequence_telescopes():
+    """把一串操作依序套用,各步 ΔlnE 相加 = 總 ΔlnE。
+
+    這就是逐日鏈結在做的事,只是把「天」換成「操作」。
+    """
+    steps = [(T.COMMON_ATM, {"n": 2e6, "P": 150.0}),
+             (T.BUYBACK_PREFERRED, {"c": 0.3e9, "F": 0.41e9}),
+             (T.CARRY, {"c": 5e7}),
+             (T.BUY_BTC, {"c": 2e8})]
+    s, total = BASE, 0.0
+    for tool, kw in steps:
+        nxt = tool(s, **kw)
+        total += math.log(T.cebe(nxt)) - math.log(T.cebe(s))
+        s = nxt
+    assert total == pytest.approx(
+        math.log(T.cebe(s)) - math.log(T.cebe(BASE)), rel=1e-12)

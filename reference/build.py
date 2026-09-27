@@ -34,6 +34,7 @@ ORDER = [
     ("02-operations.md", "每一種操作的代數"),
     ("03-data.md", "資料的邊界"),
     ("04-decisions.md", "走過的彎路"),
+    ("05-toolbox.md", "工具箱:系統怎麼建構"),
 ]
 
 
