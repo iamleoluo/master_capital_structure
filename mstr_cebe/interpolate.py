@@ -75,25 +75,45 @@ _BTC_WEEKLY_PATH = Path(__file__).resolve().parent.parent / "web" / "raw" / "btc
 
 @lru_cache(maxsize=1)
 def _btc_weekly_cache() -> List[Tuple[date, float]]:
-    """逐週 8-K 持有量觀測點,直接讀爬蟲的輸出(mstr_cebe.fetch_8k_btc)。
+    """8-K 的持有量觀測點。優先走 L2 事件庫,退回逐週 JSON,再退回 data.py。
 
-    data.py 的 WEEKLY_BTC_HELD 是當初抄下來的快照,重抓 8-K 不會更新它 ——
-    只讀那份的話,每次重跑管線日頻序列的持幣量都會停在舊值(實測:8-K 已經
-    報到 846,000 顆,日頻序列卻還是 840,447)。檔案不在時回退到 data.py 的
-    硬編碼版本,離線也能跑。
+    **為什麼是事件庫而不是 JSON**:每季第一份 8-K(Item 2.02 財報預告)會在
+    活動表尾欄附上季末餘額,而 `btc_holdings_weekly.json` 只收專用表格
+    (`holdings/` locator),把那三個點濾掉了。2025 年的三個季末
+    (03-31 / 06-30 / 09-30)**只**出現在被濾掉的那邊 —— 缺口長期由
+    data.py 的手工錨點頂替,其中 2025-03-31 那筆是把申報當日的餘額
+    誤標成季末,在日序列上做出一個 +21,815 顆的假尖峰,再假裝「賣」回去。
+    真正的 2025-03-31 是 528,185,8-K 本來就寫了,只是沒被讀到。
+
+    退路存在的理由:離線或還沒建檔案庫時管線仍要能跑。
     """
-    if not _BTC_WEEKLY_PATH.exists():
-        return [(d, float(v)) for d, v in D.WEEKLY_BTC_HELD]
-    raw = json.loads(_BTC_WEEKLY_PATH.read_text(encoding="utf-8"))
-    return [(date.fromisoformat(d), float(v)) for d, v in raw]
+    try:
+        from . import events as E
+        conn = E.connect()
+        try:
+            rows = E.weekly_holdings(conn)
+        finally:
+            conn.close()
+        if rows:
+            return [(date.fromisoformat(d), float(v)) for d, v in rows]
+    except Exception:          # 檔案庫不存在或 schema 還沒建起來
+        pass
+    if _BTC_WEEKLY_PATH.exists():
+        raw = json.loads(_BTC_WEEKLY_PATH.read_text(encoding="utf-8"))
+        return [(date.fromisoformat(d), float(v)) for d, v in raw]
+    return [(d, float(v)) for d, v in D.WEEKLY_BTC_HELD]
 
 
 def btc_held_anchors() -> List[Tuple[date, float]]:
-    """§5.7b 的逐週 8-K 觀測點當主力,
-    XBRL 季度數字與舊的 spec 點位當補充(只在週資料沒有覆蓋的日期生效)。"""
-    weekly = _btc_weekly_cache()
-    spec = [(d, v) for d, v, _ in D.BTC_HELD]
-    return _merge(spec, D.XBRL_BTC_HELD, weekly)   # 週資料優先權最高(最後合併覆蓋)
+    """8-K 觀測點當主力,XBRL 季度數字補在 8-K 還沒開始揭露的那段。
+
+    這裡刻意**沒有**手工錨點表。原本 data.py 的 BTC_HELD 是這條鏈的第三個
+    來源,但它的四筆有效值裡兩筆是錯的(2025-03-31、2026-01-31),
+    而且錯的方式相同:抄的是申報當日餘額、標的卻是期末日期。
+    它們能存活是因為剛好落在沒有其他來源報數的日期上 —— 只要 8-K 的觀測
+    完整進來,這一層就沒有存在的必要。詳見 reference/03-data.md。
+    """
+    return _merge(D.XBRL_BTC_HELD, _btc_weekly_cache())  # 8-K 優先權最高
 
 
 def debt_anchors() -> List[Tuple[date, float]]:

@@ -332,21 +332,62 @@ def test_restated_periods_take_the_latest_filing():
     assert f["val"] == pytest.approx(111.0)
 
 
-def test_quarterly_periods_never_overlap():
-    """重疊就是重複計算。用真實資料掃一遍。"""
+def test_quarterly_periods_never_partially_overlap():
+    """部分相交就是重複計算 —— 同一批錢被算在兩段不同的期間裡。
+
+    完全相同的期間不算重疊:兩份文件可以描述同一季的同一筆動作
+    (見下一個測試)。這裡抓的是無法對齊、只能相加的那種。
+    """
     conn = _real()
     try:
-        rows = E.all_events(conn, granularity="quarter")
+        rows = E.all_events(conn, granularity="quarter", family="action")
     finally:
         conn.close()
     seen = {}
     for r in rows:
-        seen.setdefault((r["kind"], r["instrument"]), []).append(
+        seen.setdefault((r["kind"], r["instrument"]), set()).add(
             (r["period_start"], r["period_end"]))
     for key, spans in seen.items():
-        spans.sort()
-        for a, b in zip(spans, spans[1:]):
-            assert b[0] >= a[1], f"{key} 期間重疊:{a} vs {b}"
+        for a, b in zip(sorted(spans), sorted(spans)[1:]):
+            assert b[0] >= a[1], f"{key} 期間部分相交:{a} vs {b}"
+
+
+def test_the_same_quarter_from_two_documents_must_agree():
+    """同一季的同一筆動作可以有兩份文件講 —— 但它們必須講同一件事。
+
+    2025 三季的買幣就是這樣:季末那份 8-K(Item 2.02)給顆數,
+    三個月後的 10-Q 給資金來源拆解,兩邊的金額互為交叉驗證。
+    彼此**不得相加**(那才是重複計算),但彼此**必須吻合**,
+    不吻合就代表其中一邊解析錯了。
+
+    同一份文件內則連同期都不許出現 —— 那只可能是解析器重複輸出。
+    """
+    conn = _real()
+    try:
+        rows = E.all_events(conn, granularity="quarter", family="action")
+    finally:
+        conn.close()
+
+    per_doc, cross = {}, {}
+    for r in rows:
+        span = (r["kind"], r["instrument"], r["period_start"], r["period_end"])
+        per_doc.setdefault((r["doc_id"],) + span, []).append(r)
+        cross.setdefault(span, []).append(r)
+
+    for key, v in per_doc.items():
+        assert len(v) == 1, f"同一份文件同期重複輸出:{key}"
+
+    checked = 0
+    for span, v in cross.items():
+        if len(v) == 1:
+            continue
+        assert len({r["doc_id"] for r in v}) == len(v), span
+        usd = [r["usd"] for r in v if r["usd"] is not None]
+        if len(usd) > 1:
+            gap = (max(usd) - min(usd)) / abs(max(usd, key=abs))
+            assert abs(gap) < 0.01, f"{span} 兩份文件金額差 {gap*100:.2f}%"
+            checked += 1
+    assert checked >= 3, "2025 三季的 8-K × 10-Q 交叉驗證應該要跑到"
 
 
 def test_weekly_views_ignore_quarterly_events():
@@ -377,13 +418,24 @@ def test_xbrl_fills_the_tool_that_had_no_events():
 
 
 def test_every_quarterly_event_points_at_its_source_filing():
-    """出處往上流:季頻事件要能指回原始的 10-Q/10-K accession。"""
+    """出處往上流:每一個季頻事件都要指回一份真的在檔案庫裡的文件。
+
+    季頻不再只有 XBRL —— 季末那份 8-K(Item 2.02)的活動表也是季顆粒。
+    所以這裡驗的是「doc_id 解得開、locator 不是空的」這條通則,
+    XBRL 推出來的那些再額外要求標籤與 accession。
+    """
     conn = _real()
     try:
-        rows = E.all_events(conn, granularity="quarter")
+        rows = E.all_events(conn, granularity="quarter", family="action")
+        docs = {d.doc_id: d for d in A.find(conn)}
     finally:
         conn.close()
+    from_xbrl = 0
     for r in rows:
-        assert r["attrs"]["xbrl_tag"]
-        assert r["attrs"]["source_accession"]
-        assert r["attrs"]["form"] in ("10-Q", "10-K")
+        assert r["doc_id"] in docs, r["locator"]
+        assert r["locator"]
+        if "xbrl_tag" in r["attrs"]:
+            assert r["attrs"]["source_accession"]
+            assert r["attrs"]["form"] in ("10-Q", "10-K")
+            from_xbrl += 1
+    assert from_xbrl, "XBRL 那條路徑應該還在"

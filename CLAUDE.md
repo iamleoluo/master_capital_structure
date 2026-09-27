@@ -47,7 +47,8 @@ python3 -m pytest tests/test_toolbox.py -q   # 40 條:代數宣告不能與 appl
 python3 -m pytest tests/ -q      # 227 個測試
 python3 -m mstr_cebe.archive backfill   # L1:補抓 SEC 文件到 web/archive.sqlite
 python3 -m mstr_cebe.archive stats      # 檔案庫現況
-python3 -m mstr_cebe.events rebuild    # L2:由文件重算事件(可重放)
+python3 -m mstr_cebe.events rebuild    # L2:由文件重算事件 + 寫出 web/raw 視圖
+python3 -m mstr_cebe.events export     # 只重寫 web/raw/*.json(事件層的序列化)
 python3 -m mstr_cebe.operations rebuild # L3:由事件重算資本操作 + 對帳
 python3 -m mstr_cebe.phases            # L4:階段偵測 + 解釋率前提檢查
 python3 web/build_data.py        # 重算 app/data/*.json,含兩個黃金錨點

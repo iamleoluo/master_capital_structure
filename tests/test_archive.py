@@ -340,9 +340,6 @@ def test_parser_output_still_matches_the_committed_raw_files(no_network):
         holdings, activity = fetch_8k_btc.fetch_everything(
             _dt.date(2024, 7, 1), verbose=False, conn=conn)
         cases = [
-            ([[d.isoformat(), v] for d, v in sorted(holdings.items())],
-             "btc_holdings_weekly.json"),
-            (activity, "btc_activity_weekly.json"),
             (fetch_8k_atm.fetch_all(_dt.date(2024, 7, 1), verbose=False, conn=conn),
              "atm_weekly.json"),
             (fetch_8k_repurchase.fetch_all(_dt.date(2026, 1, 1), verbose=False, conn=conn),
@@ -358,3 +355,44 @@ def test_parser_output_still_matches_the_committed_raw_files(no_network):
             want = _json.load(f)
         # 經過 JSON round-trip 再比,避免 tuple/list 這類無關緊要的型別差異
         assert _json.loads(_json.dumps(got, ensure_ascii=False)) == want, name
+
+    # 持幣的兩個檔案不再是爬蟲的直接輸出 —— 事件層在中間做了兩件事,
+    # 兩件都是刻意的,所以這裡改成比對「爬蟲 + 那兩個轉換」:
+    #
+    #   1. 季末那份 8-K(Item 2.02)的季合計列,顆粒是 quarter 不是 week,
+    #      混進週加總會重複計算(2025 年因此多算 192,561 顆)
+    #   2. 同一列尾欄帶的季末餘額是存量,要進持有量序列 ——
+    #      舊檔只收專用表格,把它濾掉了
+    #
+    # 見 mstr_cebe/events.py 的 weekly_activity / weekly_holdings。
+    from mstr_cebe import events as _E
+    econn = _E.connect()
+    try:
+        ev_holdings = {r["effective_at"]: int(r["qty"])
+                       for r in _E.all_events(econn, kind="holdings_observation")
+                       if r["locator"].startswith("holdings/")}
+        ev_weeks = {r["period_end"] for r in _E.all_events(econn)
+                    if r["kind"] in ("btc_purchase", "btc_sale")}
+        ev_quarters = {r["period_end"]
+                       for r in _E.all_events(econn, granularity="quarter")
+                       if r["kind"] in ("btc_purchase", "btc_sale")
+                       and r["locator"].startswith("activity/")}
+        raw_holdings = dict(_json.load(open(
+            os.path.join(raw, "btc_holdings_weekly.json"), encoding="utf-8")))
+        raw_weeks = {a["week_end"] for a in _json.load(open(
+            os.path.join(raw, "btc_activity_weekly.json"), encoding="utf-8"))}
+    finally:
+        econn.close()
+
+    # 爬蟲的持有量 = 事件層 `holdings/` 那一組,逐筆相同(解析本身沒變)
+    assert {d.isoformat(): v for d, v in holdings.items()} == ev_holdings
+
+    # web/raw 是事件層的視圖:持有量是爬蟲輸出的超集,多出來的只能是季末點
+    assert set(raw_holdings) >= set(ev_holdings)
+    for d, v in ev_holdings.items():
+        assert raw_holdings[d] == v, d
+
+    # 活動檔則相反 —— 恰好少掉季合計那幾列,而且每一列都還在事件層裡
+    assert {a["week_end"] for a in activity} - raw_weeks == ev_quarters
+    assert raw_weeks == ev_weeks          # 週顆粒的那些一列不少
+    assert not (ev_weeks & ev_quarters)   # 兩種顆粒沒有落在同一個期末

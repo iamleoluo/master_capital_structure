@@ -160,8 +160,15 @@ def test_the_early_eras_are_flagged_as_unexplained():
     finally:
         conn.close()
     assert early["share"] < 0.5          # 大部分解釋不了
-    assert stack["share"] > 1.5          # 用途記了、來源沒記,反向偏離
     assert abs(early["unexplained_usd"]) > 1e9
+
+    # 「優先股堆疊」是反向偏離:買幣(用途)記了,支應它的普通股 ATM
+    # 要到 2025-09 才有逐週揭露(來源沒記),所以可解釋 > 實際。
+    #
+    # 這個數字曾經是 290%,其中一大半不是缺口而是重複計算 ——
+    # 季末那份 8-K 的季合計列被當成週紀錄,2025 年多算了 192,561 顆買幣。
+    # 修掉之後是 136%,剩下的才是真正的揭露缺口。
+    assert 1.2 < stack["share"] < 1.5
 
 
 def test_detector_misses_the_boundary_it_has_no_data_for():

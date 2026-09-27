@@ -22,6 +22,7 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 import json
+import os
 import re
 import sqlite3
 from dataclasses import dataclass, field
@@ -46,7 +47,7 @@ CREATE TABLE IF NOT EXISTS events (
   doc_id       TEXT NOT NULL REFERENCES documents(doc_id),
   locator      TEXT NOT NULL,      -- 這筆在文件裡對應哪一列
   extraction   TEXT NOT NULL,      -- 'stated' | 'derived'
-  granularity  TEXT NOT NULL DEFAULT 'week',   -- 'week' | 'quarter'
+  granularity  TEXT NOT NULL DEFAULT 'week',   -- 'week' | 'quarter' | 'instant'
   confidence   REAL NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_ev_kind_date ON events(kind, effective_at);
@@ -102,8 +103,18 @@ class Event:
     extraction: str = "stated"
     # 週揭露(8-K)與季揭露(XBRL)描述的是同一批動作,顆粒不同。
     # 視圖要能分辨,才不會把兩種顆粒疊在一起重複計算。
+    #
+    # ⚠️ 這個欄位描述的是**流量涵蓋的期間**。觀測是瞬時的存量,沒有期間,
+    #    一律是 'instant'(見 __post_init__)—— 讓觀測繼承流量列的顆粒是
+    #    歸類錯誤,而且有實害:季末那份 8-K(Item 2.02)附的季合計列帶著
+    #    正確的季末餘額,卻因為被標成 'quarter' 而被存量視圖過濾掉,
+    #    結果 2025-03-31 的持幣量長期由 data.py 一筆手工估值頂替。
     granularity: str = "week"
     confidence: float = 1.0
+
+    def __post_init__(self) -> None:
+        if KINDS[self.kind][0] == "observation":
+            object.__setattr__(self, "granularity", "instant")
 
     @property
     def family(self) -> str:
@@ -164,12 +175,16 @@ def all_events(conn: sqlite3.Connection, *, kind: Optional[str] = None,
                granularity: Optional[str] = "week") -> List[dict]:
     """取事件,附上該文件的申報日 —— 「後蓋前」的排序要靠它。
 
-    granularity 預設只取週顆粒。季顆粒(XBRL)描述的是同一批動作,
-    兩種混在一起會重複計算 —— 要取季的就明講,或傳 None 取全部。
+    granularity 預設只取週顆粒。季顆粒描述的是同一批動作,兩種混在一起
+    會重複計算 —— 要取季的就明講,或傳 None 取全部。
+
+    **觀測不受這個過濾器管。** granularity 描述的是流量涵蓋的期間,
+    而觀測是瞬時的存量(granularity='instant'),既不會被重複計算,
+    也不屬於任何一種顆粒。把它們一起濾掉會讓存量視圖看不到季末那些點。
     """
     where, args = [], []
     if granularity:
-        where.append("e.granularity = ?")
+        where.append("(e.family = 'observation' OR e.granularity = ?)")
         args.append(granularity)
     if kind:
         where.append("e.kind = ?")
@@ -232,7 +247,116 @@ def parse_sale_allocation(html: str) -> List[Dict]:
     return out
 
 
+# --------------------------------------------------------------- 買幣的資金來源
+
+# 10-Q/10-K 的註腳直接寫出買幣的錢從哪來,例如:
+#   "(a) In the first quarter of 2025, we purchased bitcoin using $4.37 billion
+#    of the net proceeds from ATM sales of class A common stock, $1.99 billion
+#    ... from our issuance of the 2030B Convertible Notes, ..."
+# 這與賣幣的 sale_allocation 完全對稱 —— 一邊是錢去哪,一邊是錢從哪來,
+# 而且兩邊都是 stated。L3 的配對靠它,所以在 L2 解析成結構。
+_FUND_QUARTER = re.compile(
+    r"In the (first|second|third|fourth) quarter of (\d{4}),\s*"
+    r"we purchased bitcoin using (.+?)\.(?!\d)", re.I)
+_FUND_YEAR = re.compile(
+    r"During (\d{4}),\s*we purchased bitcoin using (.+?)\.(?!\d)", re.I)
+# 句號後面接數字的是小數點,不是句尾 —— 少了 (?!\d) 會在 "$179." 斷掉
+_FUND_PART = re.compile(
+    r"\$([\d,.]+)\s*(million|billion)\s+of\s+(?:the\s+)?"
+    r"([^$]+?)(?=,\s*\$|,?\s+and\s+\$|$)", re.I)
+
+_QUARTER_NO = {"first": 1, "second": 2, "third": 3, "fourth": 4}
+_QUARTER_END = {1: ("01-01", "03-31"), 2: ("04-01", "06-30"),
+                3: ("07-01", "09-30"), 4: ("10-01", "12-31")}
+
+
+def _funding_instrument(text: str) -> Optional[str]:
+    """把來源敘述歸到一個標的。認不出來回 None —— 不猜。"""
+    t = text.lower()
+    for sym in ("strk", "strf", "strc", "strd", "stre"):
+        if sym in t:
+            return sym.upper()
+    if "convertible" in t:
+        return "CONVERTIBLE"
+    if "common stock" in t or "class a" in t:
+        return "MSTR"
+    if "excess cash" in t or "cash flow from operations" in t:
+        return "CASH"          # 自有現金,不是融資來源
+    return None
+
+
+def parse_funding_attribution(text: str) -> List[Dict]:
+    """解析買幣資金來源的註腳。10-Q 給到季,10-K 只給到年。"""
+    out = []
+
+    def parts_of(body: str) -> List[Dict]:
+        got = []
+        for amount, unit, src in _FUND_PART.findall(body):
+            usd = float(amount.replace(",", "")) * (1e9 if unit.lower() == "billion"
+                                                    else 1e6)
+            got.append({"usd": usd, "source": src.strip()[:120],
+                        "instrument": _funding_instrument(src)})
+        return got
+
+    for q, year, body in _FUND_QUARTER.findall(text):
+        lo, hi = _QUARTER_END[_QUARTER_NO[q.lower()]]
+        got = parts_of(body)
+        if got:
+            out.append({"period_start": f"{year}-{lo}", "period_end": f"{year}-{hi}",
+                        "granularity": "quarter", "sources": got})
+    for year, body in _FUND_YEAR.findall(text):
+        got = parts_of(body)
+        if got:
+            out.append({"period_start": f"{year}-01-01",
+                        "period_end": f"{year}-12-31",
+                        "granularity": "year", "sources": got})
+    return out
+
+
+def derive_funding(conn: sqlite3.Connection, *, verbose: bool = False) -> int:
+    """從 10-Q/10-K 的註腳取出買幣的資金來源,存成帶 funding_allocation 的
+    買幣事件。
+
+    **顆粒比週資料粗,所以不會進週聚合視圖** —— 它補的是 L3 的配對證據,
+    不是拿來重算週報表的。
+    """
+    docs = [m for m in A.find(conn) if m.source in ("sec_10q", "sec_10k")]
+    # 同一個期間被多份申報寫到時取最新那份(與週資料同規則)
+    best: Dict[tuple, tuple] = {}
+    for m in sorted(docs, key=lambda x: x.filed_at):
+        text = _plain_text(A.text(conn, m.doc_id))
+        for rec in parse_funding_attribution(text):
+            best[(rec["period_end"], rec["granularity"])] = (m, rec)
+
+    out: List[Event] = []
+    for (period_end, gran), (m, rec) in sorted(best.items()):
+        total = sum(p["usd"] for p in rec["sources"])
+        out.append(Event(
+            kind="btc_purchase", instrument="BTC",
+            effective_at=period_end,
+            period_start=rec["period_start"], period_end=period_end,
+            qty=None, unit="USD", usd=-total,
+            attrs={"funding_allocation": rec["sources"],
+                   "source_form": m.source, "accession": m.accession},
+            doc_id=m.doc_id,
+            locator=f"funding/{rec['period_start']}..{period_end}",
+            granularity=gran))
+        if verbose:
+            print(f"  {rec['period_start']} → {period_end} ({gran})"
+                  f"  ${total/1e9:>6.2f}B  "
+                  + " ".join(f"{p['instrument'] or '?'}={p['usd']/1e9:.2f}"
+                             for p in rec["sources"]))
+    return insert(conn, out)
+
+
 # --------------------------------------------------------------- 由文件推導
+
+def _span_days(start: Optional[str], end: str) -> Optional[int]:
+    """這筆紀錄涵蓋幾天。用來分辨週列與季末的合計列。"""
+    if not start:
+        return None
+    return (dt.date.fromisoformat(end) - dt.date.fromisoformat(start)).days
+
 
 def _plain_text(html: str) -> str:
     """去標籤、壓空白。分配句式橫跨多個標籤,所以要先攤平。"""
@@ -267,7 +391,16 @@ def derive(conn: sqlite3.Connection, *, since: dt.date = dt.date(2024, 7, 1),
             delta = rec["btc_delta"]
             px = rec.get("avg_price")
             kind = "btc_purchase" if delta > 0 else "btc_sale"
+            # 季末的 8-K 會附一列「該季合計」,格式與週列一模一樣。
+            # 把它當週紀錄會與那一季的各週重複計算 —— 實測 2025 年因此
+            # 多算了 $19.4B(10-K 宣稱全年 $22.47B,現行管線算出 $35.88B)。
+            # 它不是壞資料,只是顆粒不同,所以用 granularity 分開而不是丟掉。
+            # 跨度分布很乾淨:正常週列 1–7 天(另有一筆 13 天的兩週期),
+            # 季度彙總 89–91 天,中間完全沒有東西。門檻取 45 天。
+            span = _span_days(rec.get("week_start"), rec["week_end"])
+            gran = "week" if span is None or span <= 45 else "quarter"
             out.append(Event(
+                granularity=gran,
                 kind=kind, instrument="BTC",
                 effective_at=rec["week_end"],
                 period_start=rec.get("week_start"), period_end=rec["week_end"],
@@ -488,6 +621,8 @@ def rebuild(conn: sqlite3.Connection, *, with_xbrl: bool = True, **kw) -> int:
     n = derive(conn, **kw)
     if with_xbrl and A.find(conn, source="sec_xbrl"):
         n += derive_xbrl(conn, verbose=kw.get("verbose", False))
+    if any(m.source in ("sec_10q", "sec_10k") for m in A.find(conn)):
+        n += derive_funding(conn, verbose=kw.get("verbose", False))
     return n
 
 
@@ -513,15 +648,29 @@ def _latest_per_period(rows: Sequence[dict]) -> Dict[str, List[dict]]:
     return {p: docs[max(docs)] for p, docs in by_period.items()}
 
 
+# 存量觀測的兩種出處。專用的持有量表格優先於活動表尾欄 ——
+# 同一天兩者都有時前者是主要揭露,後者是附帶欄位。
+_HOLDINGS_LOCATORS = ("holdings/", "activity-holdings/")
+
+
 def weekly_holdings(conn: sqlite3.Connection) -> List[list]:
-    """[[日期, 顆數], ...] —— 等同舊的 btc_holdings_weekly.json。"""
+    """[[日期, 顆數], ...] —— 舊 btc_holdings_weekly.json 的超集。
+
+    比舊檔多了每季第一份 8-K(Item 2.02 財報預告)活動表尾欄帶的季末餘額。
+    舊檔只收 `holdings/`,把 `activity-holdings/` 濾掉了,而 2025 三個季末
+    (03-31 / 06-30 / 09-30)**只**出現在後者 —— 沒有任何逐週觀測落在那些
+    日期上,缺口長期由 data.py 的手工錨點頂替,其中 2025-03-31 那筆把申報
+    當日的餘額(555,450→四捨五入 550,000)誤標成季末(實際 528,185)。
+    """
     seen: Dict[str, tuple] = {}
     for r in all_events(conn, kind="holdings_observation"):
-        if r["locator"].startswith("holdings/"):
-            # 同一天被多份文件提到時,取申報日最新的
-            prev = seen.get(r["effective_at"])
-            if prev is None or r["filed"] >= prev[0]:
-                seen[r["effective_at"]] = (r["filed"], int(r["qty"]))
+        if not r["locator"].startswith(_HOLDINGS_LOCATORS):
+            continue
+        # 排序鍵:申報日越新越優先,同日則專用表格優先於活動表尾欄
+        rank = (r["filed"], r["locator"].startswith("holdings/"))
+        prev = seen.get(r["effective_at"])
+        if prev is None or rank >= prev[0]:
+            seen[r["effective_at"]] = (rank, int(r["qty"]))
     return [[d, v] for d, (_, v) in sorted(seen.items())]
 
 
@@ -532,7 +681,9 @@ def weekly_activity(conn: sqlite3.Connection) -> List[dict]:
     out = []
     for period, evs in sorted(_latest_per_period(rows).items()):
         e = evs[0]
-        sign = 1 if e["kind"] == "btc_purchase" else -1
+        # 「本週無買賣」的 8-K 也會出一列(qty=0),目前被歸成 btc_sale ——
+        # 乘上 -1 會產生 -0.0,序列化出去就與舊檔不同。判斷要帶上 qty。
+        sign = -1 if (e["kind"] == "btc_sale" and e["qty"]) else 1
         holdings = None
         for h in all_events(conn, kind="holdings_observation"):
             if h["doc_id"] == e["doc_id"] and \
@@ -687,6 +838,34 @@ def flows_between(conn: sqlite3.Connection, lo: str, hi: str) -> Dict[str, float
 
 # --------------------------------------------------------------- CLI
 
+# 週視圖 → 它序列化成的 web/raw 檔名。模型讀的是這些檔,所以視圖改了
+# 就要 export 一次,否則事件層修好了、下游卻還吃著舊檔。
+RAW_VIEWS = {
+    "weekly_holdings":  "btc_holdings_weekly.json",
+    "weekly_activity":  "btc_activity_weekly.json",
+    "weekly_atm":       "atm_weekly.json",
+    "weekly_repurchase": "repurchase_weekly.json",
+    "weekly_reserve":   "reserve_weekly.json",
+}
+
+
+def export_raw(conn: sqlite3.Connection, root: Optional[str] = None) -> Dict[str, int]:
+    """把週視圖寫回 web/raw。
+
+    這些檔案原本是爬蟲的直接輸出,現在改由事件層產生 —— 真相是檔案庫裡的
+    文件,web/raw 只是視圖的序列化。這樣「重解文件」的修正才會流到下游。
+    """
+    root = root or os.path.join(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "web", "raw")
+    out: Dict[str, int] = {}
+    for view, name in RAW_VIEWS.items():
+        rows = globals()[view](conn)
+        with open(os.path.join(root, name), "w", encoding="utf-8") as f:
+            json.dump(rows, f, ensure_ascii=False)
+        out[name] = len(rows)
+    return out
+
+
 def main(argv: Optional[List[str]] = None) -> int:
     import sys
     argv = list(sys.argv[1:] if argv is None else argv)
@@ -694,6 +873,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     if argv and argv[0] == "rebuild":
         n = rebuild(conn, verbose="-v" in argv)
         print(f"由 {len(A.find(conn, source='sec_8k'))} 份文件推出 {n} 個事件")
+    if argv and argv[0] in ("export", "rebuild"):
+        for name, n in export_raw(conn).items():
+            print(f"  寫出 web/raw/{name}  {n} 列")
     rows = conn.execute(
         "SELECT granularity, family, kind, COUNT(*), MIN(effective_at),"
         " MAX(effective_at) FROM events GROUP BY granularity, family, kind"
