@@ -168,10 +168,86 @@ def test_filing_url_is_built_from_accession():
 
 def test_schema_has_no_derived_columns(conn):
     """L1 只存事實。任何算出來的值(cebe_effect、mnav 之類)都不該在這裡 ——
-    口徑一改就得改資料庫,那正是舊 schema 的毛病。"""
+    口徑一改就得改資料庫,那正是舊 schema 的毛病。
+
+    items 是 SEC 對該份申報公布的中繼資料,與 accession / filed_at 同類,
+    不是衍生值,所以它在這裡是合法的。"""
     cols = {r[1] for r in conn.execute("PRAGMA table_info(documents)")}
     assert cols == {"doc_id", "source", "url", "accession", "filed_at",
-                    "fetched_at", "media_type", "sha256", "byte_len", "content"}
+                    "fetched_at", "media_type", "sha256", "byte_len",
+                    "items", "content"}
+
+
+def test_migration_adds_items_without_touching_content(tmp_path):
+    """既有檔案庫要能就地升級 —— 不重抓、不改寫任何一份文件。"""
+    import sqlite3 as _sq
+    path = str(tmp_path / "old.sqlite")
+    old_schema = A.SCHEMA.replace(
+        "  items      TEXT,               "
+        "-- SEC 申報的 item 代碼,如 '7.01,8.01'\n", "")
+    c = _sq.connect(path)
+    c.executescript(old_schema)
+    import zlib
+    digest = hashlib.sha256(HTML).hexdigest()
+    c.execute("INSERT INTO documents (doc_id, source, url, accession, filed_at,"
+              " fetched_at, media_type, sha256, byte_len, content)"
+              " VALUES ('abc','sec_8k','u','0001-24-1','2024-09-13','t',"
+              "'text/html',?,?,?)",
+              (digest, len(HTML), zlib.compress(HTML)))
+    c.commit()
+    c.close()
+
+    up = A.connect(path)                       # 遷移在這裡發生
+    assert "items" in {r[1] for r in up.execute("PRAGMA table_info(documents)")}
+    assert A.read(up, "abc") == HTML           # 內容原封不動
+    up.close()
+
+
+def test_iter_8k_filters_by_item_and_never_touches_network(conn, monkeypatch):
+    """驗收條件:解析器走這條路,完全不碰網路。"""
+    _store(conn, content=b"<html>btc update</html>", accession="a",
+           filed_at="2026-01-05", items="7.01,8.01")
+    _store(conn, content=b"<html>annual meeting</html>", accession="b",
+           filed_at="2026-01-12", items="5.07")
+    _store(conn, content=b"<html>results</html>", accession="c",
+           filed_at="2026-01-19", items="2.02,7.01")
+
+    def boom(*a, **k):
+        raise AssertionError("不該連網")
+
+    monkeypatch.setattr(A.requests, "get", boom)
+    got = list(A.iter_8k(conn, since=dt.date(2026, 1, 1)))
+    assert [f.accession for f in got] == ["a", "c"]        # 5.07 那份被篩掉
+    assert got[0].html == "<html>btc update</html>"
+    assert got[0].filed_at == dt.date(2026, 1, 5)
+
+
+def test_iter_8k_respects_since(conn):
+    _store(conn, content=b"<a/>", accession="a", filed_at="2024-07-01",
+           items="7.01")
+    _store(conn, content=b"<b/>", accession="b", filed_at="2026-01-05",
+           items="7.01")
+    assert [f.accession for f in A.iter_8k(conn, since=dt.date(2025, 1, 1))] == ["b"]
+
+
+def test_sync_filing_metadata_fills_items_without_refetching(conn):
+    doc_id = _store(conn, accession="0001-26-9", filed_at="2026-03-02")
+    assert A.find(conn)[0].items is None
+    n = A.sync_filing_metadata(conn, [A.Filing(
+        form="8-K", accession="0001-26-9", filed_at=dt.date(2026, 3, 2),
+        primary_doc="d.htm", items="7.01,8.01")])
+    assert n == 1
+    assert A.find(conn)[0].items == "7.01,8.01"
+    assert A.read(conn, doc_id) == HTML        # 內容沒動
+    assert A.sync_filing_metadata(conn, [A.Filing(
+        form="8-K", accession="0001-26-9", filed_at=dt.date(2026, 3, 2),
+        primary_doc="d.htm", items="7.01,8.01")]) == 0      # 冪等
+
+
+def test_text_decodes_ascii_and_utf8(conn):
+    assert A.text(conn, _store(conn, content=b"plain ascii")) == "plain ascii"
+    utf8 = "彎撇號 \u2019".encode("utf-8")
+    assert A.text(conn, _store(conn, content=utf8)) == utf8.decode("utf-8")
 
 
 def test_archive_needs_no_network_to_read(conn, monkeypatch):
@@ -184,3 +260,101 @@ def test_archive_needs_no_network_to_read(conn, monkeypatch):
     monkeypatch.setattr(A.requests, "get", boom)
     assert A.read(conn, doc_id) == HTML
     assert A.find(conn) and A.stats(conn)
+
+
+# --------------------------------------------------------- 驗收:斷網跑管線
+
+def _real_archive():
+    """本機的真實檔案庫。沒補抓過就沒有,測試自動跳過。"""
+    import os
+    if not os.path.exists(A.DEFAULT_PATH):
+        pytest.skip("檔案庫還沒建立,先跑 python3 -m mstr_cebe.archive backfill")
+    conn = A.connect()
+    if not A.find(conn, source="sec_8k"):
+        conn.close()
+        pytest.skip("檔案庫裡沒有 8-K")
+    return conn
+
+
+@pytest.fixture()
+def no_network(monkeypatch):
+    """把對外連線封死。模組要先載入完才能封 —— ssl 繼承 socket.socket。"""
+    class Offline(Exception):
+        pass
+
+    def blocked(*a, **k):
+        raise Offline("解析器嘗試連線 —— 它不該碰網路")
+
+    monkeypatch.setattr("socket.socket.connect", blocked, raising=False)
+    monkeypatch.setattr("socket.create_connection", blocked)
+    monkeypatch.setattr("socket.getaddrinfo", blocked)
+    return Offline
+
+
+def test_parsers_run_with_the_network_cut(no_network):
+    """第 2 步的驗收條件:四支解析器完全不碰網路。
+
+    這條成立,就代表解析與抓取真的分開了 —— 解析器有 bug 時修起來
+    不必再打 SEC,而且版型迴歸有固定樣本可重跑。
+    """
+    import datetime as _dt
+    from mstr_cebe import (fetch_8k_atm, fetch_8k_btc,
+                           fetch_8k_repurchase, fetch_8k_reserve)
+    conn = _real_archive()
+    try:
+        holdings, activity = fetch_8k_btc.fetch_everything(
+            _dt.date(2024, 7, 1), verbose=False, conn=conn)
+        assert holdings and activity
+        assert fetch_8k_atm.fetch_all(_dt.date(2024, 7, 1), verbose=False, conn=conn)
+        assert fetch_8k_repurchase.fetch_all(_dt.date(2026, 1, 1), verbose=False, conn=conn)
+        assert fetch_8k_reserve.fetch_all(_dt.date(2025, 12, 1), verbose=False, conn=conn)
+    finally:
+        conn.close()
+
+
+def test_the_network_block_actually_blocks(no_network):
+    """對照組:沒有這條,上面那個測試可能只是封鎖失效。"""
+    conn = _real_archive()
+    try:
+        with pytest.raises(Exception):
+            A.submissions(conn)
+    finally:
+        conn.close()
+
+
+def test_parser_output_still_matches_the_committed_raw_files(no_network):
+    """改讀檔案庫之後,解析結果必須與 web/raw/*.json 逐筆相同。
+
+    這是「重構不改變行為」的實證 —— 不是靠信心,是靠比對。
+    """
+    import datetime as _dt
+    import json as _json
+    import os
+    from mstr_cebe import (fetch_8k_atm, fetch_8k_btc,
+                           fetch_8k_repurchase, fetch_8k_reserve)
+
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    raw = os.path.join(root, "web", "raw")
+    conn = _real_archive()
+    try:
+        holdings, activity = fetch_8k_btc.fetch_everything(
+            _dt.date(2024, 7, 1), verbose=False, conn=conn)
+        cases = [
+            ([[d.isoformat(), v] for d, v in sorted(holdings.items())],
+             "btc_holdings_weekly.json"),
+            (activity, "btc_activity_weekly.json"),
+            (fetch_8k_atm.fetch_all(_dt.date(2024, 7, 1), verbose=False, conn=conn),
+             "atm_weekly.json"),
+            (fetch_8k_repurchase.fetch_all(_dt.date(2026, 1, 1), verbose=False, conn=conn),
+             "repurchase_weekly.json"),
+            (fetch_8k_reserve.fetch_all(_dt.date(2025, 12, 1), verbose=False, conn=conn),
+             "reserve_weekly.json"),
+        ]
+    finally:
+        conn.close()
+
+    for got, name in cases:
+        with open(os.path.join(raw, name), encoding="utf-8") as f:
+            want = _json.load(f)
+        # 經過 JSON round-trip 再比,避免 tuple/list 這類無關緊要的型別差異
+        assert _json.loads(_json.dumps(got, ensure_ascii=False)) == want, name

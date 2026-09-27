@@ -29,22 +29,19 @@ import datetime as dt
 import json
 import sys
 import re
-import time
 from typing import Dict, List, Optional
 
-import requests
 from bs4 import BeautifulSoup
 
+from . import archive as A
 from .fetch_8k_atm import (
-    CIK,
     SECURITIES,
-    _H,
     _num,
     _parse_date,
     _PERIOD_PAT,
     _security_of,
-    list_candidates,
 )
+
 
 __all__ = ["parse_repurchase_table", "parse_remaining_authority", "fetch_all",
            "SECURITIES"]
@@ -143,31 +140,31 @@ def parse_repurchase_table(html: str) -> List[Dict]:
 
 
 def fetch_all(start: dt.date = dt.date(2026, 1, 1),
-              sleep: float = 0.2, verbose: bool = True) -> List[Dict]:
+              verbose: bool = True, conn=None) -> List[Dict]:
     """爬所有 8-K,回傳逐週回購紀錄(同一週有多份申報時取最新那份)。
 
     預設從 2026-01-01 起 —— 回購表 2026-07-27 才首次出現,更早的申報沒有這張表。
+
+    讀 L1 檔案庫,**完全不碰網路**(設計圖 reference/06-architecture.md §3)。
+    文件要先用 `python3 -m mstr_cebe.archive backfill` 抓下來。
     """
-    candidates = list_candidates(start)
-    merged: Dict[str, Dict] = {}
-    for n, (filed, accn, doc, _items) in enumerate(candidates):
-        url = (f"https://www.sec.gov/Archives/edgar/data/1050446/"
-               f"{accn.replace('-', '')}/{doc}")
-        try:
-            html = requests.get(url, headers=_H, timeout=20).text
-        except requests.RequestException as exc:
-            if verbose:
-                print(f"  [跳過] {filed}: {exc}", file=sys.stderr)
-            continue
-        authority = parse_remaining_authority(html)
-        for rec in parse_repurchase_table(html):
-            rec["filed"] = filed
-            rec["remaining_authority_m"] = authority
-            merged[rec["week_end"]] = rec
-        if verbose and n % 25 == 0:
-            print(f"  {n}/{len(candidates)}...", file=sys.stderr)
-        time.sleep(sleep)
-    return [merged[k] for k in sorted(merged)]
+    own = conn is None
+    conn = conn or A.connect()
+    try:
+        merged: Dict[str, Dict] = {}
+        filings = list(A.iter_8k(conn, since=start))
+        for n, f in enumerate(filings):
+            authority = parse_remaining_authority(f.html)
+            for rec in parse_repurchase_table(f.html):
+                rec["filed"] = f.meta.filed_at
+                rec["remaining_authority_m"] = authority
+                merged[rec["week_end"]] = rec
+            if verbose and n % 25 == 0:
+                print(f"  {n}/{len(filings)}...", file=sys.stderr)
+        return [merged[k] for k in sorted(merged)]
+    finally:
+        if own:
+            conn.close()
 
 
 def main() -> int:

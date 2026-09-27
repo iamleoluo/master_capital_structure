@@ -351,13 +351,13 @@ L4  Phase(mix, layers4, efficiency, price, residual_pct)
 
 ## 8. 現況 vs 設計圖
 
-> **進度**:第 1 步已完成(分支 `rebuild/l1-document-archive`)。
-> `mstr_cebe/archive.py` + 160 份 8-K 已歸檔,`web/archive/manifest.json`
-> 是進版控的稽核軌跡。下面的表格反映完成後的狀態。
+> **進度**:第 1、2 步已完成(分支 `rebuild/l1-document-archive`)。
+> `mstr_cebe/archive.py` + 160 份 8-K 已歸檔,四支解析器改讀檔案庫,
+> 斷網可跑完整條解析管線。下面的表格反映完成後的狀態。
 
 | 層 | 現況 | 缺口 |
 |---|---|---|
-| L1 採集 | ✅ 8-K 內容定址歸檔、有出處、可重放 | ⚠️ 報價 API 尚未歸檔;解析器還沒改讀檔案庫(第 2 步) |
+| L1 採集 | ✅ 8-K 內容定址歸檔、有出處、解析與抓取已分離 | ⚠️ 報價 API 尚未歸檔 |
 | L2 事件 | 解析得出來,但是週聚合 | ❌ 沒有事件表、沒有名義、沒有 locator、沒有冪等 id |
 | L3 操作 | 代數定義完成(`toolbox.py`) | ❌ 沒有配對器;`attribution` 用手寫 delta |
 | L4 階段 | 四層歸因完整且有斷言 | ⚠️ 分期是手寫常數,不是從組合算出來 |
@@ -380,8 +380,14 @@ L4  Phase(mix, layers4, efficiency, price, residual_pct)
    一個當初沒想到的取捨:sqlite 每加一份就整檔重寫,git 存不了差異,
    所以**內容不進版控、稽核軌跡進**(`web/archive/manifest.json`,
    每列有 url 與 sha256,任何人都能自己抓來對)。
-2. **解析器改讀檔案庫。** 切斷解析與網路的關係。
-   驗收:斷網能跑完整條管線。
+2. ~~**解析器改讀檔案庫。**~~ ✅ **已完成**
+   四支解析器改用 `archive.iter_8k()`,並刪掉各自重複的候選清單邏輯
+   (原本四支各維護一份「抓 submissions → 篩 7.01/8.01 → 組 URL → 下載」)。
+   驗收通過:封死 socket 之後仍跑得完,且**五份解析結果與 committed 的
+   `web/raw/*.json` 逐筆相同**;下游 `app/data/*.json` 逐位元組不變。
+   測試帶一個對照組,確認封鎖本身是有效的 —— 否則那個驗收沒有鑑別力。
+   過程中補了一個欄位 `items`(SEC 對該份申報公布的 item 代碼),
+   因為四支解析器都靠它篩選;它與 accession 同類,是文件的中繼資料而非衍生值。
 3. **建 `events` 表,解析器改吐事件。** 週聚合改成由事件即時加總。
    驗收:聚合值與現在的 `web/raw/*.json` 完全一致。
 4. **`build_operations()` 改由事件 + Tool 產生。** 這是 05 §10 的第一步,

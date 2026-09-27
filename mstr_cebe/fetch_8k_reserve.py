@@ -26,13 +26,13 @@ import datetime as dt
 import json
 import re
 import sys
-import time
 from typing import Dict, List, Optional
 
-import requests
 from bs4 import BeautifulSoup
 
-from .fetch_8k_atm import CIK, _H, _parse_date, list_candidates
+from . import archive as A
+from .fetch_8k_atm import _parse_date
+
 
 __all__ = ["parse_reserve", "fetch_all"]
 
@@ -75,27 +75,24 @@ def parse_reserve(html: str) -> Optional[Dict]:
 
 
 def fetch_all(start: dt.date = dt.date(2025, 12, 1),
-              sleep: float = 0.15, verbose: bool = True) -> List[Dict]:
+              verbose: bool = True, conn=None) -> List[Dict]:
     """USD Reserve 是 2025-12-01 才設立的,更早的申報沒有這個欄位。"""
-    candidates = list_candidates(start)
-    merged: Dict[str, Dict] = {}
-    for n, (filed, accn, doc, _items) in enumerate(candidates):
-        url = (f"https://www.sec.gov/Archives/edgar/data/1050446/"
-               f"{accn.replace('-', '')}/{doc}")
-        try:
-            html = requests.get(url, headers=_H, timeout=20).text
-        except requests.RequestException as exc:
-            if verbose:
-                print(f"  [跳過] {filed}: {exc}", file=sys.stderr)
-            continue
-        rec = parse_reserve(html)
-        if rec:
-            rec["filed"] = filed
-            merged[rec["as_of"]] = rec
-        if verbose and n % 25 == 0:
-            print(f"  {n}/{len(candidates)}...", file=sys.stderr)
-        time.sleep(sleep)
-    return [merged[k] for k in sorted(merged)]
+    own = conn is None
+    conn = conn or A.connect()
+    try:
+        merged: Dict[str, Dict] = {}
+        filings = list(A.iter_8k(conn, since=start))
+        for n, f in enumerate(filings):
+            rec = parse_reserve(f.html)
+            if rec:
+                rec["filed"] = f.meta.filed_at
+                merged[rec["as_of"]] = rec
+            if verbose and n % 25 == 0:
+                print(f"  {n}/{len(filings)}...", file=sys.stderr)
+        return [merged[k] for k in sorted(merged)]
+    finally:
+        if own:
+            conn.close()
 
 
 def main() -> int:

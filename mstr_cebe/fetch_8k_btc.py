@@ -23,11 +23,11 @@ import datetime as dt
 import json
 import re
 import sys
-import time
 from typing import Dict, List, Optional, Tuple
 
-import requests
 from bs4 import BeautifulSoup
+
+from . import archive as A
 
 USER_AGENT = "mstr-cebe-research (contact: iamleo789@gmail.com)"
 CIK = "0001050446"
@@ -49,31 +49,6 @@ def _parse_as_of(s: str) -> dt.date:
     if not m:
         raise ValueError(f"cannot parse date: {s}")
     return dt.date(int(m.group(3)), _MONTHS[m.group(1)], int(m.group(2)))
-
-
-def list_weekly_8k_candidates(start: dt.date) -> List[Tuple[str, str, str, str]]:
-    """回傳 (filed_date, accession, primary_doc, items) 清單,只留 7.01/8.01。"""
-    r = requests.get(f"https://data.sec.gov/submissions/CIK{CIK}.json",
-                     headers=_H, timeout=20)
-    r.raise_for_status()
-    recent = r.json()["filings"]["recent"]
-    forms, dates = recent["form"], recent["filingDate"]
-    accn, docs = recent["accessionNumber"], recent["primaryDocument"]
-    items = recent.get("items", [""] * len(forms))
-    out = []
-    for i in range(len(forms)):
-        if forms[i] != "8-K" or dates[i] < start.isoformat():
-            continue
-        if "7.01" in items[i] or "8.01" in items[i]:
-            out.append((dates[i], accn[i], docs[i], items[i]))
-    return sorted(out)
-
-
-def _fetch_doc(accn: str, doc: str) -> str:
-    url = f"https://www.sec.gov/Archives/edgar/data/1050446/{accn.replace('-', '')}/{doc}"
-    r = requests.get(url, headers=_H, timeout=20)
-    r.raise_for_status()
-    return r.text
 
 
 def _parse_table_format(html: str) -> List[Tuple[dt.date, int]]:
@@ -302,37 +277,34 @@ def parse_activity(html: str) -> List[Dict]:
 
 
 def fetch_everything(start: dt.date = dt.date(2024, 7, 1),
-                     sleep: float = 0.2, verbose: bool = True
+                     verbose: bool = True, conn=None
                      ) -> Tuple[Dict[dt.date, int], List[Dict]]:
     """一次爬完,同時回傳 (累計持有量, 逐週活動)。避免為了兩種資料爬兩遍。"""
-    candidates = list_weekly_8k_candidates(start)
-    holdings: Dict[dt.date, int] = {}
-    activity: Dict[str, Dict] = {}      # week_end → record(後蓋前)
-
-    for n, (filed, accn, doc, items) in enumerate(candidates):
-        try:
-            html = _fetch_doc(accn, doc)
-        except requests.RequestException as exc:
-            if verbose:
-                print(f"  [跳過] {filed} {doc}: {exc}", file=sys.stderr)
-            continue
-        for d, v in _parse_table_format(html):
-            holdings[d] = v
-        for d, v in _parse_prose_format(html):
-            holdings[d] = v
-        for rec in parse_activity(html):
-            rec["filed"] = filed
-            activity[rec["week_end"]] = rec
-        if verbose and n % 25 == 0:
-            print(f"  {n}/{len(candidates)}...", file=sys.stderr)
-        time.sleep(sleep)
-
-    return holdings, [activity[k] for k in sorted(activity)]
+    own = conn is None
+    conn = conn or A.connect()
+    try:
+        holdings: Dict[dt.date, int] = {}
+        activity: Dict[str, Dict] = {}      # week_end → record(後蓋前)
+        filings = list(A.iter_8k(conn, since=start))
+        for n, f in enumerate(filings):
+            for d, v in _parse_table_format(f.html):
+                holdings[d] = v
+            for d, v in _parse_prose_format(f.html):
+                holdings[d] = v
+            for rec in parse_activity(f.html):
+                rec["filed"] = f.meta.filed_at
+                activity[rec["week_end"]] = rec
+            if verbose and n % 25 == 0:
+                print(f"  {n}/{len(filings)}...", file=sys.stderr)
+        return holdings, [activity[k] for k in sorted(activity)]
+    finally:
+        if own:
+            conn.close()
 
 
 def fetch_all(start: dt.date = dt.date(2024, 7, 1),
-             sleep: float = 0.2, verbose: bool = True) -> Dict[dt.date, int]:
-    holdings, _ = fetch_everything(start, sleep, verbose)
+              verbose: bool = True, conn=None) -> Dict[dt.date, int]:
+    holdings, _ = fetch_everything(start, verbose, conn)
     return holdings
 
 

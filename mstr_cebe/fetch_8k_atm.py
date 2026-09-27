@@ -22,11 +22,11 @@ import datetime as dt
 import json
 import re
 import sys
-import time
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
-import requests
 from bs4 import BeautifulSoup
+
+from . import archive as A
 
 USER_AGENT = "mstr-cebe-research (contact: iamleo789@gmail.com)"
 CIK = "0001050446"
@@ -148,43 +148,28 @@ def parse_atm_table(html: str) -> List[Dict]:
 # 抓取
 # ---------------------------------------------------------------------------
 
-def list_candidates(start: dt.date) -> List[Tuple[str, str, str, str]]:
-    r = requests.get(f"https://data.sec.gov/submissions/CIK{CIK}.json",
-                     headers=_H, timeout=20)
-    r.raise_for_status()
-    recent = r.json()["filings"]["recent"]
-    forms, dates = recent["form"], recent["filingDate"]
-    accn, docs = recent["accessionNumber"], recent["primaryDocument"]
-    items = recent.get("items", [""] * len(forms))
-    out = []
-    for i in range(len(forms)):
-        if forms[i] != "8-K" or dates[i] < start.isoformat():
-            continue
-        if "7.01" in items[i] or "8.01" in items[i]:
-            out.append((dates[i], accn[i], docs[i], items[i]))
-    return sorted(out)
-
-
 def fetch_all(start: dt.date = dt.date(2024, 7, 1),
-              sleep: float = 0.2, verbose: bool = True) -> List[Dict]:
-    candidates = list_candidates(start)
-    merged: Dict[str, Dict] = {}     # week_end → record(後蓋前,取最新申報)
-    for n, (filed, accn, doc, _items) in enumerate(candidates):
-        url = (f"https://www.sec.gov/Archives/edgar/data/1050446/"
-               f"{accn.replace('-', '')}/{doc}")
-        try:
-            html = requests.get(url, headers=_H, timeout=20).text
-        except requests.RequestException as exc:
-            if verbose:
-                print(f"  [跳過] {filed}: {exc}", file=sys.stderr)
-            continue
-        for rec in parse_atm_table(html):
-            rec["filed"] = filed
-            merged[rec["week_end"]] = rec
-        if verbose and n % 25 == 0:
-            print(f"  {n}/{len(candidates)}...", file=sys.stderr)
-        time.sleep(sleep)
-    return [merged[k] for k in sorted(merged)]
+              verbose: bool = True, conn=None) -> List[Dict]:
+    """逐週 ATM 募資。同一週有多份申報時取最新那份。
+
+    讀 L1 檔案庫,**完全不碰網路**(設計圖 reference/06-architecture.md §3)。
+    文件要先用 `python3 -m mstr_cebe.archive backfill` 抓下來。
+    """
+    own = conn is None
+    conn = conn or A.connect()
+    try:
+        merged: Dict[str, Dict] = {}   # week_end → record(後蓋前,取最新申報)
+        filings = list(A.iter_8k(conn, since=start))
+        for n, f in enumerate(filings):
+            for rec in parse_atm_table(f.html):
+                rec["filed"] = f.meta.filed_at
+                merged[rec["week_end"]] = rec
+            if verbose and n % 25 == 0:
+                print(f"  {n}/{len(filings)}...", file=sys.stderr)
+        return [merged[k] for k in sorted(merged)]
+    finally:
+        if own:
+            conn.close()
 
 
 def main() -> int:

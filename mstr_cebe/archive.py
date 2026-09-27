@@ -34,7 +34,7 @@ import sys
 import time
 import zlib
 from dataclasses import dataclass
-from typing import Iterable, Iterator, List, Optional
+from typing import Iterable, Iterator, List, Optional, Sequence
 
 import requests
 
@@ -60,6 +60,7 @@ CREATE TABLE IF NOT EXISTS documents (
   media_type TEXT NOT NULL,
   sha256     TEXT NOT NULL,
   byte_len   INTEGER NOT NULL,   -- 原文長度(未壓縮)
+  items      TEXT,               -- SEC 申報的 item 代碼,如 '7.01,8.01'
   content    BLOB NOT NULL       -- zlib 壓縮的原文
 );
 CREATE INDEX IF NOT EXISTS idx_doc_source_filed ON documents(source, filed_at);
@@ -78,6 +79,7 @@ class DocMeta:
     fetched_at: str
     media_type: str
     byte_len: int
+    items: Optional[str] = None
 
 
 # --------------------------------------------------------------- 檔案庫
@@ -86,6 +88,12 @@ def connect(path: str = DEFAULT_PATH) -> sqlite3.Connection:
     os.makedirs(os.path.dirname(path), exist_ok=True)
     conn = sqlite3.connect(path)
     conn.executescript(SCHEMA)
+    # 既有檔案庫的欄位遷移。內容是不可變的,只有中繼資料會後補 ——
+    # 所以遷移一律是加欄位,不會重抓也不會改寫任何一份文件。
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(documents)")}
+    if "items" not in cols:
+        conn.execute("ALTER TABLE documents ADD COLUMN items TEXT")
+        conn.commit()
     return conn
 
 
@@ -95,7 +103,7 @@ def doc_id_of(content: bytes) -> str:
 
 def store(conn: sqlite3.Connection, *, source: str, url: str, content: bytes,
           media_type: str, accession: Optional[str] = None,
-          filed_at: Optional[str] = None) -> str:
+          filed_at: Optional[str] = None, items: Optional[str] = None) -> str:
     """歸檔一份文件,回傳 doc_id。
 
     內容相同就是同一份 —— 重複呼叫不會新增資料列,也不會更新 fetched_at
@@ -106,11 +114,11 @@ def store(conn: sqlite3.Connection, *, source: str, url: str, content: bytes,
     conn.execute(
         "INSERT OR IGNORE INTO documents"
         " (doc_id, source, url, accession, filed_at, fetched_at,"
-        "  media_type, sha256, byte_len, content)"
-        " VALUES (?,?,?,?,?,?,?,?,?,?)",
+        "  media_type, sha256, byte_len, items, content)"
+        " VALUES (?,?,?,?,?,?,?,?,?,?,?)",
         (doc_id, source, url, accession, filed_at,
          dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
-         media_type, digest, len(content), zlib.compress(content, 9)))
+         media_type, digest, len(content), items, zlib.compress(content, 9)))
     conn.commit()
     return doc_id
 
@@ -129,6 +137,50 @@ def read(conn: sqlite3.Connection, doc_id: str) -> bytes:
     return content
 
 
+def text(conn: sqlite3.Connection, doc_id: str) -> str:
+    """取原文並解碼成字串。解析器用這個。
+
+    SEC 的 8-K 送出時不帶 charset,而 requests 會依 RFC 2616 退回 ISO-8859-1。
+    實測目前 160 份全是純 ASCII(彎撇號等字元用 HTML entity 表示),
+    所以 UTF-8 與 ISO-8859-1 解出來完全一樣 —— 換掉解碼方式不會改變任何輸出。
+    這裡選 UTF-8 優先、失敗才退 latin-1,是為了將來真的出現 UTF-8 文件時
+    不會靜默地解成亂碼。
+    """
+    raw = read(conn, doc_id)
+    try:
+        return raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return raw.decode("latin-1")
+
+
+def iter_8k(conn: sqlite3.Connection, *, since: dt.date,
+            items: Sequence[str] = ("7.01", "8.01")) -> Iterator["Filed"]:
+    """走訪已歸檔的 8-K,依申報日排序。**完全不碰網路。**
+
+    四支解析器原本各自維護一份一樣的候選清單邏輯(抓 submissions、
+    篩 7.01/8.01、組 URL、下載),現在共用這一個。
+    """
+    for m in find(conn, source="sec_8k", since=since):
+        if items and not any(i in (m.items or "") for i in items):
+            continue
+        yield Filed(meta=m, html=text(conn, m.doc_id))
+
+
+@dataclass(frozen=True)
+class Filed:
+    """一份已歸檔的申報:中繼資料 + 原文。"""
+    meta: DocMeta
+    html: str
+
+    @property
+    def filed_at(self) -> dt.date:
+        return dt.date.fromisoformat(self.meta.filed_at)
+
+    @property
+    def accession(self) -> str:
+        return self.meta.accession or ""
+
+
 def find(conn: sqlite3.Connection, *, source: Optional[str] = None,
          since: Optional[dt.date] = None,
          until: Optional[dt.date] = None) -> List[DocMeta]:
@@ -144,7 +196,7 @@ def find(conn: sqlite3.Connection, *, source: Optional[str] = None,
         where.append("filed_at <= ?")
         args.append(until.isoformat())
     sql = ("SELECT doc_id, source, url, accession, filed_at, fetched_at,"
-           " media_type, byte_len FROM documents")
+           " media_type, byte_len, items FROM documents")
     if where:
         sql += " WHERE " + " AND ".join(where)
     sql += " ORDER BY filed_at, accession"
@@ -182,10 +234,10 @@ def export_manifest(conn: sqlite3.Connection, path: str = MANIFEST_PATH) -> int:
     os.makedirs(os.path.dirname(path), exist_ok=True)
     rows = conn.execute(
         "SELECT doc_id, source, url, accession, filed_at, fetched_at,"
-        " media_type, sha256, byte_len FROM documents"
+        " media_type, sha256, byte_len, items FROM documents"
         " ORDER BY filed_at, accession, doc_id").fetchall()
     cols = ["doc_id", "source", "url", "accession", "filed_at", "fetched_at",
-            "media_type", "sha256", "byte_len"]
+            "media_type", "sha256", "byte_len", "items"]
     with open(path, "w", encoding="utf-8") as f:
         json.dump([dict(zip(cols, r)) for r in rows], f,
                   ensure_ascii=False, indent=1)
@@ -246,6 +298,23 @@ def submissions(conn: sqlite3.Connection) -> List[Filing]:
     ]
 
 
+def sync_filing_metadata(conn: sqlite3.Connection,
+                         listing: Sequence["Filing"]) -> int:
+    """用申報清單補齊已歸檔文件的中繼資料(目前是 items)。
+
+    只動中繼資料,不碰內容 —— 所以 doc_id 不會變,也不需要重抓任何文件。
+    """
+    n = 0
+    for f in listing:
+        cur = conn.execute(
+            "UPDATE documents SET items = ?"
+            " WHERE accession = ? AND (items IS NULL OR items != ?)",
+            (f.items, f.accession, f.items))
+        n += cur.rowcount
+    conn.commit()
+    return n
+
+
 def backfill(conn: sqlite3.Connection, *, since: dt.date,
              forms: Iterable[str] = ("8-K",),
              progress: bool = True) -> Iterator[DocMeta]:
@@ -254,8 +323,9 @@ def backfill(conn: sqlite3.Connection, *, since: dt.date,
     只歸檔,不解析 —— 這一步刻意不動任何現有的解析器。
     """
     wanted = set(forms)
-    todo = [f for f in submissions(conn)
-            if f.form in wanted and f.filed_at >= since]
+    listing = submissions(conn)
+    sync_filing_metadata(conn, listing)
+    todo = [f for f in listing if f.form in wanted and f.filed_at >= since]
     todo.sort(key=lambda f: f.filed_at)
 
     for i, f in enumerate(todo, 1):
@@ -272,7 +342,8 @@ def backfill(conn: sqlite3.Connection, *, since: dt.date,
                        url=f.url, content=r.content,
                        media_type=r.headers.get("Content-Type", "text/html")
                        .split(";")[0].strip(),
-                       accession=f.accession, filed_at=f.filed_at.isoformat())
+                       accession=f.accession, filed_at=f.filed_at.isoformat(),
+                       items=f.items)
         if progress:
             print(f"  + [{i:>3}/{len(todo)}] {f.filed_at} {f.form:<5} "
                   f"{doc_id}  {len(r.content)//1024:>4} KB  {f.items}")
