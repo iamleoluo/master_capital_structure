@@ -95,7 +95,7 @@ hr{border:0;border-top:1px solid var(--line);margin:30px 0}
 <div class="shell">
 <nav>
   <div class="brand">MSTR 資本結構<span>模型推導與決策紀錄</span></div>
-  <div class="nav-group"><a class="nav-top" href="#sec-00"><span class="nav-n">00</span>這個系統是拿來做什麼的</a><a class="nav-sub" href="#00-1">1. 核心輸出:把股價完全拆開</a><a class="nav-sub" href="#00-2">2. 決策問題對應到哪個量</a><a class="nav-sub" href="#00-3">3. 為什麼框架比數字重要</a><a class="nav-sub" href="#00-4">4. 這個工具刻意不做的事</a><a class="nav-sub" href="#00-5">5. 一句話</a></div><div class="nav-group"><a class="nav-top" href="#sec-01"><span class="nav-n">01</span>模型怎麼一步一步長出來</a><a class="nav-sub" href="#01-1">1. 為什麼是這四個原始量</a><a class="nav-sub" href="#01-2">2. 求償權 C:為什麼要把現金抵掉</a><a class="nav-sub" href="#01-3">3. 每股要除以哪個股數</a><a class="nav-sub" href="#01-4">4. 兩個每股指標</a><a class="nav-sub" href="#01-5">5. 槓桿:一個除法推出來的兩個彈性</a><a class="nav-sub" href="#01-6">6. 股價恆等式</a><a class="nav-sub" href="#01-7">7. 取對數,報酬就可加</a><a class="nav-sub" href="#01-8">8. 但中間那一層不是「公司」</a><a class="nav-sub" href="#01-9">9. 四層</a><a class="nav-sub" href="#01-10">10. 然後才輪到「哪一筆操作」</a><a class="nav-sub" href="#01-11">這一路的形狀</a></div><div class="nav-group"><a class="nav-top" href="#sec-02"><span class="nav-n">02</span>每一種操作的代數</a><a class="nav-sub" href="#02-1">1. 兩把尺,答案常常相反</a><a class="nav-sub" href="#02-2">2. 單一工具</a><a class="nav-sub" href="#02-3">3. ATM 增發:值得單獨推一次</a><a class="nav-sub" href="#02-4">4. 組合操作:真實世界是這樣用的</a><a class="nav-sub" href="#02-5">5. 從代數到真實資料</a><a class="nav-sub" href="#02-6">6. 兩欄的零,一個是優點一個是盲點</a></div><div class="nav-group"><a class="nav-top" href="#sec-03"><span class="nav-n">03</span>資料的血統、顆粒與邊界</a><a class="nav-sub" href="#03-1">1. 三種血統,不能混為一談</a><a class="nav-sub" href="#03-2">2. 三種顆粒,粗只能補洞</a><a class="nav-sub" href="#03-3">3. 8-K 的版型換過四次</a><a class="nav-sub" href="#03-4">4. 融資來源:明示與推得要分開</a><a class="nav-sub" href="#03-5">5. 兩個曾經的誤讀(2026-09-27 修正)</a><a class="nav-sub" href="#03-6">6. web/raw/.json 是視圖,不是來源</a><a class="nav-sub" href="#03-7">7. 沒有資料的地方</a><a class="nav-sub" href="#03-8">8. 錨點:管線不能悄悄改掉官方數字</a><a class="nav-sub" href="#03-9">9. 計算全部在建置期完成</a></div><div class="nav-group"><a class="nav-top" href="#sec-04"><span class="nav-n">04</span>走過的彎路</a><a class="nav-sub" href="#04-1">四因子 Shapley:拆的是科目,不是決策</a><a class="nav-sub" href="#04-2">固定幣價口徑內含後見之明</a><a class="nav-sub" href="#04-3">分母選錯</a><a class="nav-sub" href="#04-4">同一個名字,兩個數</a><a class="nav-sub" href="#04-5">那一層是「變化」不是「水位」</a><a class="nav-sub" href="#04-6">面額還是市價</a><a class="nav-sub" href="#04-7">十二個名字,三個概念</a><a class="nav-sub" href="#04-8">資料層面的三個坑</a><a class="nav-sub" href="#04-9">缺口與誤讀,長得一模一樣</a><a class="nav-sub" href="#04-10">工具選擇:先算數字再下結論</a></div><div class="nav-group"><a class="nav-top" href="#sec-05"><span class="nav-n">05</span>工具箱:代數怎麼變成可執行的宣告</a><a class="nav-sub" href="#05-1">1. 現在的問題:一把工具是三個互不相干的東西</a><a class="nav-sub" href="#05-2">2. 觀察:狀態早就在那裡了</a><a class="nav-sub" href="#05-3">3. 七層,每層只做一件事</a><a class="nav-sub" href="#05-4">4. 工具長什麼樣</a><a class="nav-sub" href="#05-5">5. 關鍵:代數變成可以被打臉的宣告</a><a class="nav-sub" href="#05-6">6. 組合在型別上封閉</a><a class="nav-sub" href="#05-7">7. 同一個 apply,同時服務過去與未來</a><a class="nav-sub" href="#05-8">8. 效益怎麼算:三個層次的答案</a><a class="nav-sub" href="#05-9">9. 這個設計刻意不做的事</a></div><div class="nav-group"><a class="nav-top" href="#sec-06"><span class="nav-n">06</span>四層架構規格</a><a class="nav-sub" href="#06-1">0. 四層是什麼</a><a class="nav-sub" href="#06-2">1. 現在的地基有三個洞</a><a class="nav-sub" href="#06-3">2. 貫穿四層的三條規則</a><a class="nav-sub" href="#06-4">3. L1 — 採集</a><a class="nav-sub" href="#06-5">4. L2 — 事件</a><a class="nav-sub" href="#06-6">5. L3 — 資本操作</a><a class="nav-sub" href="#06-7">6. L4 — 階段</a><a class="nav-sub" href="#06-8">7. 層與層之間的型別</a><a class="nav-sub" href="#06-9">8. 這份設計刻意不做的</a></div><div class="nav-group"><a class="nav-top" href="#sec-07"><span class="nav-n">07</span>資料缺口清單</a><a class="nav-sub" href="#07-1">1. 缺口有多大</a><a class="nav-sub" href="#07-2">2. 為什麼會缺:各動作的揭露起點</a><a class="nav-sub" href="#07-3">3. 還缺什麼</a><a class="nav-sub" href="#07-4">4. 一條檢查缺口的通則</a><a class="nav-sub" href="#07-5">5. 下一步要先決定的一件事</a></div><div class="nav-group"><a class="nav-top" href="#sec-08"><span class="nav-n">08</span>現況與施工紀錄</a><a class="nav-sub" href="#08-1">1. 四層現況</a><a class="nav-sub" href="#08-2">2. 工具箱那條軸</a><a class="nav-sub" href="#08-3">3. 施工紀錄</a><a class="nav-sub" href="#08-4">4. 下一步</a></div>
+  <div class="nav-group"><a class="nav-top" href="#sec-00"><span class="nav-n">00</span>這個系統是拿來做什麼的</a><a class="nav-sub" href="#00-1">1. 核心輸出:把股價完全拆開</a><a class="nav-sub" href="#00-2">2. 決策問題對應到哪個量</a><a class="nav-sub" href="#00-3">3. 為什麼框架比數字重要</a><a class="nav-sub" href="#00-4">4. 這個工具刻意不做的事</a><a class="nav-sub" href="#00-5">5. 一句話</a></div><div class="nav-group"><a class="nav-top" href="#sec-01"><span class="nav-n">01</span>模型怎麼一步一步長出來</a><a class="nav-sub" href="#01-1">1. 為什麼是這四個原始量</a><a class="nav-sub" href="#01-2">2. 求償權 C:為什麼要把現金抵掉</a><a class="nav-sub" href="#01-3">3. 每股要除以哪個股數</a><a class="nav-sub" href="#01-4">4. 兩個每股指標</a><a class="nav-sub" href="#01-5">5. 槓桿:一個除法推出來的兩個彈性</a><a class="nav-sub" href="#01-6">6. 股價恆等式</a><a class="nav-sub" href="#01-7">7. 取對數,報酬就可加</a><a class="nav-sub" href="#01-8">8. 但中間那一層不是「公司」</a><a class="nav-sub" href="#01-9">9. 四層</a><a class="nav-sub" href="#01-10">10. 然後才輪到「哪一筆操作」</a><a class="nav-sub" href="#01-11">這一路的形狀</a></div><div class="nav-group"><a class="nav-top" href="#sec-02"><span class="nav-n">02</span>每一種操作的代數</a><a class="nav-sub" href="#02-1">1. 兩把尺,答案常常相反</a><a class="nav-sub" href="#02-2">2. 單一工具</a><a class="nav-sub" href="#02-3">3. ATM 增發:值得單獨推一次</a><a class="nav-sub" href="#02-4">4. 組合操作:真實世界是這樣用的</a><a class="nav-sub" href="#02-5">5. 從代數到真實資料</a><a class="nav-sub" href="#02-6">6. 兩欄的零,一個是優點一個是盲點</a></div><div class="nav-group"><a class="nav-top" href="#sec-03"><span class="nav-n">03</span>資料的血統、粒度與邊界</a><a class="nav-sub" href="#03-1">1. 三種血統,不能混為一談</a><a class="nav-sub" href="#03-2">2. 三種粒度,粗只能補洞</a><a class="nav-sub" href="#03-3">3. 8-K 的版型換過四次</a><a class="nav-sub" href="#03-4">4. 融資來源:明示與推得要分開</a><a class="nav-sub" href="#03-5">5. 兩個曾經的誤讀(2026-09-27 修正)</a><a class="nav-sub" href="#03-6">6. web/raw/.json 是視圖,不是來源</a><a class="nav-sub" href="#03-7">7. 沒有資料的地方</a><a class="nav-sub" href="#03-8">8. 錨點:管線不能悄悄改掉官方數字</a><a class="nav-sub" href="#03-9">9. 計算全部在建置期完成</a></div><div class="nav-group"><a class="nav-top" href="#sec-04"><span class="nav-n">04</span>走過的彎路</a><a class="nav-sub" href="#04-1">四因子 Shapley:拆的是科目,不是決策</a><a class="nav-sub" href="#04-2">固定幣價口徑內含後見之明</a><a class="nav-sub" href="#04-3">分母選錯</a><a class="nav-sub" href="#04-4">同一個名字,兩個數</a><a class="nav-sub" href="#04-5">那一層是「變化」不是「水位」</a><a class="nav-sub" href="#04-6">面額還是市價</a><a class="nav-sub" href="#04-7">十二個名字,三個概念</a><a class="nav-sub" href="#04-8">資料層面的三個坑</a><a class="nav-sub" href="#04-9">缺口與誤讀,長得一模一樣</a><a class="nav-sub" href="#04-10">工具選擇:先算數字再下結論</a></div><div class="nav-group"><a class="nav-top" href="#sec-05"><span class="nav-n">05</span>工具箱:代數怎麼變成可執行的宣告</a><a class="nav-sub" href="#05-1">1. 現在的問題:一把工具是三個互不相干的東西</a><a class="nav-sub" href="#05-2">2. 觀察:狀態早就在那裡了</a><a class="nav-sub" href="#05-3">3. 七層,每層只做一件事</a><a class="nav-sub" href="#05-4">4. 工具長什麼樣</a><a class="nav-sub" href="#05-5">5. 關鍵:代數變成可以被打臉的宣告</a><a class="nav-sub" href="#05-6">6. 組合在型別上封閉</a><a class="nav-sub" href="#05-7">7. 同一個 apply,同時服務過去與未來</a><a class="nav-sub" href="#05-8">8. 效益怎麼算:三個層次的答案</a><a class="nav-sub" href="#05-9">9. 這個設計刻意不做的事</a></div><div class="nav-group"><a class="nav-top" href="#sec-06"><span class="nav-n">06</span>四層架構規格</a><a class="nav-sub" href="#06-1">0. 四層是什麼</a><a class="nav-sub" href="#06-2">1. 現在的地基有三個洞</a><a class="nav-sub" href="#06-3">2. 貫穿四層的三條規則</a><a class="nav-sub" href="#06-4">3. L1 — 採集</a><a class="nav-sub" href="#06-5">4. L2 — 事件</a><a class="nav-sub" href="#06-6">5. L3 — 資本操作</a><a class="nav-sub" href="#06-7">6. L4 — 階段</a><a class="nav-sub" href="#06-8">7. 層與層之間的型別</a><a class="nav-sub" href="#06-9">8. 這份設計刻意不做的</a></div><div class="nav-group"><a class="nav-top" href="#sec-07"><span class="nav-n">07</span>資料缺口清單</a><a class="nav-sub" href="#07-1">1. 缺口有多大</a><a class="nav-sub" href="#07-2">2. 為什麼會缺:各動作的揭露起點</a><a class="nav-sub" href="#07-3">3. 還缺什麼</a><a class="nav-sub" href="#07-4">4. 一條檢查缺口的通則</a><a class="nav-sub" href="#07-5">5. 下一步要先決定的一件事</a></div><div class="nav-group"><a class="nav-top" href="#sec-08"><span class="nav-n">08</span>現況與施工紀錄</a><a class="nav-sub" href="#08-1">1. 四層現況</a><a class="nav-sub" href="#08-2">2. 工具箱那條軸</a><a class="nav-sub" href="#08-3">3. 施工紀錄</a><a class="nav-sub" href="#08-4">4. 下一步</a></div>
 </nav>
 <main>
   <div class="hero">
@@ -354,8 +354,8 @@ hr{border:0;border-top:1px solid var(--line);margin:30px 0}
 <ul><li>第一個零是 $B$ 的<b>優點</b>:那 19,505 sats 不是公司做的,$B$ 這把尺測不到它。</li><li>第三個零是 $B$ 的<b>盲點</b>:公司真的替股東買回了求償權,$B$ 一樣測不到。</li></ul>
 <p>公司拿 $B$ 當 KPI,誘因天生偏向「把持幣做大」而不是「把求償權做小」。 這一段做的剛好是後者,所以自己的 KPI 難看,股東實際拿到的卻變多。</p>
 <p>⚠️ <b>比合計之前先看「決策小計」。</b> $B$ 的式子裡沒有幣價,所以它整欄都是決策; $E$ 的合計卻含了 19,505 sats 的被動貢獻。直接拿兩個合計對比,會把行情 算到公司頭上。</p></section>
-<section id="sec-03"><h1 id="03-0">03 — 資料的血統、顆粒與邊界</h1>
-<p>模型再漂亮,結論的可信度還是被資料的解析度決定。這份文件講三件事: <b>資料從哪來(血統)、同一件事被講了幾次(顆粒)、哪裡根本沒有資料(邊界)。</b></p>
+<section id="sec-03"><h1 id="03-0">03 — 資料的血統、粒度與邊界</h1>
+<p>模型再漂亮,結論的可信度還是被資料的解析度決定。這份文件講三件事: <b>資料從哪來(血統)、同一件事被講了幾次(粒度)、哪裡根本沒有資料(邊界)。</b></p>
 <p>完整的來源清單與 API 細節在 <a href="../MSTR_CEBE_歷史分析_建置規格.md"><code>../MSTR_CEBE_歷史分析_建置規格.md</code></a> §2; 四層架構的規格在 <a href="06-architecture.md">06-architecture.md</a>; 管線的視覺化在 <a href="../diagrams/data-pipeline.html"><code>../diagrams/data-pipeline.html</code></a>。</p>
 <hr>
 <h2 id="03-1">1. 三種血統,不能混為一談</h2>
@@ -363,25 +363,25 @@ hr{border:0;border-top:1px solid var(--line);margin:30px 0}
 <p>求償權 $C = D + L - U$ 橫跨兩種血統:$L$ 與 $U$ 有週資料,$D$ 只有季錨點。 所以 <b>$C$ 的日內變化有一部分是插出來的</b>,在錨點附近最可信,錨點中間最弱。</p>
 <p>這件事對結論的影響是可量化的:把現金從季度 XBRL 換成 8-K 逐週的 USD Reserve 之後,同期求償權變動從 −5.9% 變成 −25.9%。</p>
 <hr>
-<h2 id="03-2">2. 三種顆粒,粗只能補洞</h2>
+<h2 id="03-2">2. 三種粒度,粗只能補洞</h2>
 <p>同一批動作會被<b>三份不同的文件</b>各講一次:</p>
-<table><thead><tr><th>顆粒</th><th>來源</th><th>涵蓋</th></tr></thead><tbody><tr><td>週</td><td>8-K 逐週表格</td><td>2024-09 起,而且是一欄一欄長出來的(見 <a href="07-data-gaps.md">07 §2</a>)</td></tr><tr><td>季</td><td>10-Q 的 XBRL 與現金流量表;每季第一份 8-K 的 Item 2.02 合計列</td><td>2021 起</td></tr><tr><td>年</td><td>10-K</td><td>2021 起</td></tr></tbody></table>
+<table><thead><tr><th>粒度</th><th>來源</th><th>涵蓋</th></tr></thead><tbody><tr><td>週</td><td>8-K 逐週表格</td><td>2024-09 起,而且是一欄一欄長出來的(見 <a href="07-data-gaps.md">07 §2</a>)</td></tr><tr><td>季</td><td>10-Q 的 XBRL 與現金流量表;每季第一份 8-K 的 Item 2.02 合計列</td><td>2021 起</td></tr><tr><td>年</td><td>10-K</td><td>2021 起</td></tr></tbody></table>
 <p><b>三者不得相加。</b> 規則實作在 <code>events.resolve_flows()</code>,只有三條:</p>
-<p>1. <b>同一 (種類, 標的, 顆粒, 期間) 有多份文件 → 取申報日最新的。</b> 2025 三季的買幣就是這樣:8-K Item 2.02 給顆數,三個月後的 10-Q 給 資金來源拆解,金額差 0.027%,但只能算一次。 2. <b>由細到粗遞迴:淨貢獻 = 自身 − 內部所有更細事件的淨貢獻。</b> 要用淨貢獻遞迴,不是原始金額 —— 否則同一批週資料會被季和年各扣一次。 3. <b>補不出負的洞。</b> 淨貢獻若與自身反號超過 2%,貢獻取 0 並標記 <code>conflict</code>, 交由上層看見。粗顆粒是用來補洞的,不該產生一筆反向資金流。</p>
-<blockquote><b>實作</b>:<code>mstr_cebe/events.py</code> 的 <code>resolve_flows()</code>、<code>flow_group()</code>; 測試 <code>tests/test_events.py</code> 的顆粒解析那一組。</blockquote>
+<p>1. <b>同一 (種類, 標的, 粒度, 期間) 有多份文件 → 取申報日最新的。</b> 2025 三季的買幣就是這樣:8-K Item 2.02 給顆數,三個月後的 10-Q 給 資金來源拆解,金額差 0.027%,但只能算一次。 2. <b>由細到粗遞迴:淨貢獻 = 自身 − 內部所有更細事件的淨貢獻。</b> 要用淨貢獻遞迴,不是原始金額 —— 否則同一批週資料會被季和年各扣一次。 3. <b>補不出負的洞。</b> 淨貢獻若與自身反號超過 2%,貢獻取 0 並標記 <code>conflict</code>, 交由上層看見。粗粒度是用來補洞的,不該產生一筆反向資金流。</p>
+<blockquote><b>實作</b>:<code>mstr_cebe/events.py</code> 的 <code>resolve_flows()</code>、<code>flow_group()</code>; 測試 <code>tests/test_events.py</code> 的粒度解析那一組。</blockquote>
 <h3 id="03-3">2.1 規則正確的獨立證據</h3>
 <p>三筆<b>年</b>頻買幣經過這個規則之後,淨貢獻趨近於零:</p>
 <table><thead><tr><th>年</th><th>10-K 講的</th><th>被季與週解釋掉之後還剩</th></tr></thead><tbody><tr><td>2023</td><td>−<span class="nomath">$</span>1.902B</td><td>−<span class="nomath">$</span>0.037B (2.0%)</td></tr><tr><td>2024</td><td>−<span class="nomath">$</span>22.068B</td><td>−<span class="nomath">$</span>0.172B (0.8%)</td></tr><tr><td>2025</td><td>−<span class="nomath">$</span>22.469B</td><td>−<span class="nomath">$</span>0.038B (0.2%)</td></tr></tbody></table>
 <p>年報、季報、週報是三次獨立申報。如果週與季有系統性的漏記或重複, 這裡會留下一大塊殘差。</p>
 <h3 id="03-3">2.2 唯一一筆衝突:成交日 vs 交割日</h3>
-<p>50 筆粗顆粒裡只有一筆負殘差 —— 2026Q1 的優先股 ATM, 8-K 週表加總 <span class="nomath">$</span>2,294.1M,10-Q 現金流量表 <span class="nomath">$</span>2,070.0M,差 <span class="nomath">$</span>224.1M。</p>
+<p>50 筆粗粒度事件裡只有一筆負殘差 —— 2026Q1 的優先股 ATM, 8-K 週表加總 <span class="nomath">$</span>2,294.1M,10-Q 現金流量表 <span class="nomath">$</span>2,070.0M,差 <span class="nomath">$</span>224.1M。</p>
 <p>原因是季末 3/30–3/31 那一週賣了 <span class="nomath">$</span>227.3M,現金在 4 月才到:</p>
 <table><thead><tr><th></th><th>8-K 週表(成交日)</th><th>XBRL(交割日)</th><th>差</th></tr></thead><tbody><tr><td>2026Q1</td><td>2,294.1</td><td>2,070.0</td><td>+224.1</td></tr><tr><td>2026Q2</td><td>5,229.0</td><td>5,465.0</td><td>−236.0</td></tr><tr><td>Q2 + Q1 季末那筆</td><td>5,456.3</td><td>5,465.0</td><td><b>8.7(0.16%)</b></td></tr></tbody></table>
 <p><b>這是系統性的口徑差,不是解析錯誤。</b> 規則的做法是讓它浮出來 (<code>conflict=True</code>、貢獻取 0),而不是悄悄倒扣。</p>
-<h3 id="03-3">2.3 解析度極限:窗口不能比顆粒還短</h3>
-<p>分析窗口(例如大事記的分期)按結構轉折劃,不會剛好切在季底。 粗顆粒跨窗口時按天數攤,攤分的金額記在 <code>prorated_usd</code>。</p>
+<h3 id="03-3">2.3 解析度極限:窗口不能比粒度還短</h3>
+<p>分析窗口(例如大事記的分期)按結構轉折劃,不會剛好切在季底。 粗粒度跨窗口時按天數攤,攤分的金額記在 <code>prorated_usd</code>。</p>
 <p><b>「壓力測試」那一段只有 26 天,而那段最細的來源是季頻</b> —— 攤進來的 <span class="nomath">$</span>1.4B 比整段的用途 <span class="nomath">$</span>0.8B 還大,對帳結果由攤分假設決定而不是由資料決定。 <code>resolvable=False</code> 標記這種情況。</p>
-<blockquote>可用顆粒比分析窗口還粗的時候,對帳不會錯 —— 它只是不成立。 這兩件事要分開講。</blockquote>
+<blockquote>可用粒度比分析窗口還粗的時候,對帳不會錯 —— 它只是不成立。 這兩件事要分開講。</blockquote>
 <hr>
 <h2 id="03-3">3. 8-K 的版型換過四次</h2>
 <p>同一個欄位在不同時期長得不一樣,單一關鍵字搜尋會靜默漏掉整段:</p>
@@ -392,10 +392,10 @@ hr{border:0;border-top:1px solid var(--line);margin:30px 0}
 <h2 id="03-4">4. 融資來源:明示與推得要分開</h2>
 <p>有買賣的週次裡,只有一部分在 8-K 敘述句明確寫出動用了哪些 ATM。其餘只寫 「under the ATM」,但同一份文件的 ATM 表格已逐券種列出當週淨募資 —— 有錢進來的券種即為資金來源。</p>
 <p>本站把這兩種標記分開(「推得」vs 明示),<b>不讓推論混進實測</b>。 仍有部分週次兩種來源都沒有資料,標為未指名。</p>
-<p>10-Q 現金流量表另有一套<b>明示</b>的資金歸屬(「本季買幣的錢來自 ATM 普通股 <span class="nomath">$</span>4.37B、2030B 可轉債 <span class="nomath">$</span>1.99B、STRK IPO 與 ATM <span class="nomath">$</span>0.59B、STRF IPO <span class="nomath">$</span>0.71B」), 顆粒是季。這是目前唯一能覆蓋 2025-09 之前的資金來源資料。</p>
+<p>10-Q 現金流量表另有一套<b>明示</b>的資金歸屬(「本季買幣的錢來自 ATM 普通股 <span class="nomath">$</span>4.37B、2030B 可轉債 <span class="nomath">$</span>1.99B、STRK IPO 與 ATM <span class="nomath">$</span>0.59B、STRF IPO <span class="nomath">$</span>0.71B」), 粒度是季。這是目前唯一能覆蓋 2025-09 之前的資金來源資料。</p>
 <hr>
 <h2 id="03-5">5. 兩個曾經的誤讀(2026-09-27 修正)</h2>
-<p>兩個缺陷都不是「SEC 沒揭露」,而是<b>揭露了、抓下來了、然後在 L2 被分錯類</b>。 根因同一個:<code>granularity</code> 描述的是<b>流量涵蓋的期間</b>,而觀測是瞬時存量, 不屬於任何顆粒。原本觀測會繼承同一列流量的顆粒。</p>
+<p>兩個缺陷都不是「SEC 沒揭露」,而是<b>揭露了、抓下來了、然後在 L2 被分錯類</b>。 根因同一個:<code>granularity</code> 描述的是<b>流量涵蓋的期間</b>,而觀測是瞬時存量, 不屬於任何粒度。原本觀測會繼承同一列流量的粒度。</p>
 <p><b>5.1 季合計列被當成週紀錄(流量)。</b> 每季第一份 8-K(Item 2.02 財報預告) 會在逐週活動表旁邊附一列該季合計,格式與週列一模一樣。用顆數驗證:</p>
 <table><thead><tr><th>季度</th><th>實際增加</th><th>季合計列</th><th>週列加總</th><th>相加</th><th>倍數</th></tr></thead><tbody><tr><td>2025Q1</td><td>80,715</td><td><b>80,715</b></td><td>24,578</td><td>105,293</td><td>1.30×</td></tr><tr><td>2025Q2</td><td>69,140</td><td><b>69,140</b></td><td>65,120</td><td>134,260</td><td>1.94×</td></tr><tr><td>2025Q3</td><td>42,706</td><td><b>42,706</b></td><td>42,706</td><td>85,412</td><td>2.00×</td></tr></tbody></table>
 <p>季合計列 = 該季實際持幣變化,三季精確到個位數。倍數差異只反映週揭露的 完整度,與幣價無關。跨度分布很乾淨 —— 週列 1–7 天(另有一筆 13 天的 兩週期),季合計 89–91 天,中間什麼都沒有,門檻取 45 天。</p>
@@ -691,8 +691,10 @@ def read(doc_id: str) -&gt; bytes:
 <p><b>一個事件就是「一把工具 + 參數 + 日期 + 出處」。</b> 這讓 05 那份工具箱 從代數定義變成可以被資料驅動的東西:</p>
 <pre><code>Event  →  (Tool, Params, effective_at, doc_id)</code></pre>
 <p><code>reserve_change</code> 刻意不對應工具 —— 它是<b>狀態觀測</b>而不是動作, 用來校正 L1 沒有直接給的 USD 流動性。把觀測與動作分開, 才不會把「餘額變了」誤當成「公司做了什麼」。</p>
-<h3 id="06-6">兩種顆粒</h3>
-<p>週揭露(8-K)與季揭露(XBRL)<b>描述的是同一批動作</b>,只是顆粒不同。 兩者混在一起加總就會重複計算,所以 <code>granularity</code> 是欄位,而且 <code>all_events()</code> 預設只給週顆粒 —— 要季的必須明講。</p>
+<h3 id="06-6">粒度</h3>
+<p>同一批動作會被三份文件各講一次 —— 8-K 的週表、10-Q 的季表、10-K 的年表。 <b>描述的是同一批動作,只是粒度不同</b>,混在一起加總就會重複計算。 所以 <code>granularity</code> 是欄位而不是註解,而且 <code>all_events()</code> 預設只給週粒度 —— 要季或年的必須明講。</p>
+<p>三者之間的優先規則(粗只能補洞)在 <a href="03-data.md">03-data.md §2</a>。</p>
+<p>⚠️ <b>粒度描述的是流量涵蓋的期間。觀測是瞬時的存量,沒有期間</b>, 一律是 <code>'instant'</code>,由 <code>Event.__post_init__</code> 強制,不受粒度過濾器管。 讓觀測繼承同一列流量的粒度是歸類錯誤,而且有實害 —— 見 <a href="03-data.md">03-data.md §5</a>。</p>
 <p>季頻資料來自 SEC 的 XBRL companyfacts,不是硬解 10-Q 的 HTML 表格。 同樣的數字 SEC 已經結構化發布,連期間起訖與來源 accession 都標好了。</p>
 <p><b>兩個會算錯的陷阱,都寫進 <code>_discrete_periods()</code> 並有測試守著:</b></p>
 <p>1. <b>大部分事實是年初至今的累計</b>,不是單季 —— <code>2025-01-01→06-30 $2,948M</code> 是上半年,不是 Q2。直接加總會把同一筆錢 算好幾次,所以同年度內要逐筆相減。 2. <b>有些事實本身就是單季</b>(起日不是年度起日),與相減出來的期間重疊。 公司自己報的優先(<code>extraction='stated'</code>),相減出來的是 <code>'derived'</code>。</p>
@@ -780,18 +782,18 @@ L4  Phase(mix, layers4, efficiency, price, residual_pct)</code></pre>
 <p><b>不在資料庫裡存算出來的值。</b> <code>mnav_readings</code> 與 <code>cebe_effect</code> 是現在的 反例 —— 口徑一改就得回頭改資料。<b>存事實,算的東西每次重算。</b> 唯一的例外是 <code>app/data/*.json</code>,那是給前端的快照,不是真實來源。</p></section>
 <section id="sec-07"><h1 id="07-0">07 — 資料缺口清單</h1>
 <p><b>這份文件回答一個問題:今天的資料夠不夠支撐今天的結論。</b> 它是活的狀態,不是流水帳 —— 做過什麼在 <a href="08-status.md">08-status.md</a>, 判斷錯過什麼在 <a href="04-decisions.md">04-decisions.md</a>。</p>
-<p>資料的血統與顆粒規則在 <a href="03-data.md">03-data.md</a>。</p>
+<p>資料的血統與粒度規則在 <a href="03-data.md">03-data.md</a>。</p>
 <hr>
 <h2 id="07-1">1. 缺口有多大</h2>
 <p>同一件事有兩種量法,而且它們的答案不一樣 —— 這本身就是資訊。</p>
 <h3 id="07-2">1.1 現金口徑:買幣的錢對得上嗎</h3>
-<p><code>phases.sources_and_uses()</code>,走顆粒解析後的資金流(週+季+年):</p>
+<p><code>phases.sources_and_uses()</code>,走粒度解析後的資金流(週+季+年):</p>
 <blockquote><b>買幣 + 股息 + 回購 + 儲備增加 = 各種募資 + 賣幣</b></blockquote>
 <table><thead><tr><th>階段</th><th>用途(<span class="nomath">$</span>B)</th><th>來源(<span class="nomath">$</span>B)</th><th>未解釋</th><th>其中按天數攤分</th></tr></thead><tbody><tr><td>可轉債時代</td><td>21.7</td><td>22.6</td><td>−1.0 (4.5%)</td><td>6.5</td></tr><tr><td>優先股堆疊</td><td>36.6</td><td>35.9</td><td>+0.7 (1.9%)</td><td>10.4</td></tr><tr><td>壓力測試</td><td>0.8</td><td>1.2</td><td>−0.4</td><td>1.4 ⚠️</td></tr><tr><td>折價回收</td><td>5.5</td><td>5.5</td><td>−0.0</td><td>0.0</td></tr></tbody></table>
 <p><b>現金口徑基本上沒有缺口了。</b> 「可轉債時代」原本在操作層幾乎是空白 (買幣只看得到 <span class="nomath">$</span>1.1B),季頻一接上就是 <span class="nomath">$</span>21.7B。</p>
 <p>「壓力測試」那一段只有 26 天而最細的來源是季頻,對帳不成立而不是不合 —— 見 <a href="03-data.md">03-data.md §2.3</a>。</p>
 <h3 id="07-2">1.2 求償權口徑:結構變動解釋得了多少</h3>
-<p><code>phases.explained_share()</code>,走 L3 的操作,而 <b>L3 目前只吃週顆粒</b>:</p>
+<p><code>phases.explained_share()</code>,走 L3 的操作,而 <b>L3 目前只吃週粒度</b>:</p>
 <table><thead><tr><th>階段</th><th>實際</th><th>可解釋</th><th>解釋率</th></tr></thead><tbody><tr><td>可轉債時代</td><td>+<span class="nomath">$</span>3.81B</td><td>+<span class="nomath">$</span>1.11B</td><td><b>29%</b></td></tr><tr><td>優先股堆疊</td><td>+<span class="nomath">$</span>12.58B</td><td>+<span class="nomath">$</span>17.10B</td><td><b>136%</b></td></tr><tr><td>壓力測試</td><td>−<span class="nomath">$</span>0.87B</td><td>−<span class="nomath">$</span>0.49B</td><td>57%</td></tr><tr><td>折價回收</td><td>−<span class="nomath">$</span>5.18B</td><td>−<span class="nomath">$</span>5.19B</td><td><b>100%</b> ✅</td></tr></tbody></table>
 <blockquote><b>136% 不是算錯,是缺口的另一面。</b> 買幣被記了(求償權增加), 支應它的募資卻沒被記 —— 所以「可解釋」的數字比實際大。 兩種相反的缺口會把單一比率搞混,所以診斷要按結構角色攤開來看。  「折價回收」是 100%,因為<b>那段期間的揭露是完整的</b>。 這證明方法沒問題,問題在更早的資料。</blockquote>
 <p><b>兩個口徑的差距就是還沒做的那一步。</b> 現金口徑已經吃到季頻,求償權口徑 還沒 —— 因為求償權要算優先股的<b>面額</b>,而季頻的 XBRL 只給募資金額。 見 §5。</p>
@@ -821,7 +823,7 @@ L4  Phase(mix, layers4, efficiency, price, residual_pct)</code></pre>
 <p>as-of 2026-09-27,分支 <code>rebuild/l1-document-archive</code>(領先 master 10 個 commit)。</p>
 <hr>
 <h2 id="08-1">1. 四層現況</h2>
-<table><thead><tr><th>層</th><th>現況</th><th>缺口</th></tr></thead><tbody><tr><td><b>L1 採集</b></td><td>8-K 160、424B5 26、10-Q 7、10-K 2、XBRL companyfacts 全部內容定址歸檔;解析與抓取分離,斷網可跑</td><td>⚠️ 報價 API 尚未歸檔</td></tr><tr><td><b>L2 事件</b></td><td>972 個事件,動作／觀測分家,三種顆粒(週／季／年)分離且有優先規則</td><td>—</td></tr><tr><td><b>L3 操作</b></td><td>配對器與 <code>operations</code> 表,對帳零差額</td><td>⚠️ 只實作 <code>sell_to_buyback</code>;只吃週顆粒</td></tr><tr><td><b>L4 階段</b></td><td>四層歸因完整且有斷言;偵測器、<code>explained_share()</code>、<code>sources_and_uses()</code></td><td>⚠️ 分期維持手寫 —— 不是演算法不夠,是資料不夠</td></tr></tbody></table>
+<table><thead><tr><th>層</th><th>現況</th><th>缺口</th></tr></thead><tbody><tr><td><b>L1 採集</b></td><td>8-K 160、424B5 26、10-Q 7、10-K 2、XBRL companyfacts 全部內容定址歸檔;解析與抓取分離,斷網可跑</td><td>⚠️ 報價 API 尚未歸檔</td></tr><tr><td><b>L2 事件</b></td><td>972 個事件,動作／觀測分家,三種粒度(週／季／年)分離且有優先規則</td><td>—</td></tr><tr><td><b>L3 操作</b></td><td>配對器與 <code>operations</code> 表,對帳零差額</td><td>⚠️ 只實作 <code>sell_to_buyback</code>;只吃週粒度</td></tr><tr><td><b>L4 階段</b></td><td>四層歸因完整且有斷言;偵測器、<code>explained_share()</code>、<code>sources_and_uses()</code></td><td>⚠️ 分期維持手寫 —— 不是演算法不夠,是資料不夠</td></tr></tbody></table>
 <p>三條橫向規則(出處往上流、每層可獨立重放、信心度單調遞減)目前都成立。</p>
 <p><b>一條新的邊</b>:<code>interpolate.py</code> / <code>data.py</code>(重建前的舊模型層)現在直接讀 L2。 方向是對的(模型讀事件,不讀手工表),但 L2 因此有兩個消費者。目前沒衝突。</p>
 <hr>
@@ -854,7 +856,7 @@ L4  Phase(mix, layers4, efficiency, price, residual_pct)</code></pre>
 <h3 id="08-4">✅ 7. 補齊歷史資料</h3>
 <p>424B5 / 10-Q / 10-K / XBRL companyfacts 全部歸檔。五份 IPO 公開說明書解析 驗證過,與手動輸入的面額<b>完全吻合</b>,並補上淨募資 (<span class="nomath">$</span>563.4M / <span class="nomath">$</span>711.2M / <span class="nomath">$</span>979.7M / <span class="nomath">$</span>2,474M / €608.8M)。 <b>可轉債的事件數從 0 變成 12。</b> 實付優先股股息有了逐季數字。</p>
 <p>做這一步的交叉驗證翻出兩個既有誤讀 —— 見 <a href="03-data.md">03-data.md §5</a> 與 <a href="04-decisions.md#缺口與誤讀長得一模一樣">04-decisions.md</a>。 順帶把 <code>web/raw/*.json</code> 從「爬蟲輸出」改成「L2 視圖的序列化」, 關掉那條繞過 L1–L4 的旁路。</p>
-<h3 id="08-4">✅ 8. 顆粒優先規則</h3>
+<h3 id="08-4">✅ 8. 粒度優先規則</h3>
 <p><code>events.resolve_flows()</code>,規則與證據見 <a href="03-data.md">03-data.md §2</a>。 <code>phases.sources_and_uses()</code> 讓 L4 吃得到季與年。 <b>「可轉債時代」的買幣從看得到 <span class="nomath">$</span>1.1B 變成 <span class="nomath">$</span>21.7B,對帳收到 4.5%。</b></p>
 <hr>
 <h2 id="08-4">4. 下一步</h2>

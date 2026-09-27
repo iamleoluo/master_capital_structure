@@ -163,10 +163,10 @@ def explained_share(conn: sqlite3.Connection, daily: dict,
 
 def sources_and_uses(conn: sqlite3.Connection, daily: dict,
                      lo: str, hi: str) -> Dict[str, float]:
-    """這一段的錢從哪來、到哪去 —— 用顆粒解析過的資金流,不只看週顆粒。
+    """這一段的錢從哪來、到哪去 —— 用粒度解析過的資金流,不只看週粒度。
 
     `explained_share()` 問的是「求償權變動解釋得了多少」,走的是 L3 的
-    操作,而 L3 目前只吃週顆粒 —— 所以 8-K 還沒開始揭露的那段必然低估。
+    操作,而 L3 目前只吃週粒度 —— 所以 8-K 還沒開始揭露的那段必然低估。
     這一支改走 `events.resolve_flows()`,把季與年補洞的部分也算進來,
     於是早期那幾段也有數字。
 
@@ -181,7 +181,7 @@ def sources_and_uses(conn: sqlite3.Connection, daily: dict,
 
         階段邊界是按結構轉折劃的,不會剛好切在季底 —— 例如「折價回收」
         從 2026-06-29 開始,而 2026Q2 那一季只有最後兩天在裡面。整季算進來
-        會憑空多出 $6B 的資金流。週顆粒幾乎不受影響(一週最多錯幾天),
+        會憑空多出 $6B 的資金流。週粒度幾乎不受影響(一週最多錯幾天),
         季與年則非攤不可。
         """
         a = max(dt.date.fromisoformat(ps), dt.date.fromisoformat(lo))
@@ -226,7 +226,7 @@ def sources_and_uses(conn: sqlite3.Connection, daily: dict,
         "sources_usd": sources,
         "unexplained_usd": uses - sources,
         "prorated_usd": prorated,       # 有多少金額是按天數攤進來的
-        # 攤分佔比:超過 0.3 就代表這段期間**比可用顆粒還短**,
+        # 攤分佔比:超過 0.3 就代表這段期間**比可用粒度還短**,
         # 對帳結果主要由攤分假設決定而不是由資料決定 —— 不該當結論用。
         # 「壓力測試」只有 26 天,而最細的來源在那段是季頻,就是這種情況。
         "prorated_share": prorated / uses if uses else float("nan"),
@@ -290,7 +290,7 @@ def main(argv: Optional[List[str]] = None) -> int:
               f"  差 {c['gap_days'] if c['gap_days'] is not None else '—'} 天"
               f"  {c['shift'] or ''}")
 
-    print("\n資金來源與用途(顆粒解析後,含季與年補洞)——"
+    print("\n資金來源與用途(粒度解析後,含季與年補洞)——"
           " 買幣+股息+儲備增加 = 募資+賣幣:")
     print(f"  {'階段':<10}{'買幣':>7}{'股息':>6}{'儲備':>7}"
           f"{'回購':>6}{'普通ATM':>8}{'優先':>7}{'可轉債':>7}{'賣幣':>6}{'未解釋':>8}{'其中攤分':>9}")
@@ -304,10 +304,10 @@ def main(argv: Optional[List[str]] = None) -> int:
               f"{u['preferred_usd']/1e9:>7.1f}{u['convert_net_usd']/1e9:>7.1f}"
               f"{u['sell_usd']/1e9:>6.1f}{u['unexplained_usd']/1e9:>8.1f}"
               f"{u['prorated_usd']/1e9:>9.1f}"
-              + ("" if u["resolvable"] else "   ⚠️ 期間短於可用顆粒,對帳不成立"))
+              + ("" if u["resolvable"] else "   ⚠️ 期間短於可用粒度,對帳不成立"))
 
     print("\n前提檢查 —— 各階段的求償權變動有多少是操作層解釋得了的"
-          "(L3 目前只吃週顆粒,所以早期必然低估):")
+          "(L3 目前只吃週粒度,所以早期必然低估):")
     for e in eras:
         lo = e["start"]
         hi = e["end"] or daily["date"][-1]

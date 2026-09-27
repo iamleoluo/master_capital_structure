@@ -101,11 +101,11 @@ class Event:
     unit_price: Optional[float] = None
     attrs: Dict = field(default_factory=dict)
     extraction: str = "stated"
-    # 週揭露(8-K)與季揭露(XBRL)描述的是同一批動作,顆粒不同。
-    # 視圖要能分辨,才不會把兩種顆粒疊在一起重複計算。
+    # 週揭露(8-K)與季揭露(XBRL)描述的是同一批動作,粒度不同。
+    # 視圖要能分辨,才不會把兩種粒度疊在一起重複計算。
     #
     # ⚠️ 這個欄位描述的是**流量涵蓋的期間**。觀測是瞬時的存量,沒有期間,
-    #    一律是 'instant'(見 __post_init__)—— 讓觀測繼承流量列的顆粒是
+    #    一律是 'instant'(見 __post_init__)—— 讓觀測繼承流量列的粒度是
     #    歸類錯誤,而且有實害:季末那份 8-K(Item 2.02)附的季合計列帶著
     #    正確的季末餘額,卻因為被標成 'quarter' 而被存量視圖過濾掉,
     #    結果 2025-03-31 的持幣量長期由 data.py 一筆手工估值頂替。
@@ -175,12 +175,12 @@ def all_events(conn: sqlite3.Connection, *, kind: Optional[str] = None,
                granularity: Optional[str] = "week") -> List[dict]:
     """取事件,附上該文件的申報日 —— 「後蓋前」的排序要靠它。
 
-    granularity 預設只取週顆粒。季顆粒描述的是同一批動作,兩種混在一起
+    granularity 預設只取週粒度。季粒度描述的是同一批動作,兩種混在一起
     會重複計算 —— 要取季的就明講,或傳 None 取全部。
 
     **觀測不受這個過濾器管。** granularity 描述的是流量涵蓋的期間,
     而觀測是瞬時的存量(granularity='instant'),既不會被重複計算,
-    也不屬於任何一種顆粒。把它們一起濾掉會讓存量視圖看不到季末那些點。
+    也不屬於任何一種粒度。把它們一起濾掉會讓存量視圖看不到季末那些點。
     """
     where, args = [], []
     if granularity:
@@ -317,7 +317,7 @@ def derive_funding(conn: sqlite3.Connection, *, verbose: bool = False) -> int:
     """從 10-Q/10-K 的註腳取出買幣的資金來源,存成帶 funding_allocation 的
     買幣事件。
 
-    **顆粒比週資料粗,所以不會進週聚合視圖** —— 它補的是 L3 的配對證據,
+    **粒度比週資料粗,所以不會進週聚合視圖** —— 它補的是 L3 的配對證據,
     不是拿來重算週報表的。
     """
     docs = [m for m in A.find(conn) if m.source in ("sec_10q", "sec_10k")]
@@ -394,7 +394,7 @@ def derive(conn: sqlite3.Connection, *, since: dt.date = dt.date(2024, 7, 1),
             # 季末的 8-K 會附一列「該季合計」,格式與週列一模一樣。
             # 把它當週紀錄會與那一季的各週重複計算 —— 實測 2025 年因此
             # 多算了 $19.4B(10-K 宣稱全年 $22.47B,現行管線算出 $35.88B)。
-            # 它不是壞資料,只是顆粒不同,所以用 granularity 分開而不是丟掉。
+            # 它不是壞資料,只是粒度不同,所以用 granularity 分開而不是丟掉。
             # 跨度分布很乾淨:正常週列 1–7 天(另有一筆 13 天的兩週期),
             # 季度彙總 89–91 天,中間完全沒有東西。門檻取 45 天。
             span = _span_days(rec.get("week_start"), rec["week_end"])
@@ -776,19 +776,19 @@ def weekly_reserve(conn: sqlite3.Connection) -> List[dict]:
 
 # --------------------------------------------------------------- 資金流
 
-# ---------------------------------------------------- 顆粒解析(粗只能補洞)
+# ---------------------------------------------------- 粒度解析(粗只能補洞)
 
-# 由細到粗。同一批動作可以被三種顆粒描述:8-K 的週表、10-Q 的季表、
+# 由細到粗。同一批動作可以被三種粒度描述:8-K 的週表、10-Q 的季表、
 # 10-K 的年表。三者**不得相加**。
 GRAIN_ORDER: Dict[str, int] = {"week": 0, "quarter": 1, "year": 2}
 
 # XBRL 只給「優先股」的合計,8-K 則逐系列列出。要比較涵蓋範圍就得先對齊 ——
-# 這個對照只用於顆粒解析,事件本身的 instrument 不變。
+# 這個對照只用於粒度解析,事件本身的 instrument 不變。
 PREFERRED_SERIES = ("STRK", "STRF", "STRD", "STRC", "STRE")
 
 
 def flow_group(kind: str, instrument: str) -> tuple:
-    """顆粒解析時的比較單位。"""
+    """粒度解析時的比較單位。"""
     if kind == "atm_issue" and instrument in PREFERRED_SERIES:
         return (kind, "PREFERRED")
     return (kind, instrument)
@@ -803,11 +803,11 @@ class Resolved:
     period_start: str
     period_end: str
     stated_usd: float       # 文件對這段期間講的數字
-    covered_usd: float      # 已經被更細的顆粒算過的部分
+    covered_usd: float      # 已經被更細的粒度算過的部分
     usd: float              # 淨貢獻 = stated − covered(補洞的部分)
     doc_id: str
     locator: str
-    conflict: bool = False  # 細顆粒反而超出粗顆粒 —— 見下方說明
+    conflict: bool = False  # 細粒度反而超出粗粒度 —— 見下方說明
 
 
 def _covers(inner: dict, outer: dict) -> bool:
@@ -817,20 +817,20 @@ def _covers(inner: dict, outer: dict) -> bool:
 
 
 def resolve_flows(conn: sqlite3.Connection, *, tol: float = 0.02) -> List[Resolved]:
-    """把三種顆粒解析成一組互不重疊的資金流。
+    """把三種粒度解析成一組互不重疊的資金流。
 
-    規則只有一條:**粗顆粒只能補洞,不能與細顆粒相加。**
+    規則只有一條:**粗粒度只能補洞,不能與細粒度相加。**
 
-      1. 同一 (種類, 標的, 顆粒, 期間) 有多份文件 → 取申報日最新的那份。
+      1. 同一 (種類, 標的, 粒度, 期間) 有多份文件 → 取申報日最新的那份。
          2025 三季的買幣就是這樣:季末的 8-K(Item 2.02)給顆數,
          三個月後的 10-Q 給資金來源,兩邊差 0.027%,但只能算一次。
       2. 由細到粗:每個事件的淨貢獻 = 自身 − 內部所有更細事件的**淨貢獻**
          (要用淨貢獻遞迴,不是原始金額,否則季與週會被重複扣掉)。
-      3. 淨貢獻若與自身反號超過 `tol` → 細顆粒超出粗顆粒。粗顆粒是用來
+      3. 淨貢獻若與自身反號超過 `tol` → 細粒度超出粗粒度。粗粒度是用來
          補洞的,補不出負的洞,所以貢獻取 0 並標記 conflict,交由上層看見。
 
     驗證:2024 與 2025 的**年**頻買幣,經過這個規則之後淨貢獻趨近於零 ——
-    也就是年報的數字被季報與週報完整解釋掉了,三個顆粒互相對得起來。
+    也就是年報的數字被季報與週報完整解釋掉了,三種粒度互相對得起來。
     """
     raw: List[dict] = []
     for r in all_events(conn, family="action", granularity=None):
@@ -875,9 +875,9 @@ def resolve_flows(conn: sqlite3.Connection, *, tol: float = 0.02) -> List[Resolv
 
 def resolved_between(conn: sqlite3.Connection, lo: str, hi: str,
                      *, kind: Optional[str] = None) -> Dict[str, float]:
-    """區間內、已解析過顆粒的資金流,按 (種類, 分組標的) 加總。
+    """區間內、已解析過粒度的資金流,按 (種類, 分組標的) 加總。
 
-    與 `flows_between()` 的差別:那一支只看週顆粒(歸因層的既有口徑),
+    與 `flows_between()` 的差別:那一支只看週粒度(歸因層的既有口徑),
     這一支把季與年的補洞部分也算進來,所以涵蓋 8-K 還沒開始揭露的早期。
     """
     total: Dict[str, float] = {}
@@ -997,7 +997,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     if not rows:
         print("還沒有事件 —— 先跑 python3 -m mstr_cebe.events rebuild")
         return 0
-    print(f"{'顆粒':<10}{'家族':<12}{'種類':<22}{'筆數':>6}   期間")
+    print(f"{'粒度':<10}{'家族':<12}{'種類':<22}{'筆數':>6}   期間")
     for gran, fam, kind, n, lo, hi in rows:
         print(f"{gran:<10}{fam:<12}{kind:<22}{n:>6}   {lo} → {hi}")
     print(f"{'合計':<50}{sum(r[3] for r in rows):>6}")

@@ -359,7 +359,7 @@ def test_parser_output_still_matches_the_committed_raw_files(no_network):
     # 持幣的兩個檔案不再是爬蟲的直接輸出 —— 事件層在中間做了兩件事,
     # 兩件都是刻意的,所以這裡改成比對「爬蟲 + 那兩個轉換」:
     #
-    #   1. 季末那份 8-K(Item 2.02)的季合計列,顆粒是 quarter 不是 week,
+    #   1. 季末那份 8-K(Item 2.02)的季合計列,粒度是 quarter 不是 week,
     #      混進週加總會重複計算(2025 年因此多算 192,561 顆)
     #   2. 同一列尾欄帶的季末餘額是存量,要進持有量序列 ——
     #      舊檔只收專用表格,把它濾掉了
@@ -394,5 +394,5 @@ def test_parser_output_still_matches_the_committed_raw_files(no_network):
 
     # 活動檔則相反 —— 恰好少掉季合計那幾列,而且每一列都還在事件層裡
     assert {a["week_end"] for a in activity} - raw_weeks == ev_quarters
-    assert raw_weeks == ev_weeks          # 週顆粒的那些一列不少
-    assert not (ev_weeks & ev_quarters)   # 兩種顆粒沒有落在同一個期末
+    assert raw_weeks == ev_weeks          # 週粒度的那些一列不少
+    assert not (ev_weeks & ev_quarters)   # 兩種粒度沒有落在同一個期末

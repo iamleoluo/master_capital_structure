@@ -392,7 +392,7 @@ def test_the_same_quarter_from_two_documents_must_agree():
 
 def test_weekly_views_ignore_quarterly_events():
     """季頻與週頻描述同一批動作。混在一起就會重複計算,
-    所以週聚合視圖只能看得到週顆粒。"""
+    所以週聚合視圖只能看得到週粒度。"""
     conn = _real()
     try:
         assert E.all_events(conn, granularity="quarter")      # 確實有季頻資料
@@ -420,7 +420,7 @@ def test_xbrl_fills_the_tool_that_had_no_events():
 def test_every_quarterly_event_points_at_its_source_filing():
     """出處往上流:每一個季頻事件都要指回一份真的在檔案庫裡的文件。
 
-    季頻不再只有 XBRL —— 季末那份 8-K(Item 2.02)的活動表也是季顆粒。
+    季頻不再只有 XBRL —— 季末那份 8-K(Item 2.02)的活動表也是季粒度。
     所以這裡驗的是「doc_id 解得開、locator 不是空的」這條通則,
     XBRL 推出來的那些再額外要求標籤與 accession。
     """
@@ -441,7 +441,7 @@ def test_every_quarterly_event_points_at_its_source_filing():
     assert from_xbrl, "XBRL 那條路徑應該還在"
 
 
-# --------------------------------------------------- 顆粒解析:粗只能補洞
+# --------------------------------------------------- 粒度解析:粗只能補洞
 
 def test_finer_granularity_wins_and_coarse_only_fills(conn):
     """同一季有週資料時,季頻只能補上週資料沒蓋到的部分。"""
@@ -463,7 +463,7 @@ def test_finer_granularity_wins_and_coarse_only_fills(conn):
 
 
 def test_coarse_cannot_fill_a_negative_hole(conn):
-    """細顆粒反而超出粗顆粒 —— 粗顆粒貢獻 0 並標記衝突,不得倒扣。
+    """細粒度反而超出粗粒度 —— 粗粒度貢獻 0 並標記衝突,不得倒扣。
 
     倒扣會讓上層看到一個不存在的反向資金流,而真正該發生的事是
     「有人去看這兩份文件為什麼對不上」。
@@ -524,7 +524,7 @@ def test_preferred_series_are_compared_against_the_xbrl_aggregate(conn):
 def test_real_data_annual_figures_are_explained_by_finer_grains():
     """10-K 的年度買幣金額,應該被 10-Q 的季與 8-K 的週完整解釋掉。
 
-    這是三個顆粒互相對得起來的獨立證據 —— 年報是另一份文件、另一次申報,
+    這是三種粒度互相對得起來的獨立證據 —— 年報是另一份文件、另一次申報,
     如果週與季有系統性的漏記或重複,這裡就會留下一大塊殘差。
     """
     conn = _real()

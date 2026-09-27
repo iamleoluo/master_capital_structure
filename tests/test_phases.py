@@ -196,8 +196,8 @@ def test_sources_and_uses_close_once_coarse_grains_fill_the_gaps():
     """接上季與年的補洞之後,每一段的「錢從哪來、到哪去」要對得起來。
 
     這是與 explained_share() 互補的一條檢查:那一支走 L3 的操作(只有
-    週顆粒),所以 8-K 還沒開始揭露的早期必然低估;這一支走顆粒解析後的
-    現金流,四段都該收斂。收斂本身就是「三種顆粒沒有互相重複或遺漏」的
+    週粒度),所以 8-K 還沒開始揭露的早期必然低估;這一支走粒度解析後的
+    現金流,四段都該收斂。收斂本身就是「三種粒度沒有互相重複或遺漏」的
     證據 —— 年報、季報、週報是三次獨立申報。
     """
     conn = _real()
@@ -232,7 +232,7 @@ def test_the_convertible_era_is_no_longer_a_blind_spot():
         u = P.sources_and_uses(conn, _daily(), "2024-07-01", "2025-01-29")
     finally:
         conn.close()
-    assert u["buy_usd"] > 15e9           # 週顆粒只看得到 $1.1B
+    assert u["buy_usd"] > 15e9           # 週粒度只看得到 $1.1B
     assert u["common_atm_usd"] > 10e9    # 普通股 ATM 要到 2025-09 才有週揭露
     assert u["convert_net_usd"] > 1e9    # 可轉債在週 8-K 裡完全不存在
     # 這一段的末端切在 2025Q1 中間(29/90 天),那一季只能按天數攤 ——
