@@ -439,3 +439,117 @@ def test_every_quarterly_event_points_at_its_source_filing():
             assert r["attrs"]["form"] in ("10-Q", "10-K")
             from_xbrl += 1
     assert from_xbrl, "XBRL 那條路徑應該還在"
+
+
+# --------------------------------------------------- 顆粒解析:粗只能補洞
+
+def test_finer_granularity_wins_and_coarse_only_fills(conn):
+    """同一季有週資料時,季頻只能補上週資料沒蓋到的部分。"""
+    doc = _doc(conn)
+    E.insert(conn, [
+        E.Event(kind="btc_purchase", instrument="BTC", effective_at="2025-02-07",
+                period_start="2025-02-01", period_end="2025-02-07",
+                usd=-3.0e9, doc_id=doc, locator="activity/2025-02-07"),
+        E.Event(kind="btc_purchase", instrument="BTC", effective_at="2025-03-31",
+                period_start="2025-01-01", period_end="2025-03-31",
+                usd=-8.0e9, granularity="quarter", doc_id=doc,
+                locator="funding/2025Q1"),
+    ])
+    rs = {r.granularity: r for r in E.resolve_flows(conn)}
+    assert rs["week"].usd == -3.0e9                 # 週原封不動
+    assert rs["quarter"].usd == pytest.approx(-5.0e9)   # 季只補 8 − 3
+    assert rs["quarter"].covered_usd == -3.0e9
+    assert not rs["quarter"].conflict
+
+
+def test_coarse_cannot_fill_a_negative_hole(conn):
+    """細顆粒反而超出粗顆粒 —— 粗顆粒貢獻 0 並標記衝突,不得倒扣。
+
+    倒扣會讓上層看到一個不存在的反向資金流,而真正該發生的事是
+    「有人去看這兩份文件為什麼對不上」。
+    """
+    doc = _doc(conn)
+    E.insert(conn, [
+        E.Event(kind="btc_purchase", instrument="BTC", effective_at="2025-02-07",
+                period_start="2025-02-01", period_end="2025-02-07",
+                usd=-9.0e9, doc_id=doc, locator="activity/2025-02-07"),
+        E.Event(kind="btc_purchase", instrument="BTC", effective_at="2025-03-31",
+                period_start="2025-01-01", period_end="2025-03-31",
+                usd=-8.0e9, granularity="quarter", doc_id=doc,
+                locator="funding/2025Q1"),
+    ])
+    q = next(r for r in E.resolve_flows(conn) if r.granularity == "quarter")
+    assert q.conflict is True
+    assert q.usd == 0.0
+    assert q.stated_usd == -8.0e9          # 文件講了什麼仍然留著
+
+
+def test_the_same_period_is_never_counted_twice(conn):
+    """兩份文件講同一季 —— 只算一次,取申報日最新的那份。"""
+    a = _doc(conn, filed_at="2025-04-07", url="https://www.sec.gov/8k")
+    b = _doc(conn, filed_at="2025-05-05", url="https://www.sec.gov/10q")
+    for d, usd in ((a, -7.662e9), (b, -7.664e9)):
+        E.insert(conn, [E.Event(
+            kind="btc_purchase", instrument="BTC", effective_at="2025-03-31",
+            period_start="2025-01-01", period_end="2025-03-31", usd=usd,
+            granularity="quarter", doc_id=d, locator=f"q/{d}")])
+    rs = E.resolve_flows(conn)
+    assert len(rs) == 1
+    assert rs[0].usd == -7.664e9           # 後蓋前
+    assert rs[0].doc_id == b
+
+
+def test_preferred_series_are_compared_against_the_xbrl_aggregate(conn):
+    """XBRL 只給優先股合計,8-K 逐系列列出 —— 比較涵蓋範圍前要先對齊。"""
+    doc = _doc(conn)
+    E.insert(conn, [
+        E.Event(kind="atm_issue", instrument="STRK", effective_at="2025-02-07",
+                period_start="2025-02-01", period_end="2025-02-07",
+                usd=0.3e9, doc_id=doc, locator="atm/2025-02-07/00/STRK"),
+        E.Event(kind="atm_issue", instrument="STRC", effective_at="2025-02-07",
+                period_start="2025-02-01", period_end="2025-02-07",
+                usd=0.5e9, doc_id=doc, locator="atm/2025-02-07/01/STRC"),
+        E.Event(kind="atm_issue", instrument="PREFERRED",
+                effective_at="2025-03-31", period_start="2025-01-01",
+                period_end="2025-03-31", usd=1.0e9, granularity="quarter",
+                doc_id=doc, locator="xbrl/pref/2025Q1"),
+    ])
+    q = next(r for r in E.resolve_flows(conn) if r.granularity == "quarter")
+    assert q.covered_usd == pytest.approx(0.8e9)   # 兩個系列都算進涵蓋
+    assert q.usd == pytest.approx(0.2e9)
+    # 普通股 ATM 不歸進優先股那一組
+    assert E.flow_group("atm_issue", "MSTR") != E.flow_group("atm_issue", "STRK")
+
+
+def test_real_data_annual_figures_are_explained_by_finer_grains():
+    """10-K 的年度買幣金額,應該被 10-Q 的季與 8-K 的週完整解釋掉。
+
+    這是三個顆粒互相對得起來的獨立證據 —— 年報是另一份文件、另一次申報,
+    如果週與季有系統性的漏記或重複,這裡就會留下一大塊殘差。
+    """
+    conn = _real()
+    try:
+        years = [r for r in E.resolve_flows(conn) if r.granularity == "year"]
+    finally:
+        conn.close()
+    assert len(years) >= 3
+    for r in years:
+        assert abs(r.usd / r.stated_usd) < 0.03, \
+            f"{r.period_start[:4]} 年報還剩 {r.usd/1e9:.2f}B 沒被季與週解釋"
+
+
+def test_real_data_surfaces_conflicts_instead_of_hiding_them():
+    """唯一一筆衝突是成交日 vs 交割日的口徑差,不是解析錯誤 ——
+    2026Q1 季末 3/30–3/31 那筆 $227.3M 的優先股 ATM,現金在 Q2 才到。
+    規則要讓它浮出來,而不是悄悄倒扣。"""
+    conn = _real()
+    try:
+        bad = [r for r in E.resolve_flows(conn) if r.conflict]
+    finally:
+        conn.close()
+    assert len(bad) == 1
+    r = bad[0]
+    assert (r.kind, r.group) == ("atm_issue", "PREFERRED")
+    assert r.period_end == "2026-03-31"
+    assert r.usd == 0.0
+    assert abs(r.covered_usd - r.stated_usd) / abs(r.stated_usd) < 0.15

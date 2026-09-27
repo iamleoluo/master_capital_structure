@@ -776,6 +776,120 @@ def weekly_reserve(conn: sqlite3.Connection) -> List[dict]:
 
 # --------------------------------------------------------------- 資金流
 
+# ---------------------------------------------------- 顆粒解析(粗只能補洞)
+
+# 由細到粗。同一批動作可以被三種顆粒描述:8-K 的週表、10-Q 的季表、
+# 10-K 的年表。三者**不得相加**。
+GRAIN_ORDER: Dict[str, int] = {"week": 0, "quarter": 1, "year": 2}
+
+# XBRL 只給「優先股」的合計,8-K 則逐系列列出。要比較涵蓋範圍就得先對齊 ——
+# 這個對照只用於顆粒解析,事件本身的 instrument 不變。
+PREFERRED_SERIES = ("STRK", "STRF", "STRD", "STRC", "STRE")
+
+
+def flow_group(kind: str, instrument: str) -> tuple:
+    """顆粒解析時的比較單位。"""
+    if kind == "atm_issue" and instrument in PREFERRED_SERIES:
+        return (kind, "PREFERRED")
+    return (kind, instrument)
+
+
+@dataclass(frozen=True)
+class Resolved:
+    """一個事件在「不得重複計算」的前提下,實際貢獻多少資金流。"""
+    kind: str
+    group: str
+    granularity: str
+    period_start: str
+    period_end: str
+    stated_usd: float       # 文件對這段期間講的數字
+    covered_usd: float      # 已經被更細的顆粒算過的部分
+    usd: float              # 淨貢獻 = stated − covered(補洞的部分)
+    doc_id: str
+    locator: str
+    conflict: bool = False  # 細顆粒反而超出粗顆粒 —— 見下方說明
+
+
+def _covers(inner: dict, outer: dict) -> bool:
+    """inner 的期間真包含於 outer(相同期間不算,那是同一件事的兩份文件)。"""
+    same = inner["ps"] == outer["ps"] and inner["pe"] == outer["pe"]
+    return (not same) and outer["ps"] <= inner["ps"] and inner["pe"] <= outer["pe"]
+
+
+def resolve_flows(conn: sqlite3.Connection, *, tol: float = 0.02) -> List[Resolved]:
+    """把三種顆粒解析成一組互不重疊的資金流。
+
+    規則只有一條:**粗顆粒只能補洞,不能與細顆粒相加。**
+
+      1. 同一 (種類, 標的, 顆粒, 期間) 有多份文件 → 取申報日最新的那份。
+         2025 三季的買幣就是這樣:季末的 8-K(Item 2.02)給顆數,
+         三個月後的 10-Q 給資金來源,兩邊差 0.027%,但只能算一次。
+      2. 由細到粗:每個事件的淨貢獻 = 自身 − 內部所有更細事件的**淨貢獻**
+         (要用淨貢獻遞迴,不是原始金額,否則季與週會被重複扣掉)。
+      3. 淨貢獻若與自身反號超過 `tol` → 細顆粒超出粗顆粒。粗顆粒是用來
+         補洞的,補不出負的洞,所以貢獻取 0 並標記 conflict,交由上層看見。
+
+    驗證:2024 與 2025 的**年**頻買幣,經過這個規則之後淨貢獻趨近於零 ——
+    也就是年報的數字被季報與週報完整解釋掉了,三個顆粒互相對得起來。
+    """
+    raw: List[dict] = []
+    for r in all_events(conn, family="action", granularity=None):
+        raw.append({
+            "kind": r["kind"], "inst": r["instrument"], "gran": r["granularity"],
+            "ps": r["period_start"] or r["effective_at"],
+            "pe": r["period_end"] or r["effective_at"],
+            "usd": r["usd"] or 0.0, "filed": r["filed"],
+            "doc_id": r["doc_id"], "locator": r["locator"],
+        })
+
+    # (1) 後蓋前。鍵用**原始**標的 —— 用分組後的標的會讓同一週的
+    #     STRK 與 STRC 互相蓋掉。
+    best: Dict[tuple, dict] = {}
+    for r in raw:
+        k = (r["kind"], r["inst"], r["gran"], r["ps"], r["pe"])
+        if k not in best or r["filed"] > best[k]["filed"]:
+            best[k] = r
+    rows = list(best.values())
+
+    # (2) 由細到粗遞迴
+    done: List[dict] = []
+    out: List[Resolved] = []
+    for r in sorted(rows, key=lambda x: (GRAIN_ORDER[x["gran"]], x["ps"], x["pe"])):
+        g = flow_group(r["kind"], r["inst"])
+        covered = sum(x["contrib"] for x in done
+                      if flow_group(x["kind"], x["inst"]) == g and _covers(x, r))
+        contrib = r["usd"] - covered
+        # (3) 補不出負的洞
+        conflict = bool(r["usd"]) and (contrib / r["usd"]) < -tol
+        if conflict:
+            contrib = 0.0
+        r["contrib"] = contrib
+        done.append(r)
+        out.append(Resolved(
+            kind=r["kind"], group=g[1], granularity=r["gran"],
+            period_start=r["ps"], period_end=r["pe"],
+            stated_usd=r["usd"], covered_usd=covered, usd=contrib,
+            doc_id=r["doc_id"], locator=r["locator"], conflict=conflict))
+    return out
+
+
+def resolved_between(conn: sqlite3.Connection, lo: str, hi: str,
+                     *, kind: Optional[str] = None) -> Dict[str, float]:
+    """區間內、已解析過顆粒的資金流,按 (種類, 分組標的) 加總。
+
+    與 `flows_between()` 的差別:那一支只看週顆粒(歸因層的既有口徑),
+    這一支把季與年的補洞部分也算進來,所以涵蓋 8-K 還沒開始揭露的早期。
+    """
+    total: Dict[str, float] = {}
+    for r in resolve_flows(conn):
+        if not (lo <= r.period_end <= hi) or not r.usd:
+            continue
+        if kind and r.kind != kind:
+            continue
+        total[f"{r.kind}:{r.group}"] = total.get(f"{r.kind}:{r.group}", 0.0) + r.usd
+    return total
+
+
 def flows_between(conn: sqlite3.Connection, lo: str, hi: str) -> Dict[str, float]:
     """區間 [lo, hi] 內的資金流,單位美元。歸因層要的參數就是這些。
 

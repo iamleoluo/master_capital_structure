@@ -139,6 +139,12 @@ def _daily():
         return json.load(f)
 
 
+def _eras():
+    with open(os.path.join(ROOT, "app", "data", "chronicle.json"),
+              encoding="utf-8") as f:
+        return json.load(f)
+
+
 def test_the_latest_era_is_fully_explained():
     """折價回收期間的揭露是完整的,所以解釋率該接近 100% ——
     這證明方法沒問題,問題在更早的資料。"""
@@ -184,3 +190,52 @@ def test_detector_misses_the_boundary_it_has_no_data_for():
         conn.close()
     (first,) = [c for c in P.compare(bounds, ["2025-01-30"])]
     assert not first["matched"], "補到資料了?那就把這條測試更新掉"
+
+
+def test_sources_and_uses_close_once_coarse_grains_fill_the_gaps():
+    """接上季與年的補洞之後,每一段的「錢從哪來、到哪去」要對得起來。
+
+    這是與 explained_share() 互補的一條檢查:那一支走 L3 的操作(只有
+    週顆粒),所以 8-K 還沒開始揭露的早期必然低估;這一支走顆粒解析後的
+    現金流,四段都該收斂。收斂本身就是「三種顆粒沒有互相重複或遺漏」的
+    證據 —— 年報、季報、週報是三次獨立申報。
+    """
+    conn = _real()
+    daily = _daily()
+    eras = _eras()
+    try:
+        checked = 0
+        for e in eras:
+            hi = e["end"] or daily["date"][-1]
+            u = P.sources_and_uses(conn, daily, e["start"], hi)
+            assert u["uses_usd"] > 0
+            if not u["resolvable"]:
+                # 「壓力測試」只有 26 天,而那段最細的來源是季頻 ——
+                # 對帳結果會由攤分假設決定而不是由資料決定。標出來,不假裝有結論。
+                assert u["prorated_share"] >= 0.3
+                continue
+            slack = abs(u["unexplained_usd"]) / max(u["uses_usd"], u["sources_usd"])
+            assert slack < 0.05, (
+                f"{e['title']} 未解釋 ${u['unexplained_usd']/1e9:.2f}B "
+                f"({slack*100:.1f}%)")
+            checked += 1
+        assert checked >= 3
+    finally:
+        conn.close()
+
+
+def test_the_convertible_era_is_no_longer_a_blind_spot():
+    """可轉債時代原本在操作層幾乎是空白(解釋率 29%)——
+    季頻資料一接上,它的資金流就完整了。這條測試釘住那個改善。"""
+    conn = _real()
+    try:
+        u = P.sources_and_uses(conn, _daily(), "2024-07-01", "2025-01-29")
+    finally:
+        conn.close()
+    assert u["buy_usd"] > 15e9           # 週顆粒只看得到 $1.1B
+    assert u["common_atm_usd"] > 10e9    # 普通股 ATM 要到 2025-09 才有週揭露
+    assert u["convert_net_usd"] > 1e9    # 可轉債在週 8-K 裡完全不存在
+    # 這一段的末端切在 2025Q1 中間(29/90 天),那一季只能按天數攤 ——
+    # 而實際的買幣在那一季是前重後輕,所以 ±5% 是攤分本身的誤差,不是缺口。
+    assert u["prorated_share"] > 0.2
+    assert abs(u["unexplained_usd"]) / u["uses_usd"] < 0.05
