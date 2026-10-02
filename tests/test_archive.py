@@ -396,3 +396,69 @@ def test_parser_output_still_matches_the_committed_raw_files(no_network):
     assert {a["week_end"] for a in activity} - raw_weeks == ev_quarters
     assert raw_weeks == ev_weeks          # 週粒度的那些一列不少
     assert not (ev_weeks & ev_quarters)   # 兩種粒度沒有落在同一個期末
+
+
+# --------------------------------------------- 讀表格:看起來一樣的字元
+
+def test_row_cells_normalises_non_breaking_spaces():
+    """`\\xa0` 會讓表頭的字面比對與正則**靜默失配** —— 不報錯,欄位變 None。
+
+    EDGAR 的表頭大量用不斷行空格。實害是 2026-03-09 那份 8-K 的表頭是
+    `BTC&#160;Acquired`,`re.match(r'BTC (Acquired|...)')` 比不中,
+    於是**整整一週的買幣(17,994 顆 / $1.28B)從活動表消失**。
+    """
+    from bs4 import BeautifulSoup
+    tr = BeautifulSoup(
+        "<tr><td>BTC\xa0Acquired (1)</td><td>$</td><td>\xa0</td>"
+        "<td>Aggregate BTC\xa0Holdings</td></tr>", "html.parser").tr
+    assert A.row_cells(tr) == ["BTC Acquired (1)", "Aggregate BTC Holdings"]
+
+
+def test_row_cells_drops_the_cells_that_shift_columns():
+    """「$」「(」「)」常被拆成獨立 cell,會讓表頭與資料列對不齊。"""
+    from bs4 import BeautifulSoup
+    tr = BeautifulSoup("<tr><td>$</td><td>1.28</td><td>(</td><td>2</td>"
+                       "<td>)</td></tr>", "html.parser").tr
+    assert A.row_cells(tr) == ["1.28", "2"]
+    assert A.row_cells(tr, drop=("$",)) == ["1.28", "(", "2", ")"]
+
+
+def test_the_week_that_the_nbsp_bug_hid_is_back():
+    """2026-03-08 那一週曾經整列不存在。釘住它回來了,而且數字對得上文件。"""
+    import json
+    import os
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    with open(os.path.join(root, "web", "raw", "btc_activity_weekly.json"),
+              encoding="utf-8") as f:
+        act = {r["week_end"]: r for r in json.load(f)}
+    w = act["2026-03-08"]
+    assert w["btc_delta"] == 17_994
+    assert w["avg_price"] == 70_946
+    assert w["holdings"] == 738_731
+
+    with open(os.path.join(root, "web", "raw", "btc_holdings_weekly.json"),
+              encoding="utf-8") as f:
+        hold = dict(json.load(f))
+    assert hold["2026-03-08"] == 738_731
+    assert hold["2025-11-30"] == 650_000      # 同一個 bug 的另一個受害者
+
+
+def test_no_activity_row_is_missing_its_holdings_without_reason():
+    """活動表的 holdings 若是 None,只允許出現在**期間不足一週**的列。
+
+    完整的週列一定帶 `Aggregate BTC Holdings`;缺了就是解析漏掉。
+    nbsp 那個 bug 當初就是以「4 列 holdings 是 null」的樣子存在。
+    """
+    import datetime as _dt
+    import json
+    import os
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    with open(os.path.join(root, "web", "raw", "btc_activity_weekly.json"),
+              encoding="utf-8") as f:
+        act = json.load(f)
+    for r in act:
+        if r["holdings"] is not None or not r["week_start"]:
+            continue
+        span = (_dt.date.fromisoformat(r["week_end"])
+                - _dt.date.fromisoformat(r["week_start"])).days
+        assert span < 6, f"{r['week_start']}→{r['week_end']} 是完整週卻沒有 holdings"

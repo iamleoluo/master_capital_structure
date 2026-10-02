@@ -94,8 +94,7 @@ def parse_repurchase_table(html: str) -> List[Dict]:
 
         rows: List[List[str]] = []
         for tr in table.find_all("tr"):
-            cells = [c.get_text(" ", strip=True) for c in tr.find_all(["td", "th"])]
-            cells = [c for c in cells if c and c not in ("$", "(", ")")]
+            cells = A.row_cells(tr)
             if cells:
                 rows.append(cells)
 

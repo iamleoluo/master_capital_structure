@@ -386,8 +386,12 @@ hr{border:0;border-top:1px solid var(--line);margin:30px 0}
 <h2 id="03-3">3. 8-K 的版型換過四次</h2>
 <p>同一個欄位在不同時期長得不一樣,單一關鍵字搜尋會靜默漏掉整段:</p>
 <ul><li>早期持幣量是 prose 敘述,2025-03-31 之後改成「BTC Update」表格</li><li>2026-08 出現「BTC Purchased /(Sold)」買賣合併欄 —— <b>正負號要看括號, 不能看表頭字樣</b></li><li>2026-07-27 起多出 Shares Repurchased 表(方向與 ATM 表相反)</li><li>2026-09-08 起原本的 ATM Program Summary 表整張消失</li></ul>
-<p>另外申報文件用的是<b>排版用撇號</b>(U+2019),ASCII <code>'</code> 的正則會靜默失配。</p>
-<p>這就是 L1 檔案庫存在的理由:<b>解析器必須能回頭重跑舊檔</b>,而且版型迴歸 要有固定樣本。<code>web/raw/*.json</code> 是 L2 視圖的序列化(見 §5),不是爬蟲輸出。</p>
+<h3 id="03-4">看起來一樣的字元,比對起來不一樣</h3>
+<p>這類失配<b>不會報錯,只會讓欄位變成 <code>None</code></b>,所以它可以存在很久:</p>
+<table><thead><tr><th>字元</th><th>出現在哪</th><th>實害</th></tr></thead><tbody><tr><td>U+2019 排版用撇號</td><td><code>Strategy's</code></td><td>ASCII <code>'</code> 的正則失配</td></tr><tr><td>U+00A0 不斷行空格</td><td>表頭,例如 <code>BTC&#160;Acquired</code></td><td><b>整整一週的買幣消失</b></td></tr></tbody></table>
+<p>不斷行空格那一筆是 2026-10-02 才發現的。<code>re.match(r'BTC (Acquired|Sold|Purchased)')</code> 比不中 <code>BTC\xa0Acquired</code>,於是 2026-03-09 那份 8-K 整列被丟掉 —— <b>17,994 顆、<span class="nomath">$</span>1.28B 的買幣週完全不存在</b>;同一個 bug 也讓 2025-11-30 的 季末餘額 650,000 與兩筆均價消失。</p>
+<p>修法是把正規化放在<b>最底層</b>(<code>archive.row_cells()</code>),不是讓每一支解析器 各自記得。<code>\s+</code> 的正則其實早就吃掉 <code>\xa0</code>(Python 的 <code>\s</code> 是 Unicode-aware), 出問題的只有逐格抽取那幾行 —— 它們用的是 <code>get_text(strip=True)</code>, 而 <code>strip</code> 只去頭尾,不碰字串中間。</p>
+<p>這就是 L1 檔案庫存在的理由:<b>解析器必須能回頭重跑舊檔</b>,而且版型迴歸 要有固定樣本。沒有檔案庫的話,上面那一週就要重抓一次 SEC 才找得回來。 <code>web/raw/*.json</code> 是 L2 視圖的序列化(見 §6),不是爬蟲輸出。</p>
 <hr>
 <h2 id="03-4">4. 融資來源:明示與推得要分開</h2>
 <p>有買賣的週次裡,只有一部分在 8-K 敘述句明確寫出動用了哪些 ATM。其餘只寫 「under the ATM」,但同一份文件的 ATM 表格已逐券種列出當週淨募資 —— 有錢進來的券種即為資金來源。</p>

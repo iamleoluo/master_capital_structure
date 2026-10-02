@@ -29,6 +29,7 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 import os
+import re
 import sqlite3
 import sys
 import time
@@ -427,3 +428,31 @@ def main(argv: Optional[List[str]] = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+# ---------------------------------------------------------------------------
+# 讀申報表格:逐格抽文字
+# ---------------------------------------------------------------------------
+
+def row_cells(tr, drop=("$", "(", ")")) -> List[str]:
+    """一列 <tr> → 乾淨的文字格。空格一律正規化成一般空格。
+
+    ⚠️ **`\\xa0` 會讓正則靜默失配。** EDGAR 的表頭大量使用不斷行空格,
+    `get_text()` 原樣保留它,於是 `"Aggregate BTC Holdings"` 這種字面比對
+    與 `r'Average (Purchase|Sale) Price'` 這種正則都對不上 —— 不會報錯,
+    只是欄位變成 None。
+
+    實害:2025-12-01 的 8-K 表格裡明寫 `Aggregate BTC Holdings = 650,000`,
+    卻整整漏掉,持幣序列因此在 2025-11-16 → 12-07 之間空了 21 天。
+    同一張表的 `avg_price` 也一起消失。
+
+    這與 03-data.md §3 記的排版用撇號(U+2019)是同一類陷阱:
+    **看起來一樣的字元,比對起來不一樣。** 所以正規化要做在最底層,
+    而不是讓每一支解析器各自記得。
+    """
+    out = []
+    for c in tr.find_all(["td", "th"]):
+        t = re.sub(r"\s+", " ", c.get_text(" ")).strip()
+        if t and t not in drop:
+            out.append(t)
+    return out

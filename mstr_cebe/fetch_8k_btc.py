@@ -61,8 +61,7 @@ def _parse_table_format(html: str) -> List[Tuple[dt.date, int]]:
             continue
         rows = []
         for tr in table.find_all("tr"):
-            cells = [c.get_text(" ", strip=True) for c in tr.find_all(["td", "th"])]
-            cells = [c for c in cells if c and c != "$"]
+            cells = A.row_cells(tr, drop=("$",))
             if cells:
                 rows.append(cells)
         date_m = re.search(r'As of ([A-Za-z]+ \d{1,2}, \d{4})', txt)
@@ -223,8 +222,7 @@ def parse_activity(html: str) -> List[Dict]:
 
         rows: List[List[str]] = []
         for tr in table.find_all("tr"):
-            cells = [c.get_text(" ", strip=True) for c in tr.find_all(["td", "th"])]
-            cells = [c for c in cells if c and c not in ("$", "(", ")")]
+            cells = A.row_cells(tr)
             if cells:
                 rows.append(cells)
 

@@ -92,9 +92,9 @@ def parse_atm_table(html: str) -> List[Dict]:
 
         rows: List[List[str]] = []
         for tr in table.find_all("tr"):
-            cells = [c.get_text(" ", strip=True) for c in tr.find_all(["td", "th"])]
-            # 「$」常被拆成獨立 cell,會讓欄位錯位,先濾掉
-            cells = [c for c in cells if c and c not in ("$", "(", ")")]
+            # 「$」常被拆成獨立 cell 會讓欄位錯位;\xa0 會讓表頭正則失配。
+            # 兩件事都在 A.row_cells 裡處理。
+            cells = A.row_cells(tr)
             if cells:
                 rows.append(cells)
 
