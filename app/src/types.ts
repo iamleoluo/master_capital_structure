@@ -142,6 +142,26 @@ export interface Strategy {
   presets: { id: string; label: string; date: string }[];
 }
 
+export interface Provenance {
+  /** L1 檔案庫:每一種表單各歸檔了幾份 */
+  docs: { src: string; n: number; lo: string; hi: string; mb: number }[];
+  doc_total: number;
+  /** L2 事件,按粒度分組('week' | 'quarter' | 'year' | 'instant') */
+  events: Record<string, number>;
+  event_total: number;
+  /** 其中屬於「動作」家族的(其餘是觀測) */
+  action_total: number;
+  /** 年報買幣經過粒度解析後的殘差 —— 趨近零代表三種粒度對得起來 */
+  years: { y: string; stated_b: number; left_b: number; pct: number }[];
+  /** 跨文件對不上的粗粒度事件。目前只有成交日 vs 交割日那一筆 */
+  conflicts: { kind: string; grp: string; lo: string; hi: string;
+               stated_b: number; fine_b: number }[];
+  /** 各階段的資金來源與用途對帳。resolvable=false 表示期間比可用粒度還短 */
+  recon: { title: string; lo: string; hi: string;
+           uses_b: number; sources_b: number; gap_b: number; gap_pct: number;
+           prorated_b: number; resolvable: boolean }[];
+}
+
 export interface Meta {
   ipos: Ipo[];
   /** 資本結構工具箱 —— 公司能動用的完整槓桿清單 */
@@ -164,6 +184,8 @@ export interface Meta {
   };
   /** 管線偵測到的結構變化提醒 */
   watch: string[];
+  /** 出處、粒度、資金對帳 —— 資料品質頁的三個區塊,全部由 L1/L2 現算 */
+  prov: Provenance;
   breaks: PolicyBreak[];
   fwp: {
     held: number; btc: number; price: number; fdso: number; basic: number;

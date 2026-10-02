@@ -562,6 +562,75 @@ def build_program(daily: dict, weekly: list) -> dict:
 # meta.json
 # ---------------------------------------------------------------------------
 
+def build_provenance(daily: dict, chronicle: list) -> dict:
+    """出處、粒度、資金對帳 —— 資料品質頁的三個新區塊。
+
+    全部從 L1 檔案庫與 L2 事件現算。寫死的話,下一次資料更新就會悄悄過時,
+    而資料品質頁恰恰是最不該有過時數字的一頁。
+    """
+    from mstr_cebe import events as EV                       # noqa: E402
+    from mstr_cebe import phases as PH                       # noqa: E402
+
+    conn = EV.connect()
+    try:
+        forms = conn.execute(
+            "SELECT source, COUNT(*), MIN(filed_at), MAX(filed_at),"
+            " SUM(byte_len) FROM documents GROUP BY source"
+            " ORDER BY COUNT(*) DESC").fetchall()
+        kinds = conn.execute(
+            "SELECT granularity, COUNT(*) FROM events"
+            " GROUP BY granularity").fetchall()
+        resolved = EV.resolve_flows(conn)
+        ops = EV.all_events(conn, family="action", granularity=None)
+    finally:
+        conn.close()
+
+    # 年頻的淨貢獻趨近零 = 年報被季報與週報完整解釋掉。這是三種粒度
+    # 互相對得起來最硬的證據,因為年報是另一次獨立申報。
+    years = [{"y": r.period_start[:4],
+              "stated_b": round(r.stated_usd / 1e9, 3),
+              "left_b": round(r.usd / 1e9, 3),
+              "pct": round(abs(r.usd / r.stated_usd) * 100, 1)}
+             for r in resolved if r.granularity == "year" and r.stated_usd]
+
+    conflicts = [{"kind": r.kind, "grp": r.group,
+                  "lo": r.period_start, "hi": r.period_end,
+                  "stated_b": round(r.stated_usd / 1e9, 3),
+                  "fine_b": round(r.covered_usd / 1e9, 3)}
+                 for r in resolved if r.conflict]
+
+    conn = EV.connect()
+    try:
+        recon = []
+        for e in chronicle:
+            hi = e["end"] or daily["date"][-1]
+            u = PH.sources_and_uses(conn, daily, e["start"], hi)
+            recon.append({
+                "title": e["title"], "lo": e["start"], "hi": hi,
+                "uses_b": round(u["uses_usd"] / 1e9, 2),
+                "sources_b": round(u["sources_usd"] / 1e9, 2),
+                "gap_b": round(u["unexplained_usd"] / 1e9, 2),
+                "gap_pct": round(abs(u["unexplained_usd"])
+                                 / max(u["uses_usd"], u["sources_usd"]) * 100, 1),
+                "prorated_b": round(u["prorated_usd"] / 1e9, 1),
+                "resolvable": u["resolvable"],
+            })
+    finally:
+        conn.close()
+
+    return {
+        "docs": [{"src": f[0], "n": f[1], "lo": f[2], "hi": f[3],
+                  "mb": round((f[4] or 0) / 1e6, 1)} for f in forms],
+        "doc_total": sum(f[1] for f in forms),
+        "events": {g: n for g, n in kinds},
+        "event_total": sum(n for _, n in kinds),
+        "action_total": len(ops),
+        "years": years,
+        "conflicts": conflicts,
+        "recon": recon,
+    }
+
+
 def build_meta(daily: dict) -> dict:
     # 前端顯示的官方錨點一律用**最新一份** FWP(2026-08-24)。
     # 舊的 08-13 那份留在 data.py 與 tests/ 裡當回歸錨點,不對外顯示 ——
@@ -638,6 +707,73 @@ def _par_vs_market(daily: dict, i: int) -> dict:
     }
 
 
+def _grain_facts() -> dict:
+    """粒度相關 finding 需要的數字。全部現算。"""
+    from mstr_cebe import events as EV                       # noqa: E402
+
+    conn = EV.connect()
+    try:
+        rows = conn.execute(
+            "SELECT period_start, period_end, qty, granularity FROM events"
+            " WHERE kind='btc_purchase' AND qty IS NOT NULL").fetchall()
+        resolved = EV.resolve_flows(conn)
+        act = conn.execute(
+            "SELECT effective_at, qty, usd FROM events WHERE kind='btc_purchase'"
+            " AND effective_at='2026-03-08'").fetchone()
+    finally:
+        conn.close()
+
+    # 重複計算最嚴重的那一年:季合計列 = 該季實際變化,週列是同一段的拆解
+    by_year = {}
+    for ps, pe, qty, g in rows:
+        y = (pe or ps)[:4]
+        by_year.setdefault(y, {"week": 0.0, "quarter": 0.0})
+        if g in ("week", "quarter"):
+            by_year[y][g] += qty
+    dup_year = max(by_year, key=lambda y: by_year[y]["quarter"])
+    wk, qt = by_year[dup_year]["week"], by_year[dup_year]["quarter"]
+
+    # 該年實際增加多少顆 —— 這是判斷有沒有重複計算的基準,
+    # 而且它完全不含價格成分(美元會讓人懷疑是幣價口徑不同造成的)。
+    hold = dict(json.load(open(os.path.join(RAW, "btc_holdings_weekly.json"),
+                               encoding="utf-8")))
+    def _at(day: str) -> float:
+        prior = [d for d in hold if d <= day]
+        return hold[max(prior)] if prior else 0.0
+    actual = _at(f"{dup_year}-12-31") - _at(f"{int(dup_year) - 1}-12-31")
+
+    years = [r for r in resolved if r.granularity == "year" and r.stated_usd]
+    pcts = sorted(round(abs(r.usd / r.stated_usd) * 100, 1) for r in years)
+
+    c = next((r for r in resolved if r.conflict), None)
+    if c:
+        txt = (f"兩者對同一季的金額差 "
+               f"${abs(c.covered_usd - c.stated_usd) / 1e6:,.0f}M —— "
+               f"{c.period_start[:7]}–{c.period_end[:7]} 的優先股 ATM,"
+               f"8-K 週表加總 ${c.covered_usd / 1e9:.3f}B、"
+               f"10-Q 現金流量表 ${c.stated_usd / 1e9:.3f}B。"
+               f"原因是季末最後幾天成交的部分,現金到下一季才入帳。"
+               f"<strong>這是系統性的口徑差,不是解析錯誤</strong>,所以粒度解析把它標記出來"
+               f"(貢獻取 0)而不是悄悄倒扣。全部 "
+               f"{sum(1 for r in resolved if r.granularity != 'week')} 筆粗粒度"
+               f"事件裡只有這一筆。")
+    else:
+        txt = "目前沒有跨文件對不上的粗粒度事件。"
+
+    return {
+        "dup_year": dup_year,
+        "dup_week": wk, "dup_quarter": qt, "dup_sum": wk + qt,
+        "dup_actual": actual, "dup_times": (wk + qt) / actual if actual else 0,
+        "n_year": len(years),
+        "year_pct_lo": min(pcts) if pcts else 0,
+        "year_pct_hi": max(pcts) if pcts else 0,
+        "conflict_text": txt,
+        "nbsp_week": act[0] if act else "2026-03-08",
+        "nbsp_coins": act[1] if act else 0,
+        "nbsp_usd": abs(act[2] or 0) / 1e9 if act else 0,
+    }
+
+
 def _findings(daily: dict) -> list:
     """資料品質頁的 findings。數字一律從實際資料算,避免寫死之後悄悄過時。"""
     holdings = _load_raw("btc_holdings_weekly.json")
@@ -675,6 +811,8 @@ def _findings(daily: dict) -> list:
     # 這才是這個偏差真正會誤導人的情況,所以獨立挑出來講。
     flips = [x for x in series if x["mnav_par"] >= 1.0 > x["mnav_mkt"]]
     flip = max(flips, key=lambda x: x["mnav_par"] - x["mnav_mkt"]) if flips else None
+
+    grain = _grain_facts()
 
     return [
         {"t": "求償權按面額扣,優先股跌破面額時會低估實得每股",
@@ -727,6 +865,29 @@ def _findings(daily: dict) -> list:
               f"表格已逐券種列出當週淨募資,有錢進來的券種即為資金來源 —— 這樣可再補 "
               f"{len(derived)} 週,涵蓋率提升到 {covered_pct:.0f}%。表格中以「推得」標記,"
               f"與敘述句明示者區分。仍有 {uncovered} 週兩種來源都沒有資料。"},
+        {"t": "季末那份 8-K 會多附一列季合計,格式與週列一模一樣",
+         "b": f"每季第一份 8-K(Item 2.02 財報預告)在逐週活動表旁邊附一列該季合計。"
+              f"把它當週紀錄就會把同一季算兩次。以 {grain['dup_year']} 年為例:"
+              f"週列加總 {grain['dup_week']:,.0f} 顆、季合計列 {grain['dup_quarter']:,.0f} 顆,"
+              f"兩者相加 {grain['dup_sum']:,.0f} 顆 —— 而該年<strong>實際只增加 "
+              f"{grain['dup_actual']:,.0f} 顆</strong>,也就是 {grain['dup_times']:.2f} 倍。"
+              f"(這裡刻意用顆數不用美元:幣價會波動,顆數沒有自由度。)現在三種粒度"
+              f"(週 / 季 / 年)分開記,規則是<strong>粗粒度只能補洞,不能與細粒度相加</strong>。"
+              f"驗證:{grain['n_year']} 筆年報買幣經過這個規則之後,淨貢獻只剩 "
+              f"{grain['year_pct_lo']}–{grain['year_pct_hi']}% —— 年報是另一次獨立申報,"
+              f"週與季若有系統性漏記或重複,這裡會留下一大塊殘差。"},
+        {"t": "8-K 週表是成交日,10-Q 現金流量表是交割日",
+         "b": grain["conflict_text"]},
+        {"t": "一個不斷行空格讓整整一週的買幣消失了",
+         "b": f"EDGAR 的表頭用 U+00A0,`BTC&#160;Acquired`。解析用的正則是一般空格,"
+              f"<strong>比不中、不報錯、整列被丟掉</strong>。2026-10-02 查出來時已經存在很久:"
+              f"{grain['nbsp_week']} 那一週的 {grain['nbsp_coins']:,.0f} 顆 / "
+              f"${grain['nbsp_usd']:.2f}B 買幣在活動表裡完全不存在,"
+              f"2025-11-30 的季末餘額 650,000 也一起消失(持幣序列因此空了 21 天)。"
+              f"這與排版用撇號(U+2019)是同一類陷阱:<strong>看起來一樣的字元,"
+              f"比對起來不一樣,而且失配是靜默的</strong>。修正放在最底層的逐格抽取,"
+              f"並加了「完整週列不得缺 holdings」這條測試 —— 這個 bug 當初就是"
+              f"以那個樣子存在的。"},
         {"t": "優先股股數已是逐週,但尾段是外推",
          "b": "STRF/STRC/STRK/STRD 用 ATM 表的逐週賣股數當形狀、再用已知季末股數校正,"
               "解析度從 3-5 個季度錨點提升到每週一點。但最後一個已知精確股數"
@@ -831,6 +992,7 @@ def main() -> int:
     meta["program"] = build_program(daily, weekly)
     strategy = build_strategy(daily, weekly, chronicle)
     meta["watch"] = structural_watch(daily, chronicle)
+    meta["prov"] = build_provenance(daily, chronicle)
 
     for name, payload in (("daily", daily), ("weekly", weekly),
                           ("meta", meta), ("chronicle", chronicle),
