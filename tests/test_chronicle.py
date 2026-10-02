@@ -14,6 +14,7 @@ import datetime as dt
 import pytest
 
 from mstr_cebe import chronicle as CH
+from mstr_cebe import toolbox as TB
 
 
 def test_ids_are_unique():
@@ -54,7 +55,7 @@ def test_every_era_has_positive_duration():
 @pytest.mark.parametrize("era", CH.ERAS, ids=[e.id for e in CH.ERAS])
 def test_tools_reference_real_toolkit_entries(era):
     for t in era.tools:
-        assert t in CH.TOOLS_BY_ID, f"{era.id} 標註了不存在的工具 {t!r}"
+        assert t in TB.BY_ID, f"{era.id} 標註了不存在的工具 {t!r}"
 
 
 @pytest.mark.parametrize("era", CH.ERAS, ids=[e.id for e in CH.ERAS])
@@ -67,10 +68,10 @@ def test_era_has_narrative(era):
 
 
 def test_toolkit_ids_unique_and_complete():
-    ids = [t.id for t in CH.TOOLS]
+    ids = [t.id for t in TB.TOOLS + TB.COMBOS]
     assert len(ids) == len(set(ids))
-    for t in CH.TOOLS:
-        assert t.label.strip() and t.note.strip() and t.cebe.strip()
+    for t in TB.TOOLS + TB.COMBOS:
+        assert t.label.strip() and t.note.strip() and t.verdict.strip()
 
 
 def test_unused_tools_are_declared_intentional():
@@ -80,7 +81,7 @@ def test_unused_tools_are_declared_intentional():
     哪天真的開始動用了,這個測試會逼人回來把它從例外清單移除。
     """
     used = {t for e in CH.ERAS for t in e.tools}
-    unused = {t.id for t in CH.TOOLS} - used
+    unused = {t.id for t in TB.TOOLS + TB.COMBOS} - used
     assert unused == set(CH.UNUSED_BY_DESIGN), (
         f"未被使用的工具 {sorted(unused)} 與 UNUSED_BY_DESIGN "
         f"{sorted(CH.UNUSED_BY_DESIGN)} 不一致")

@@ -38,83 +38,50 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from typing import Dict, Optional, Tuple
+from typing import Optional, Tuple
 
 # ---------------------------------------------------------------------------
-# 資本結構工具箱 —— 公司能動用的槓桿是有限且可列舉的
+# 工具箱已移除 —— 單一來源是 mstr_cebe/toolbox.py
 # ---------------------------------------------------------------------------
-
-@dataclass(frozen=True)
-class Tool:
-    id: str
-    label: str
-    claims: str        # 對求償權的影響
-    shares: str        # 對股數的影響
-    btc: str           # 對持幣的影響
-    cebe: str          # 對 CEBE 的淨效果
-    note: str
-    # 代數(LaTeX,前端用 KaTeX 排)。符號與資本結構頁的符號表一致:
-    #   H 總持幣、S 股數、C 求償權、p 幣價、B 帳面每股、E 實得每股、m mNAV
-    #   c 這筆操作動用的美元、F 標的面額、n 股數變動、P 每股成交價、x 幣的顆數
-    # 兩欄刻意並排:同一個動作對兩個指標的效果常常是相反的,
-    # 那個相反就是 phantom growth 在代數上的樣子。
-    bps: str = ""      # 對帳面每股 B = H/S 的效果(式子裡沒有 p、沒有 C)
-    eq: str = ""       # 對實得每股 E = (H − C/p)/S 的效果
-
-
-TOOLS: Tuple[Tool, ...] = (
-    Tool("common_atm", "普通股 ATM 增發", "—", "↑", "↑",
-         "mNAV > 1 才加分",
-         "用高於每股淨值的價格賣股票買幣,溢價的部分留給既有股東。"
-         "注意兩個門檻不一樣:B 要贏過帳面每股,E 只要贏過實得每股 —— "
-         "而 B 永遠大於 E,所以增發可能對 E 加分、同時對 B 減分",
-         bps=r"\Delta B > 0 \iff \frac{P}{p}\times 10^{8} > B",
-         eq=r"\Delta E > 0 \iff \frac{P}{p}\times 10^{8} > E \iff m > 1"),
-    Tool("preferred_issue", "優先股發行", "↑", "—", "↑", "稀釋",
-         "募到 c 拿去買幣,但掛上面額 F 的清算優先權。"
-         "B 只看到幣變多了,E 看得到那筆幣是借來的 —— "
-         "<b>這兩行並排就是 phantom growth 的定義</b>",
-         bps=r"\Delta B = \frac{c}{p\,S}\times 10^{8} > 0",
-         eq=r"\Delta E = \frac{c - F}{p\,S}\times 10^{8} \le 0"),
-    Tool("convert_issue", "可轉債發行", "↑", "—", "↑", "稀釋",
-         "與優先股同形;平價發行時 c = F,對 E 恰好中性。"
-         "差別在價內時會轉成股票,求償權自動消失",
-         bps=r"\Delta B = \frac{c}{p\,S}\times 10^{8} > 0",
-         eq=r"\Delta E = \frac{c - F}{p\,S}\times 10^{8} \le 0"),
-    Tool("btc_sale", "賣幣", "—", "—", "↓", "看用途",
-         "按市價賣 x 顆換回 xp 現金,現金抵減求償權 —— 對 E 恰好中性,"
-         "但 B 直接少一塊。真正決定好壞的是那筆現金拿去做什麼",
-         bps=r"\Delta B = -\frac{x}{S}\times 10^{8} < 0",
-         eq=r"\Delta E = \frac{-x + xp/p}{S}\times 10^{8} = 0"),
-    Tool("preferred_buyback", "優先股回購", "↓", "—", "↓", "折價買回 = 加分",
-         "永久消滅清算優先權。買價低於面額時,消滅的求償權大於付出的現金 —— "
-         "而 B 完全看不到這件事,因為它的式子裡沒有求償權",
-         bps=r"\Delta B = 0",
-         eq=r"\Delta E = \frac{F - c}{p\,S}\times 10^{8} > 0 \quad (c < F)"),
-    Tool("common_buyback", "普通股回購", "—", "↓", "↓", "低於淨值才加分",
-         "股數變少、持幣不變,所以 B <b>必定上升</b>;但 mNAV > 1 時 E 是下降的。"
-         "兩個指標在這裡直接打架,這也是授權掛著沒動用的原因",
-         bps=r"\Delta B = H\left(\frac{1}{S-n} - \frac{1}{S}\right)"
-             r"\times 10^{8} > 0",
-         eq=r"\Delta E > 0 \iff \frac{P}{p}\times 10^{8} < E \iff m < 1"),
-    Tool("convert_buyback", "可轉債回購 / 轉股", "↓", "轉股時 ↑", "↓", "加分",
-         "回購是折價買回,與優先股同形。轉股則是把面額 F 的債權換成 n 股:"
-         "求償權整筆消失,但沒有多出任何一顆幣,所以 B 被稀釋",
-         bps=r"\text{回購 } \Delta B = 0;\quad"
-             r"\text{轉股 } \Delta B = H\left(\frac{1}{S+n} - \frac{1}{S}\right)"
-             r"\times 10^{8} < 0",
-         eq=r"\text{回購 } \Delta E = \frac{F - c}{p\,S}\times 10^{8};\quad"
-            r"\text{轉股 } \Delta E = \frac{H - (C-F)/p}{S+n}"
-            r"\times 10^{8} - E"),
-)
-
-TOOLS_BY_ID: Dict[str, Tool] = {t.id: t for t in TOOLS}
+#
+# 這裡曾經有一份 7 把工具的清單,與 toolbox 的原子工具**平行存在而且 ID
+# 幾乎不重疊**:網站顯示這一份、代數與測試驗那一份。
+#
+# 兩份其實是不同粒度 —— 這裡把「發優先股募資去買幣」算成一把工具,
+# 而那在 toolbox 是 ISSUE_PREFERRED + BUY_BTC 兩個原子串成的**組合**。
+# 合併之後對應關係變成:
+#
+#   common_atm       → 組合 atm_to_btc(ATM 增發 → 買幣)
+#   preferred_issue  → 組合 preferred_to_btc
+#   convert_issue    → 原子 CONVERT_ISSUE(合併時補上,toolbox 原本沒有)
+#   btc_sale         → 原子 SELL_BTC
+#   preferred_buyback / convert_buyback → 原子 BUYBACK_PREFERRED
+#                     (求償權是同一個位置,折價回購的代數也相同)
+#   common_buyback   → 原子 COMMON_BUYBACK
+#
+# 合併時才發現 toolbox 的組合清單**少了 atm_to_btc** —— 它一直被藏在
+# 這裡的 common_atm 裡當成單一工具,而逐週 8-K 寫的就是它。
+#
+# ERAS 的 tools 欄位改用 toolbox 的 id(見下)。
 
 # 工具箱是「公司能動用的完整清單」,不是「用過的清單」。
 # 這裡列出有授權、但至今一次都沒動用的工具 —— 沒動用本身就是有意義的訊號
 # (普通股回購授權 $10 億掛著不動,因為 mNAV > 1 時買回自家股票會毀滅價值,
 #  見 deleveraging-2026 的敘述),所以留在清單裡而不是刪掉。
-UNUSED_BY_DESIGN: frozenset = frozenset({"common_buyback"})
+# 工具箱裡沒有被任何階段標註的項目。每一項都要有理由 ——
+# 這樣「有這把工具但沒用」是一個被記錄下來的判斷,而不是漏標。
+UNUSED_BY_DESIGN: dict = {
+    # 原子工具:實務上不會單獨出現,總是某個組合的一步
+    "buy_btc": "買幣的錢一定來自某處,所以它只以組合的一半出現",
+    "issue_preferred": "同上 —— 募到的錢當週就去買幣(preferred_to_btc)",
+    "common_atm": "同上(atm_to_btc / atm_to_buyback)",
+    # 獨立但不是「階段的手法」
+    "carry": "股息與債息每期都在發生,是持續成本不是某一段的策略選擇",
+    "convert_conversion": "轉股由債主決定要不要行使,不是公司的操作",
+    # 真正的「有授權但刻意不用」—— 這一項本身就是訊號
+    "common_buyback": "普通股回購授權掛著不動用:m > 1 時它會毀滅價值,"
+                      "那個判斷現在是一行可執行的謂詞",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -182,7 +149,7 @@ ERAS: Tuple[Era, ...] = (
         end=date(2025, 1, 29),
         trigger="資料起點。此時資本結構只有可轉債與普通股 ATM,優先股一檔都還沒發 —— "
                 "槓桿是從最溫和的那一端開始加的。",
-        tools=("convert_issue", "common_atm"),
+        tools=("convert_issue", "atm_to_btc"),
         body=(
             "這段是後面所有事情的對照組,也說明了加槓桿的順序不是隨便的。"
             "可轉債的求償權會在股價進入價內時轉成股票、自動消失,"
@@ -205,7 +172,7 @@ ERAS: Tuple[Era, ...] = (
         trigger="2025-01-30 STRK 上市。接下來 10 個月內 STRF、STRD、STRC、STRE "
                 "陸續登場,每一檔的順位、股息型態與轉換條款都不同 —— "
                 "這是在鋪一道有層次的資本階梯,不是連續發同一種東西。",
-        tools=("preferred_issue", "common_atm", "convert_buyback"),
+        tools=("preferred_to_btc", "atm_to_btc", "buyback_preferred"),
         body=(
             "這一段在做的事很明確:趁優先股市場買單,把「能發行」這件事本身"
             "換成永久持有的比特幣。16 個月裡持幣從 47 萬顆推到 84 萬顆。"
@@ -235,7 +202,7 @@ ERAS: Tuple[Era, ...] = (
         end=date(2026, 6, 28),
         trigger="優先股 ATM 在 5 月底主動停止 —— 市場出價不再划算的時候,"
                 "第一個動作是不發,而不是硬發。",
-        tools=("common_atm", "convert_buyback"),
+        tools=("atm_to_btc", "buyback_preferred"),
         body=(
             "四週之內 STRC 從 $90 跌到 $74.57、STRK 跌到 $51.72、STRD 跌到 $50.00。"
             "如果這些是有到期日的債,這種幅度會是償債危機的前奏。"
@@ -267,7 +234,7 @@ ERAS: Tuple[Era, ...] = (
                 "把各把工具的啟用規則寫成明文:USD Reserve 下限 $12.5 億、"
                 "$10 億優先股回購授權、$10 億 MSTR 回購授權、$12.5 億 BTC 變現授權。"
                 "這是把「什麼條件下動用哪一把」制度化,而不是逐案臨時決定。",
-        tools=("preferred_buyback", "common_atm", "btc_sale"),
+        tools=("sell_to_buyback", "atm_to_buyback", "atm_to_btc", "sell_btc"),
         body=(
             "把這一段跟「優先股堆疊」並排看,整套機制才完整:上一段在優先股"
             "賣得掉的時候大量發行、換成永久持有的幣;這一段在同一批紙被標到"

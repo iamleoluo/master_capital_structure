@@ -383,10 +383,27 @@ def build_chronicle(daily: dict, weekly: list) -> list:
 
 
 def build_toolkit() -> list:
-    from mstr_cebe import chronicle as CH      # noqa: E402
-    return [{"id": t.id, "label": t.label, "claims": t.claims, "shares": t.shares,
-             "btc": t.btc, "cebe": t.cebe, "note": t.note,
-             "bps": t.bps, "eq": t.eq} for t in CH.TOOLS]
+    """工具箱 —— **單一來源是 toolbox**(公式解那一欄的實作)。
+
+    曾經有兩份平行清單:chronicle.TOOLS(7 把,把「發優先股募資去買幣」
+    算成一把)與 toolbox.TOOLS(原子動作),ID 幾乎不重疊。網站顯示前者、
+    代數與測試在後者 —— 同一個系統對外講的工具跟內部驗的工具不是同一組。
+
+    現在只有 toolbox:**9 把原子工具 + 4 個組合**,分別對應講義的 L2 與 L3。
+    ↑↓— 由 moves 推(toolbox.arrows),不手寫 —— 手寫就會與 apply 漂開。
+    """
+    from mstr_cebe import toolbox as TB         # noqa: E402
+
+    def row(t, kind: str) -> dict:
+        a = TB.arrows(TB.net_delta(t))
+        return {"id": t.id, "label": t.label, "kind": kind,
+                "claims": a["claims"], "shares": a["shares"], "btc": a["btc"],
+                "cebe": t.verdict, "note": t.note,
+                "bps": t.latex_b, "eq": t.latex_e,
+                "moves": list(t.path or t.moves)}
+
+    return ([row(t, "atom") for t in TB.TOOLS]
+            + [row(c, "combo") for c in TB.COMBOS])
 
 
 def build_strategy(daily: dict, weekly: list, chronicle: list) -> dict:

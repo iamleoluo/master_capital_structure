@@ -70,6 +70,14 @@ export interface Delta { from: number; to: number; pct: number | null; }
 
 export interface ToolSpec {
   id: string; label: string;
+  /** atom = 單一狀態轉移(講義 L2);combo = 兩步以上串成(講義 L3) */
+  kind: "atom" | "combo";
+  /** 經過的位置。原子是兩點(H / U / DL / S / OUT),組合是三點以上,
+   *  而且中間那點永遠是 U —— 錢要先變成現金才能往下一步走。 */
+  moves: string[];
+  /** ↑ / ↓ / — ,由 moves 推出來。
+   *  claims 可能是 "?" —— C = D + L − U,募資與償還會讓 DL 與 U 同向移動,
+   *  淨效果取決於面額與價金的大小,不是方向問題。那時要看 eq 與 cebe。 */
   claims: string; shares: string; btc: string; cebe: string; note: string;
   /** 代數(LaTeX)。bps = 對帳面每股 B,eq = 對實得每股 E */
   bps: string; eq: string;

@@ -22,7 +22,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import Callable, Mapping, Optional, Sequence, Tuple
+from typing import Callable, Dict, List, Mapping, Optional, Sequence, Tuple
 
 SATS = 1e8
 
@@ -124,6 +124,10 @@ class Tool:
     # 給人看的判準標籤。accretive 是機器用的謂詞(測試拿它對 apply 驗),
     # verdict 是同一件事的中文說法 —— 網站顯示這個。
     verdict: str = ""
+    # 組合用的:經過的位置序列,由 compose 從各步驟的 moves 串出來。
+    # 單一工具是兩點一線(moves),組合是三點以上 —— 而且中間那點
+    # **永遠是 U**,因為錢要先變成現金才能往下一步走。
+    path: Tuple[str, ...] = ()
     accretive: Optional[Predicate] = None
     note: str = ""
 
@@ -199,6 +203,56 @@ def efficiency(tool: Tool, s: State, capital: float, **kw: float) -> float:
 
 ASSET_PLACES = ("H", "U")
 SOURCE_PLACES = ("DL", "S")
+
+def place_delta(moves: Tuple[str, str]) -> Dict[str, int]:
+    """這條箭頭讓每個位置變大(+1)還是變小(−1)。
+
+    兩類規則(見上方說明):
+      替換(同類之間)  起點減、終點增,資產負債表規模不變
+      伸縮(跨類)      從來源出發 = 募資(兩端增);指向來源 = 償還(兩端減)
+    """
+    frm, to = moves
+    same = ((frm in ASSET_PLACES and to in ASSET_PLACES)
+            or (frm in SOURCE_PLACES and to in SOURCE_PLACES))
+    if same:
+        return {frm: -1, to: +1}
+    if frm in SOURCE_PLACES:
+        return {frm: +1, to: +1}
+    return {frm: -1, **({to: -1} if to != "OUT" else {})}
+
+
+def arrows(deltas: Dict[str, int]) -> Dict[str, str]:
+    """把位置變化翻成顯示用的 ↑ / ↓ / —。
+
+    ⚠️ **求償權那一欄會有「?」。** $C = D + L - U$,而募資與償還會讓
+    $DL$ 與 $U$ **同方向**移動 —— 發優先股募到 $c$、掛上面額 $F$,
+    $C$ 是升是降取決於 $F$ 與 $c$ 的大小,不是方向問題。
+
+    這是四位置模型的真實邊界:**它說得出錢往哪裡走,說不出淨效果。**
+    淨效果要看代數(latex_e)與判準(verdict),所以那兩欄不能省。
+    硬填一個箭頭等於假裝模型知道它不知道的事。
+    """
+    sign = {+1: "↑", -1: "↓", 0: "—"}
+    dl, u = deltas.get("DL", 0), deltas.get("U", 0)
+    claims = "?" if (dl and u and dl == u) else sign[max(-1, min(1, dl - u))]
+    return {
+        "btc": sign[max(-1, min(1, deltas.get("H", 0)))],
+        "shares": sign[max(-1, min(1, deltas.get("S", 0)))],
+        "claims": claims,
+    }
+
+
+def net_delta(tool: "Tool") -> Dict[str, int]:
+    """一把工具(原子或組合)的淨位置變化。組合逐段相加 ——
+    中間那段的 U 會一正一負抵銷,那就是「過路現金看不見」的代數形式。"""
+    if tool.path:
+        net: Dict[str, int] = {}
+        for a, b in zip(tool.path, tool.path[1:]):
+            for k, v in place_delta((a, b)).items():
+                net[k] = net.get(k, 0) + v
+        return net
+    return place_delta(tool.moves)
+
 
 PLACES: Dict[str, str] = {
     "H": "比特幣",
@@ -337,19 +391,36 @@ class Step:
 
 def compose(*, id: str, label: str, params: Tuple[str, ...],
             steps: Sequence[Step], latex_b: str, latex_e: str,
-            accretive: Optional[Predicate] = None, note: str = "") -> Tool:
+            accretive: Optional[Predicate] = None, note: str = "",
+            verdict: str = "") -> Tool:
     """把數把工具串成一把。回傳的仍然是 Tool —— 這就是封閉性的意思。
 
     錢要先從某處來才能往某處去,所以真實世界的動作幾乎都是組合。
     串起來的語意就是依序套用,沒有別的魔法。
+
+    `path` 由各步驟的 moves 串出來(不手寫):前一步的終點就是後一步的起點
+    時才算一條**中繼**,此時 path 是整條路徑;接不起來就留空。
+
+    不在這裡拋錯 —— compose 是通用的組合子,把同一把工具套兩次也該成立
+    (型別封閉性)。「中繼」是**我們宣告的那幾個組合的性質**,不是組合的法則,
+    所以由 test_every_combo_passes_through_the_cash_leg 去斷言。
     """
+    path: List[str] = list(steps[0].tool.moves)
+    for step in steps[1:]:
+        frm, to = step.tool.moves
+        if path[-1] != frm:
+            path = []
+            break
+        path.append(to)
+
     def apply(s: State, k: Params) -> State:
         for step in steps:
             s = step.tool(s, **step.wire(s, k))
         return s
 
     return Tool(id=id, label=label, params=params, apply=apply,
-                latex_b=latex_b, latex_e=latex_e, accretive=accretive, note=note)
+                latex_b=latex_b, latex_e=latex_e, accretive=accretive,
+                note=note, verdict=verdict, path=tuple(path))
 
 
 SELL_TO_BUYBACK = compose(
@@ -361,6 +432,7 @@ SELL_TO_BUYBACK = compose(
         Step(BUYBACK_PREFERRED,
              lambda s, k: {"c": k["x"] * s.price, "F": k["F"]}),
     ),
+    verdict="折價買回 = 加分",
     accretive=lambda s, k: k["x"] * s.price < k["F"],
     latex_b=r"\Delta B = -\frac{x}{S}\times 10^{8} < 0",
     latex_e=r"\Delta E = \frac{F - c}{p\,S}\times 10^{8} > 0,\quad c = xp",
@@ -375,6 +447,7 @@ PREFERRED_TO_BTC = compose(
         Step(ISSUE_PREFERRED, lambda s, k: {"c": k["c"], "F": k["F"]}),
         Step(BUY_BTC, lambda s, k: {"c": k["c"]}),
     ),
+    verdict="稀釋",
     accretive=lambda s, k: k["c"] > k["F"],
     latex_b=r"\Delta B = \frac{c}{p\,S}\times 10^{8} > 0",
     latex_e=r"\Delta E = \frac{c - F}{p\,S}\times 10^{8} \le 0",
@@ -394,6 +467,7 @@ ATM_TO_BUYBACK = compose(
                            "F": k["n"] * k["P"] / (1 - k["d"])}),
     ),
     # 門檻從 m > 1 降到 m > 1 − d,折價越深適用區間越寬
+    verdict="mNAV > 1 − d 就加分",
     accretive=lambda s, k: mnav(s, k["P"]) > 1 - k["d"],
     latex_b=r"\Delta B = H\left(\frac{1}{S+n} - \frac{1}{S}\right)\times 10^{8} < 0",
     latex_e=r"\Delta E > 0 \iff \frac{F/n}{p}\times 10^{8} > E \iff m > 1 - d",
@@ -402,6 +476,27 @@ ATM_TO_BUYBACK = compose(
          "增發去買回優先股仍然加分。",
 )
 
-COMBOS: Tuple[Tool, ...] = (SELL_TO_BUYBACK, PREFERRED_TO_BTC, ATM_TO_BUYBACK)
+ATM_TO_BTC = compose(
+    id="atm_to_btc", label="ATM 增發 → 買幣",
+    params=("n", "P"),
+    steps=(
+        Step(COMMON_ATM, lambda s, k: {"n": k["n"], "P": k["P"]}),
+        # 募到的錢全部買幣,所以 c 由 n 與成交價決定,不是獨立參數
+        Step(BUY_BTC, lambda s, k: {"c": k["n"] * k["P"]}),
+    ),
+    # 買幣那一步對 E 恆中性,所以整個組合的判準就是增發那一步的判準
+    accretive=lambda s, k: mnav(s, k["P"]) > 1,
+    verdict="mNAV > 1 才加分",
+    latex_b=r"\Delta B > 0 \iff \frac{P}{p}\times 10^{8} > B",
+    latex_e=r"\Delta E > 0 \iff \frac{P}{p}\times 10^{8} > E \iff m > 1",
+    note="公司用得最多的一個組合 —— 逐週 8-K 寫的就是這句:"
+         "\"bitcoin purchases were made using proceeds from the sale of "
+         "shares under the ATM\"。兩個門檻不一樣:B 要贏過帳面每股,"
+         "E 只要贏過實得每股,而 B 永遠大於 E —— 所以增發可能對 E 加分、"
+         "同時對 B 減分。",
+)
+
+COMBOS: Tuple[Tool, ...] = (ATM_TO_BTC, SELL_TO_BUYBACK,
+                            PREFERRED_TO_BTC, ATM_TO_BUYBACK)
 
 BY_ID = {t.id: t for t in TOOLS + COMBOS}

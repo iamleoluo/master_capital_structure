@@ -126,6 +126,8 @@ def test_every_tool_predicate_agrees_with_applying_it():
         "convert_conversion": [{"F": 1e9, "n": 2e6}, {"F": 1e9, "n": 20e6}],
         # 可轉債發行與優先股發行同形:溢價發行(c > F)才加分,實務上罕見
         "convert_issue": [{"c": 0.9e9, "F": 1e9}, {"c": 1.1e9, "F": 1e9}],
+        "atm_to_btc": [{"n": 1e6, "P": _params_at_mnav(BASE, 1.2)},
+                       {"n": 1e6, "P": _params_at_mnav(BASE, 0.8)}],
         "sell_to_buyback": [{"x": 5_000.0, "F": 1e9},
                             {"x": 5_000.0, "F": 0.2e9}],
         "preferred_to_btc": [{"c": 0.9e9, "F": 1e9}, {"c": 1.1e9, "F": 1e9}],
@@ -398,3 +400,54 @@ def test_the_reserve_has_exactly_one_exit():
     assert [t.id for t in leaves] == ["carry"]
     # carry 從 U 出發 —— Reserve 是它的資金來源
     assert leaves[0].moves[0] == "U"
+
+
+# --------------------------------------------------------- 組合的路徑
+
+def test_every_combo_path_is_connected():
+    """組合的 path 由各步驟的 moves 串出來,而且必須首尾相接 ——
+    前一步的終點就是後一步的起點,否則那兩步根本不是同一筆錢。"""
+    for c in T.COMBOS:
+        assert len(c.path) >= 3, c.id
+        for a, b in zip(c.path, c.path[1:]):
+            assert a != b, c.id
+
+
+def test_every_combo_passes_through_the_cash_leg():
+    """**所有組合的中間那一點都是 U。**
+
+    這不是巧合:錢要先變成現金才能往下一步走。公司當週募資、當週部署,
+    所以那筆過路現金在週頻揭露上幾乎看不見 —— 它被藏在操作裡面,
+    但它在結構上一定存在。
+    """
+    for c in T.COMBOS:
+        assert c.path[1:-1] == ("U",), f"{c.id} 的路徑是 {c.path}"
+
+
+def test_a_combo_that_does_not_relay_has_no_path():
+    """接不起來的兩步仍然組得成一把工具(型別封閉性不該被破壞),
+    但它不是一條中繼,所以沒有路徑 —— 用 path 是不是空的來分辨。"""
+    bad = T.compose(
+        id="bad", label="接不起來", params=("c",),
+        steps=(T.Step(T.BUY_BTC, lambda s, k: {"c": k["c"]}),            # U→H
+               T.Step(T.COMMON_ATM, lambda s, k: {"n": 1.0, "P": 1.0})),  # S→U
+        latex_b="", latex_e="")
+    assert bad.path == ()
+    assert callable(bad.apply)
+
+
+def test_the_new_combo_is_the_one_the_filings_describe_every_week():
+    """ATM 增發 → 買幣曾經不在組合清單裡 —— 它被藏在 chronicle 的
+    common_atm 當成單一工具,所以沒人發現 combos 少了一條。
+    而逐週 8-K 寫的就是它。"""
+    atm_btc = next(c for c in T.COMBOS if c.id == "atm_to_btc")
+    assert atm_btc.path == ("S", "U", "H")
+    # 買幣那一步對 E 恆中性,所以判準就是增發那一步的判準
+    s = T.State(held=800_000.0, claims=15e9, shares=400e6, price=90_000.0)
+    hi = _params_at_mnav(s, 1.2)
+    lo = _params_at_mnav(s, 0.8)
+    assert T.effect(atm_btc, s, n=1e6, P=hi)["dE"] > 0
+    assert T.effect(atm_btc, s, n=1e6, P=lo)["dE"] < 0
+    # 而且持幣一定增加 —— 單純增發不會
+    assert T.effect(atm_btc, s, n=1e6, P=hi)["dB"] != \
+        T.effect(T.COMMON_ATM, s, n=1e6, P=hi)["dB"]
