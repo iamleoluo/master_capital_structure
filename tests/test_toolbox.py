@@ -280,3 +280,119 @@ def test_log_decomposition_of_a_sequence_telescopes():
         s = nxt
     assert total == pytest.approx(
         math.log(T.cebe(s)) - math.log(T.cebe(BASE)), rel=1e-12)
+
+
+# ------------------------------------------------- 四個位置:宣告 vs apply
+
+# 箭頭分兩類,方向語意不同:
+#
+#   替換(同類之間):起點減少、終點增加,規模不變
+#       U→H 買幣、H→U 賣幣、DL→S 可轉債轉股
+#   伸縮(跨類):從來源出發 = 募資(兩端都增);指向來源 = 償還(兩端都減)
+#       DL→U 發行、S→U ATM、U→DL 回購、U→S 庫藏、U→OUT 股息
+#
+# 曾經想用一條規則涵蓋全部,結果為了讓規則成立而把「可轉債轉股」寫成
+# S→DL —— 那是「發新股募資再去回購可轉債」,是兩個操作的組合,不是轉股。
+# **為了救規則去改模型是本末倒置**,規則錯了就改規則。
+ASSETS = set(T.ASSET_PLACES)
+SOURCES = set(T.SOURCE_PLACES)
+
+
+def _dir(frm: str, to: str) -> dict:
+    """每個位置在這條箭頭下應該變大還是變小。+1 增、−1 減。"""
+    same = (frm in ASSETS and to in ASSETS) or (frm in SOURCES and to in SOURCES)
+    if same:                                   # 替換
+        return {frm: -1, to: +1}
+    if frm in SOURCES:                         # 募資
+        return {frm: +1, to: +1}
+    return {frm: -1, **({to: -1} if to != "OUT" else {})}   # 償還 / 流出
+
+
+def _probe():
+    return T.State(held=800_000.0, claims=15e9, shares=400e6, price=90_000.0)
+
+
+@pytest.mark.parametrize("tool", T.TOOLS, ids=lambda t: t.id)
+def test_every_tool_moves_exactly_two_places(tool):
+    """「位置只有四個,所以動作可窮舉」這個主張的前提:
+    每一把工具恰好連接兩個位置,而且兩端不同。"""
+    a, b = tool.moves
+    assert a and b and a != b, tool.id
+    assert a in T.PLACES and b in T.PLACES
+    assert a != "OUT", "OUT 只能當終點 —— 錢不會從系統外面流進來"
+
+
+def test_only_carry_leaves_the_system():
+    """股息與債息是唯一真正離開系統的錢。其餘動作都只是換位置。"""
+    out = [t.id for t in T.TOOLS if "OUT" in t.moves]
+    assert out == ["carry"]
+
+
+@pytest.mark.parametrize("tool", T.TOOLS, ids=lambda t: t.id)
+def test_the_declared_places_match_what_apply_does(tool):
+    """宣告的位置必須與 apply 真的改了哪些欄位一致。
+
+    這是 toolbox 一貫的紀律:代數、謂詞、位置都是**宣告**,
+    而 apply 是唯一的真實語意 —— 所以宣告要能被 apply 打臉。
+    """
+    s = _probe()
+    kw = {p: {"c": 1e9, "F": 1.2e9, "n": 5e6, "P": 200.0, "x": 1_000.0}[p]
+          for p in tool.params}
+    after = tool(s, **kw)
+    frm, to = tool.moves
+
+    want = _dir(frm, to)
+
+    for place, field, sign in (("H", "held", +1), ("S", "shares", +1)):
+        d = getattr(after, field) - getattr(s, field)
+        if place in want:
+            assert d * want[place] * sign > 0, f"{tool.id} {place} 方向不符"
+        else:
+            assert d == 0, f"{tool.id} 不該動到 {place}"
+
+    # 求償權 C = DL − U,兩種位置都動到它,方向相反
+    expect = want.get("DL", 0) - want.get("U", 0)
+    d = after.claims - s.claims
+    if expect:
+        assert d * expect > 0, f"{tool.id} 宣告 C 應{'上升' if expect>0 else '下降'},實際 {d:+,.0f}"
+
+
+def test_only_three_arrows_leave_the_balance_sheet_unchanged():
+    """替換(同類之間)不改變規模,伸縮(跨類)才會。
+    八條箭頭裡只有三條是替換 —— 這個二分本身就是內容。"""
+    sub = [t.id for t in T.TOOLS
+           if (t.moves[0] in ASSETS) == (t.moves[1] in ASSETS)
+           and t.moves[1] != "OUT"]
+    assert sorted(sub) == ["buy_btc", "convert_conversion", "sell_btc"]
+
+
+def test_the_reserve_is_the_hub():
+    """U 是樞紐 —— 除了可轉債轉股(求償權直接變股權),每把工具都經過它。
+
+    這就是為什麼「把募到的錢放進儲備」不需要另外配對:
+    它是每一個融資動作本身的另一半。
+    """
+    bypass = [t.id for t in T.TOOLS if "U" not in t.moves]
+    assert bypass == ["convert_conversion"]
+
+
+def test_the_reserve_has_exactly_one_exit():
+    """USD Reserve 的用途由董事會政策界定,只有一個出口:付股息與債息。
+
+    2026-06-29 的 8-K:"the Company may use the USD Reserve to pay preferred
+    stock dividends and interest expenses as they become due and may
+    subsequently replenish the USD Reserve through sales of BTC"。
+
+    買幣與回購都**不動用 Reserve** —— 逐週 8-K 寫的是
+    "bitcoin purchases were made using proceeds from the sale of shares
+    under the ATM"、"net proceeds from MSTR Stock sales were used to fund
+    repurchases of STRC Stock"。
+
+    代數裡的 U 是**全部**美元流動性(Reserve + 過路現金),不區分這兩塊,
+    因為 C 問的是「有多少美元可以抵掉求償權」。這條測試釘住的是:
+    唯一真正離開系統的動作就是 carry,而那正好是 Reserve 的唯一用途。
+    """
+    leaves = [t for t in T.TOOLS if t.moves[1] == "OUT"]
+    assert [t.id for t in leaves] == ["carry"]
+    # carry 從 U 出發 —— Reserve 是它的資金來源
+    assert leaves[0].moves[0] == "U"

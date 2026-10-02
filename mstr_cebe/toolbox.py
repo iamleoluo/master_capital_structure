@@ -117,6 +117,10 @@ class Tool:
     apply: Apply
     latex_b: str
     latex_e: str
+    # 這把工具把資本從哪個位置搬到哪個位置。位置只有四個(見 PLACES),
+    # 所以動作是可窮舉的 —— 這是「七把工具就是全部」這個主張的根據。
+    # 宣告的東西都要能被 apply 打臉:見 test_toolbox 的 moves 那一組。
+    moves: Tuple[str, str] = ("", "")
     accretive: Optional[Predicate] = None
     note: str = ""
 
@@ -154,8 +158,57 @@ def efficiency(tool: Tool, s: State, capital: float, **kw: float) -> float:
 
 # --- 七把單一工具 ----------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# 四個位置 —— 資本只會在這四個地方之間移動
+# ---------------------------------------------------------------------------
+#
+# 關鍵在於 U 與 D+L 在同一條軸上:C = D + L − U。募資讓 U 變大、C 變小;
+# 花錢讓 U 變小、C 變大。
+#
+# ⚠️ **U 是全部的美元流動性,不是只有 USD Reserve。** 公司自己把它分成兩塊,
+#    而且用途完全不同 —— 代數只需要總和,但知道是哪一塊才知道那筆錢能做什麼:
+#
+#      USD Reserve   董事會政策指定,**只能付優先股股息與債息**,
+#                    由賣幣(BTC Monetization Program)或資本市場活動補充。
+#                    2026-09-27 是 $5.02B,佔總流動性 83%。
+#      過路現金       募資到部署之間的資金。通常**當週就用掉**,所以在
+#                    週頻揭露上幾乎看不見。$1.00B。
+#
+#    所以「買幣」在圖上是 U→H,但它實際上**不動用 USD Reserve** ——
+#    8-K 逐週寫的是 "bitcoin purchases were made using proceeds from the
+#    sale of shares under the ATM"。回購也一樣,走的是 MSTR/BTC 賣出所得,
+#    不是 Reserve。Reserve 唯一的出口是 carry。
+#
+#    代數不區分這兩塊,因為 C 問的是「有多少美元可以抵掉求償權」,
+#    不問那筆錢被指定做什麼用。
+#
+# OUT 是唯一會離開系統的位置,目前只有股息與債息走它 ——
+# 而那正好就是 USD Reserve 的唯一用途。
+
+# 箭頭有兩類,規則不同(見 test_toolbox 的 moves 那一組):
+#
+#   替換   同類之間(資產↔資產、來源↔來源):起點減少、終點增加。
+#          資產負債表的**規模不變**。買幣、賣幣、可轉債轉股。
+#   伸縮   跨類(資產↔來源):從來源出發 = 募資,兩端都增;
+#          指向來源 = 償還,兩端都減。規模改變。
+#
+# 這個二分本身就是內容:八條箭頭裡只有三條不改變規模。
+
+ASSET_PLACES = ("H", "U")
+SOURCE_PLACES = ("DL", "S")
+
+PLACES: Dict[str, str] = {
+    "H": "比特幣",
+    "U": "美元流動性",
+    "DL": "求償權(可轉債 + 優先股清算優先權)",
+    "S": "普通股股數",
+    "OUT": "流出系統",
+}
+
+
 BUY_BTC = Tool(
     id="buy_btc", label="用現金買幣", params=("c",),
+    moves=("U", "H"),
     # 持幣增加 c/p,但美元流動性同額減少 ⇒ 求償權增加 c。分子兩項對消。
     apply=lambda s, k: replace(s, held=s.held + k["c"] / s.price,
                                claims=s.claims + k["c"]),
@@ -166,7 +219,8 @@ BUY_BTC = Tool(
 )
 
 SELL_BTC = Tool(
-    id="sell_btc", label="賣幣進儲備", params=("x",),
+    id="sell_btc", label="賣幣換現金", params=("x",),
+    moves=("H", "U"),
     apply=lambda s, k: replace(s, held=s.held - k["x"],
                                claims=s.claims - k["x"] * s.price),
     accretive=None,
@@ -177,6 +231,7 @@ SELL_BTC = Tool(
 
 ISSUE_PREFERRED = Tool(
     id="issue_preferred", label="優先股發行", params=("c", "F"),
+    moves=("DL", "U"),
     # 拿到 c 現金(求償權 −c),掛上面額 F 的清算優先權(求償權 +F)
     apply=lambda s, k: replace(s, claims=s.claims + k["F"] - k["c"]),
     accretive=lambda s, k: k["c"] > k["F"],      # 溢價發行才加分,實務上罕見
@@ -187,6 +242,7 @@ ISSUE_PREFERRED = Tool(
 
 BUYBACK_PREFERRED = Tool(
     id="buyback_preferred", label="折價回購求償權", params=("c", "F"),
+    moves=("U", "DL"),
     # 付 c 現金(求償權 +c),消滅面額 F(求償權 −F)
     apply=lambda s, k: replace(s, claims=s.claims + k["c"] - k["F"]),
     accretive=lambda s, k: k["c"] < k["F"],
@@ -197,6 +253,7 @@ BUYBACK_PREFERRED = Tool(
 
 CARRY = Tool(
     id="carry", label="股息與債息", params=("c",),
+    moves=("U", "OUT"),
     apply=lambda s, k: replace(s, claims=s.claims + k["c"]),
     accretive=lambda s, k: False,          # 唯一無條件為負的一項
     latex_b=r"\Delta B = 0",
@@ -206,6 +263,7 @@ CARRY = Tool(
 
 COMMON_ATM = Tool(
     id="common_atm", label="普通股 ATM 增發", params=("n", "P"),
+    moves=("S", "U"),
     apply=lambda s, k: replace(s, shares=s.shares + k["n"],
                                claims=s.claims - k["n"] * k["P"]),
     # 推導見 reference/02-operations.md §3:化簡到底就是 m > 1
@@ -218,6 +276,7 @@ COMMON_ATM = Tool(
 
 COMMON_BUYBACK = Tool(
     id="common_buyback", label="普通股回購", params=("n", "P"),
+    moves=("U", "S"),
     apply=lambda s, k: replace(s, shares=s.shares - k["n"],
                                claims=s.claims + k["n"] * k["P"]),
     accretive=lambda s, k: mnav(s, k["P"]) < 1,
@@ -228,6 +287,10 @@ COMMON_BUYBACK = Tool(
 
 CONVERT_CONVERSION = Tool(
     id="convert_conversion", label="可轉債轉股", params=("F", "n"),
+    # 債主行使轉換權:債消失、換成股票,**完全沒有現金移動**。
+    # 這與「發新股募資再去回購可轉債」是兩回事 —— 後者是 S→U 再 U→DL,
+    # 兩個操作串成的組合,中間有現金。
+    moves=("DL", "S"),
     apply=lambda s, k: replace(s, shares=s.shares + k["n"],
                                claims=s.claims - k["F"]),
     accretive=lambda s, k: mnav(s, k["F"] / k["n"]) > 1,   # 轉換價代替發行價
