@@ -840,10 +840,10 @@ L4  Phase(mix, layers4, efficiency, price, residual_pct)</code></pre>
 <section id="sec-08"><h1 id="08-0">08 — 現況與施工紀錄</h1>
 <p><b>這份文件是唯一的進度來源。</b> 以前 05、06、07 各有一段「現況」與 「下一步」,三份會各自過時然後互相矛盾。現在它們都指回這裡。</p>
 <ul><li>要知道<b>為什麼是這個形狀</b> → <a href="06-architecture.md">06-architecture.md</a></li><li>要知道<b>資料夠不夠</b> → <a href="07-data-gaps.md">07-data-gaps.md</a></li><li>要知道<b>判斷錯過什麼</b> → <a href="04-decisions.md">04-decisions.md</a></li></ul>
-<p>as-of 2026-09-27,分支 <code>rebuild/l1-document-archive</code>(領先 master 10 個 commit)。</p>
+<p>as-of 2026-10-02,分支 <code>rebuild/l1-document-archive</code>(領先 master 16 個 commit)。</p>
 <hr>
 <h2 id="08-1">1. 四層現況</h2>
-<table><thead><tr><th>層</th><th>現況</th><th>缺口</th></tr></thead><tbody><tr><td><b>L1 採集</b></td><td>8-K 160、424B5 26、10-Q 7、10-K 2、XBRL companyfacts 全部內容定址歸檔;解析與抓取分離,斷網可跑</td><td>⚠️ 報價 API 尚未歸檔</td></tr><tr><td><b>L2 事件</b></td><td>972 個事件,動作／觀測分家,三種粒度(週／季／年)分離且有優先規則</td><td>—</td></tr><tr><td><b>L3 操作</b></td><td>配對器與 <code>operations</code> 表,對帳零差額</td><td>⚠️ 只實作 <code>sell_to_buyback</code>;只吃週粒度</td></tr><tr><td><b>L4 階段</b></td><td>四層歸因完整且有斷言;偵測器、<code>explained_share()</code>、<code>sources_and_uses()</code></td><td>⚠️ 分期維持手寫 —— 不是演算法不夠,是資料不夠</td></tr></tbody></table>
+<table><thead><tr><th>層</th><th>現況</th><th>缺口</th></tr></thead><tbody><tr><td><b>L1 採集</b></td><td>200 份內容定址歸檔(8-K 162、424B5 26、10-Q 7、10-K 2、XBRL);解析與抓取分離,斷網可跑</td><td>⚠️ 報價 API 尚未歸檔</td></tr><tr><td><b>L2 事件</b></td><td>996 個事件,動作／觀測分家,三種粒度分離且有優先規則;週視圖帶 accession</td><td>—</td></tr><tr><td><b>L3 操作</b></td><td>配對器與 <code>operations</code> 表,對帳零差額</td><td>⚠️ 只實作 <code>sell_to_buyback</code>;只吃週粒度</td></tr><tr><td><b>L4 階段</b></td><td>四層歸因完整且有斷言;偵測器、<code>explained_share()</code>、<code>sources_and_uses()</code></td><td>⚠️ 分期維持手寫 —— 不是演算法不夠,是資料不夠</td></tr></tbody></table>
 <p>三條橫向規則(出處往上流、每層可獨立重放、信心度單調遞減)目前都成立。</p>
 <p><b>一條新的邊</b>:<code>interpolate.py</code> / <code>data.py</code>(重建前的舊模型層)現在直接讀 L2。 方向是對的(模型讀事件,不讀手工表),但 L2 因此有兩個消費者。目前沒衝突。</p>
 <hr>
@@ -877,7 +877,10 @@ L4  Phase(mix, layers4, efficiency, price, residual_pct)</code></pre>
 <p>424B5 / 10-Q / 10-K / XBRL companyfacts 全部歸檔。五份 IPO 公開說明書解析 驗證過,與手動輸入的面額<b>完全吻合</b>,並補上淨募資 (<span class="nomath">$</span>563.4M / <span class="nomath">$</span>711.2M / <span class="nomath">$</span>979.7M / <span class="nomath">$</span>2,474M / €608.8M)。 <b>可轉債的事件數從 0 變成 12。</b> 實付優先股股息有了逐季數字。</p>
 <p>做這一步的交叉驗證翻出兩個既有誤讀 —— 見 <a href="03-data.md">03-data.md §5</a> 與 <a href="04-decisions.md#缺口與誤讀長得一模一樣">04-decisions.md</a>。 順帶把 <code>web/raw/*.json</code> 從「爬蟲輸出」改成「L2 視圖的序列化」, 關掉那條繞過 L1–L4 的旁路。</p>
 <h3 id="08-4">✅ 8. 粒度優先規則</h3>
-<p><code>events.resolve_flows()</code>,規則與證據見 <a href="03-data.md">03-data.md §2</a>。 <code>phases.sources_and_uses()</code> 讓 L4 吃得到季與年。 <b>「可轉債時代」的買幣從看得到 <span class="nomath">$</span>1.1B 變成 <span class="nomath">$</span>21.7B,對帳收到 4.5%。</b></p>
+<p><code>events.resolve_flows()</code>,規則與證據見 <a href="03-data.md">03-data.md §2</a>。 <code>phases.sources_and_uses()</code> 讓 L4 吃得到季與年。 <b>「可轉債時代」的買幣從看得到 <span class="nomath">$</span>1.1B 變成 <span class="nomath">$</span>21.7B,對帳收到 4.3%。</b></p>
+<h3 id="08-4">✅ 9. 讓前端追上後端(2026-10-02)</h3>
+<p>後端這幾輪做的事,網站上一件都看不到。五項依序做完:</p>
+<p>1. <b>資料更新程序寫成一支指令</b>(<code>web/refresh.py</code>)。資料曾經停在 09-22 落後 10 天,根因不是忘記更新,是<b>程序沒被寫下來</b> —— 要照順序跑六個 指令,而 <code>preferred_prices.json</code> 根本沒有抓取腳本。新鮮度門檻按各來源 的節奏分開設:會亂叫的監測等於沒有監測。 2. <b>一個不斷行空格讓整整一週的買幣消失</b>。本來只是要修資料品質頁上兩個 對不起來的數字(60/63 vs 64/39),追下去是 <code>BTC&#160;Acquired</code> 讓表頭 正則靜默失配 —— 2026-03-08 那一週的 17,994 顆 / <span class="nomath">$</span>1.28B <b>整列不存在</b>。 修正放在最底層的 <code>archive.row_cells()</code>。詳見 <a href="03-data.md">03-data.md §3</a>。 3. <b>情境模擬搬進 Python</b>(<code>mstr_cebe/scenario.py</code>)。原計畫是 「leverage.ts 改讀 JSON」,但定價頁是互動模擬器(四個連續滑桿 ≈ 2.85 億種組合),不可能預先算;而且 Python 端本來<b>一行都沒有</b>。 改成:Python 是公式與推導的來源(<a href="01-model.md">01-model.md §5.1</a>), TS 由 360 筆黃金樣本釘住(<code>npm test</code>)。離散模擬獨立驗證了那條冪次封閉解。 4. <b>資料品質頁接上出處、粒度與資金對帳</b> —— 三個新區塊 + 三條新 finding, 數字全部由 L1/L2 現算。 5. <b>出處傳到網站</b> —— 週視圖帶 <code>acc</code>,79 個週次全部連回 EDGAR。 有測試逐列確認那份文件真的報了那一週:<b>指錯比沒有連結更糟</b>。</p>
 <hr>
 <h2 id="08-4">4. 下一步</h2>
 <h3 id="08-5">要你拍板的(建模選擇,不是工程問題)</h3>
@@ -885,7 +888,9 @@ L4  Phase(mix, layers4, efficiency, price, residual_pct)</code></pre>
 <h3 id="08-5">已知缺陷,還沒修</h3>
 <ul><li><b>13 個「本週無買賣」的 8-K 被歸類成 <code>btc_sale</code></b>(qty=0), <code>min(btc_sale)</code> 因此答 2025-04-06 而不是真正的 2026-05-31。 目前不影響任何數字(金額為 0,下游都跳過),但這類查詢會答錯。 要修得先決定給它什麼名義 —— 那是「揭露了無動作」,既不是買也不是賣。</li></ul>
 <h3 id="08-5">工程,順序可換</h3>
-<p>1. <b>L3 吃季頻。</b> 配對靠文件敘述,而季頻來自 XBRL 標籤,沒有敘述可配 —— 所以季頻在 L3 只能當單一操作,不能進配對器。 2. <b><code>leverage.ts</code> 改讀 JSON。</b> 修掉 CLAUDE.md 第一條規則的違反。 3. <b><code>build_operations()</code> 改由逐事件套用 Tool 產生。</b> 這會改變數字, 所以要先有第 1 點。 4. <b><code>chronicle.TOOLS</code> 的 LaTeX 改指向 <code>toolbox</code>。</b> 一條式子只留一份。 5. <b>抽參數收進 <code>extract</code>。</b> 目前散在 <code>build_data.py</code>; 資料來源會變、語意不會,所以這一層要跟 <code>apply</code> 分開。 6. <b>正向模擬改用同一組 Tool。</b> 做完這步,「該不該做」與「做得好不好」 才真的是同一把尺。 7. <b>報價 API 歸檔。</b> L1 唯一還沒覆蓋的來源。</p>
+<p>1. <b>L3 吃季頻。</b> 配對靠文件敘述,而季頻來自 XBRL 標籤,沒有敘述可配 —— 所以季頻在 L3 只能當單一操作,不能進配對器。 2. <b><code>build_operations()</code> 改由逐事件套用 Tool 產生。</b> 這會改變數字, 所以要先有第 1 點。 3. <b><code>chronicle.TOOLS</code> 的 LaTeX 改指向 <code>toolbox</code>。</b> 一條式子只留一份。 4. <b>抽參數收進 <code>extract</code>。</b> 目前散在 <code>build_data.py</code>; 資料來源會變、語意不會,所以這一層要跟 <code>apply</code> 分開。 5. <b>正向模擬改用同一組 Tool。</b> 做完這步,「該不該做」與「做得好不好」 才真的是同一把尺。 6. <b>報價 API 歸檔。</b> L1 唯一還沒覆蓋的來源。 7. <b>出處再往前推一層。</b> 目前只有「持幣與融資」的週表可以點。 大事記的階段邊界、資本操作頁的每一筆操作都還沒接上。</p>
+<h3 id="08-5">三個沒人讀的遺留檔案</h3>
+<p><code>web/data.json</code>、<code>web/mstr_capital_structure.html</code>(2026-08-18)、 <code>web/preferred_prices.json</code>(08-22)是 Vite 之前的單檔原型,活的程式沒有 人讀。最後那個特別危險 —— 它與<b>活的</b> <code>web/raw/preferred_prices.json</code> 同名,更新時很容易改錯邊。留著還是刪掉,等決定。</p>
 <h3 id="08-5">交付</h3>
 <p>分支尚未合回 <code>master</code>,也尚未部署。</p></section>
 </main>
