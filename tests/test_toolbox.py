@@ -124,6 +124,8 @@ def test_every_tool_predicate_agrees_with_applying_it():
         "common_buyback": [{"n": 1e6, "P": _params_at_mnav(BASE, 1.3)},
                            {"n": 1e6, "P": _params_at_mnav(BASE, 0.7)}],
         "convert_conversion": [{"F": 1e9, "n": 2e6}, {"F": 1e9, "n": 20e6}],
+        # 可轉債發行與優先股發行同形:溢價發行(c > F)才加分,實務上罕見
+        "convert_issue": [{"c": 0.9e9, "F": 1e9}, {"c": 1.1e9, "F": 1e9}],
         "sell_to_buyback": [{"x": 5_000.0, "F": 1e9},
                             {"x": 5_000.0, "F": 0.2e9}],
         "preferred_to_btc": [{"c": 0.9e9, "F": 1e9}, {"c": 1.1e9, "F": 1e9}],

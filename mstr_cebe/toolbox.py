@@ -121,6 +121,9 @@ class Tool:
     # 所以動作是可窮舉的 —— 這是「七把工具就是全部」這個主張的根據。
     # 宣告的東西都要能被 apply 打臉:見 test_toolbox 的 moves 那一組。
     moves: Tuple[str, str] = ("", "")
+    # 給人看的判準標籤。accretive 是機器用的謂詞(測試拿它對 apply 驗),
+    # verdict 是同一件事的中文說法 —— 網站顯示這個。
+    verdict: str = ""
     accretive: Optional[Predicate] = None
     note: str = ""
 
@@ -208,7 +211,7 @@ PLACES: Dict[str, str] = {
 
 BUY_BTC = Tool(
     id="buy_btc", label="用現金買幣", params=("c",),
-    moves=("U", "H"),
+    moves=("U", "H"), verdict="中性",
     # 持幣增加 c/p,但美元流動性同額減少 ⇒ 求償權增加 c。分子兩項對消。
     apply=lambda s, k: replace(s, held=s.held + k["c"] / s.price,
                                claims=s.claims + k["c"]),
@@ -220,7 +223,7 @@ BUY_BTC = Tool(
 
 SELL_BTC = Tool(
     id="sell_btc", label="賣幣換現金", params=("x",),
-    moves=("H", "U"),
+    moves=("H", "U"), verdict="中性",
     apply=lambda s, k: replace(s, held=s.held - k["x"],
                                claims=s.claims - k["x"] * s.price),
     accretive=None,
@@ -231,7 +234,7 @@ SELL_BTC = Tool(
 
 ISSUE_PREFERRED = Tool(
     id="issue_preferred", label="優先股發行", params=("c", "F"),
-    moves=("DL", "U"),
+    moves=("DL", "U"), verdict="稀釋",
     # 拿到 c 現金(求償權 −c),掛上面額 F 的清算優先權(求償權 +F)
     apply=lambda s, k: replace(s, claims=s.claims + k["F"] - k["c"]),
     accretive=lambda s, k: k["c"] > k["F"],      # 溢價發行才加分,實務上罕見
@@ -242,7 +245,7 @@ ISSUE_PREFERRED = Tool(
 
 BUYBACK_PREFERRED = Tool(
     id="buyback_preferred", label="折價回購求償權", params=("c", "F"),
-    moves=("U", "DL"),
+    moves=("U", "DL"), verdict="折價買回 = 加分",
     # 付 c 現金(求償權 +c),消滅面額 F(求償權 −F)
     apply=lambda s, k: replace(s, claims=s.claims + k["c"] - k["F"]),
     accretive=lambda s, k: k["c"] < k["F"],
@@ -251,9 +254,21 @@ BUYBACK_PREFERRED = Tool(
     note="ΔB = 0 不是四捨五入,是結構上的零 —— B 的式子裡沒有求償權這一項。",
 )
 
+CONVERT_ISSUE = Tool(
+    id="convert_issue", label="可轉債發行", params=("c", "F"),
+    moves=("DL", "U"), verdict="稀釋",
+    apply=lambda s, k: replace(s, claims=s.claims + k["F"] - k["c"]),
+    accretive=lambda s, k: k["c"] > k["F"],
+    latex_b=r"\Delta B = \frac{c}{p\,S}\times 10^{8} > 0",
+    latex_e=r"\Delta E = \frac{c - F}{p\,S}\times 10^{8} \le 0",
+    note="與優先股發行同形。平價發行時 c = F,對 E 恰好中性 —— "
+         "真正的差別在價內時會轉成股票(見 CONVERT_CONVERSION),"
+         "求償權自動消失,所以它是唯一會自己蒸發的那種槓桿。",
+)
+
 CARRY = Tool(
     id="carry", label="股息與債息", params=("c",),
-    moves=("U", "OUT"),
+    moves=("U", "OUT"), verdict="減分",
     apply=lambda s, k: replace(s, claims=s.claims + k["c"]),
     accretive=lambda s, k: False,          # 唯一無條件為負的一項
     latex_b=r"\Delta B = 0",
@@ -263,7 +278,7 @@ CARRY = Tool(
 
 COMMON_ATM = Tool(
     id="common_atm", label="普通股 ATM 增發", params=("n", "P"),
-    moves=("S", "U"),
+    moves=("S", "U"), verdict="mNAV > 1 才加分",
     apply=lambda s, k: replace(s, shares=s.shares + k["n"],
                                claims=s.claims - k["n"] * k["P"]),
     # 推導見 reference/02-operations.md §3:化簡到底就是 m > 1
@@ -276,7 +291,7 @@ COMMON_ATM = Tool(
 
 COMMON_BUYBACK = Tool(
     id="common_buyback", label="普通股回購", params=("n", "P"),
-    moves=("U", "S"),
+    moves=("U", "S"), verdict="低於淨值才加分",
     apply=lambda s, k: replace(s, shares=s.shares - k["n"],
                                claims=s.claims + k["n"] * k["P"]),
     accretive=lambda s, k: mnav(s, k["P"]) < 1,
@@ -290,7 +305,7 @@ CONVERT_CONVERSION = Tool(
     # 債主行使轉換權:債消失、換成股票,**完全沒有現金移動**。
     # 這與「發新股募資再去回購可轉債」是兩回事 —— 後者是 S→U 再 U→DL,
     # 兩個操作串成的組合,中間有現金。
-    moves=("DL", "S"),
+    moves=("DL", "S"), verdict="加分",
     apply=lambda s, k: replace(s, shares=s.shares + k["n"],
                                claims=s.claims - k["F"]),
     accretive=lambda s, k: mnav(s, k["F"] / k["n"]) > 1,   # 轉換價代替發行價
@@ -299,7 +314,7 @@ CONVERT_CONVERSION = Tool(
     note="求償權整筆消失,但沒有多出任何一顆幣,所以 B 被稀釋。",
 )
 
-TOOLS: Tuple[Tool, ...] = (
+TOOLS: Tuple[Tool, ...] = (CONVERT_ISSUE, 
     BUY_BTC, SELL_BTC, ISSUE_PREFERRED, BUYBACK_PREFERRED,
     CARRY, COMMON_ATM, COMMON_BUYBACK, CONVERT_CONVERSION,
 )
