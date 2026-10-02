@@ -967,18 +967,19 @@ L4  Phase(mix, layers4, efficiency, price, residual_pct)</code></pre>
 <hr>
 <h2 id="09-5">4. 第三部分 — 觀點</h2>
 <h3 id="09-6">4.1 兩種文體,一套機制</h3>
-<table><thead><tr><th></th><th><b>新聞</b>(大事記)</th><th><b>社論</b>(資本結構)</th></tr></thead><tbody><tr><td>錨在</td><td>一個<b>時點或區間</b></td><td>一個<b>主張</b></td></tr><tr><td>問</td><td>發生了什麼、大概為什麼</td><td>對長期價值與本質有什麼影響</td></tr><tr><td>深度</td><td>報導事件表面</td><td>論述 + 資料佐證 + 數據分析</td></tr><tr><td>頻率</td><td>高</td><td>低</td></tr></tbody></table>
-<p>兩者會重疊 —— 但<b>當你開始重新思考公司的長期價值與本質,就進入社論</b>。</p>
-<p>結構上的真正差異只有一個:<b>社論帶一個「主張」欄位,新聞沒有。</b> 因為主張可以被後續的資料檢驗,事件不行。</p>
+<table><thead><tr><th></th><th><b>大事記</b></th><th><b>資本結構</b></th></tr></thead><tbody><tr><td>錨在</td><td>一個<b>時點或區間</b></td><td>一個<b>主張</b></td></tr><tr><td>問</td><td>發生了什麼、大概為什麼</td><td>對長期價值與本質有什麼影響</td></tr><tr><td>深度</td><td>報導事件表面</td><td>論述 + 資料佐證 + 數據分析</td></tr><tr><td>頻率</td><td>高</td><td>低</td></tr></tbody></table>
+<blockquote>讀起來的感覺像新聞與社論 —— 一個報導事件,一個提出論述。 那是個<b>比喻</b>,幫忙抓語氣用的,不是分類名稱。兩個區塊就叫 <b>大事記</b>與<b>資本結構</b>。</blockquote>
+<p>兩者會重疊 —— 但<b>當你開始重新思考公司的長期價值與本質,就進入資本結構</b>。</p>
+<p>結構上的真正差異只有一個:<b>資本結構那一類帶一個「主張」欄位,大事記沒有。</b> 因為主張可以被後續的資料檢驗,事件不行。</p>
 <h3 id="09-6">4.2 每一則是 repo 裡的一個檔案</h3>
 <p>寫作發生在 Claude Code 裡,所以每一則就該是可以 diff、可以 review 的檔案:</p>
 <pre><code>---
 title:  折價回購的套利空間還剩多少
 date:   2026-10-02
 author: Leo
-kind:   editorial          # 或 news
+kind:   structure          # 或 chronicle
 tags:   [結構, 工具]
-claim:  &quot;折價回購在 m &gt; 1−d 時對既有股東加分&quot;   # 只有社論有
+claim:  &quot;折價回購在 m &gt; 1−d 時對既有股東加分&quot;   # 只有 structure 有
 pins:   { decision_sats: 2468, strc_discount_pct: 4.1 }
 charts: [{ id: perShare, from: 2026-06-29 }]
 ---
@@ -997,10 +998,10 @@ charts: [{ id: perShare, from: 2026-06-29 }]
 <p><b>你能看到一個觀點寫下時的世界,以及它後來變成什麼。</b> 這對長期觀察有價值,而且只有「資料會自己更新、文章不會」的系統做得到。</p>
 <hr>
 <h2 id="09-6">5. 現有七頁的去處</h2>
-<table><thead><tr><th>現在</th><th>去哪</th></tr></thead><tbody><tr><td>總覽</td><td>儀表板的首頁(四層的濃縮版)</td></tr><tr><td>資本結構 · 求償權與殘值</td><td>講義 · 尺</td></tr><tr><td>資本結構 · 持幣與融資</td><td>儀表板 · 量</td></tr><tr><td>資本操作</td><td>講義 · 工具</td></tr><tr><td>績效歸因</td><td>講義 · 時間(推導)+ 儀表板 · 時間(數字)</td></tr><tr><td>槓桿與定價</td><td>講義 · 尺(推導)+ 情境模擬器</td></tr><tr><td>資料品質</td><td>全部屬於<b>數值解</b> —— 口徑與可信度溶進儀表板各層,出處與歸檔放「出處」頁</td></tr><tr><td><b>大事記的四段 Era 敘述</b></td><td><b>轉成最早的四篇社論</b>,標上寫作日期;階段骨架只留起訖、一句定性、主要工具,其餘全部算</td></tr></tbody></table>
+<table><thead><tr><th>現在</th><th>去哪</th></tr></thead><tbody><tr><td>總覽</td><td>儀表板的首頁(四層的濃縮版)</td></tr><tr><td>資本結構 · 求償權與殘值</td><td>講義 · 尺</td></tr><tr><td>資本結構 · 持幣與融資</td><td>儀表板 · 量</td></tr><tr><td>資本操作</td><td>講義 · 工具</td></tr><tr><td>績效歸因</td><td>講義 · 時間(推導)+ 儀表板 · 時間(數字)</td></tr><tr><td>槓桿與定價</td><td>講義 · 尺(推導)+ 情境模擬器</td></tr><tr><td>資料品質</td><td>全部屬於<b>數值解</b> —— 口徑與可信度溶進儀表板各層,出處與歸檔放「出處」頁</td></tr><tr><td><b>大事記的四段 Era 敘述</b></td><td><b>轉成最早的四篇「資本結構」</b>,標上寫作日期;階段骨架只留起訖、一句定性、主要工具,其餘全部算</td></tr></tbody></table>
 <hr>
 <h2 id="09-7">6. 這份設計刻意不做的</h2>
-<p><b>不追求完全自我更新。</b> 講義的例子、社論的論述都是人寫的,不該、也不可能 自動生成。要自動的只有數字。</p>
+<p><b>不追求完全自我更新。</b> 講義的例子、資本結構那一類的論述都是人寫的,不該、也不可能 自動生成。要自動的只有數字。</p>
 <p><b>不強制閱讀順序。</b> 四層照順序排,但隨時可跳 —— 對回訪的人強制解鎖很煩。</p>
 <p><b>不把觀點混進儀表板。</b> 寧可讀者多點一次,也不要讓判斷看起來像讀數。</p>
 <p><b>不做兩棵導覽樹。</b> 講義與儀表板是同樣四層的兩種模式,各自出現一次就好。</p>
@@ -1019,7 +1020,7 @@ charts: [{ id: perShare, from: 2026-06-29 }]
 <p>Router 已經支援兩層(<code>parent</code> 欄位),不需要改。</p>
 <pre><code>總覽 │ 講義 │ 儀表板 │ 觀點 │ 出處
       │       │        │
-      │       │        └ 新聞 · 社論
+      │       │        └ 大事記 · 資本結構
       │       └ 量 · 工具 · 配對 · 時間      ← 數值解
       └ 量 · 工具 · 配對 · 時間              ← 公式解</code></pre>
 <p><b>講義與儀表板的子分頁刻意同名同序</b> —— 那是「同一個 L1–L4 解兩次」 最直接的呈現。讀者在講義看到 $\Delta E$ 的式子,切到儀表板同一個分頁 就看到今天的數字。</p>
@@ -1034,7 +1035,7 @@ charts: [{ id: perShare, from: 2026-06-29 }]
 <table><thead><tr><th>子分頁</th><th>內容</th><th>素材來源</th></tr></thead><tbody><tr><td><b>量</b></td><td>今天的 $H, C, S, p$ 與走勢;每個數字旁邊標實測/插值、離最近申報幾天</td><td><code>accumulation.ts</code>、<code>daily.json</code></td></tr><tr><td><b>工具</b></td><td>最近用了哪些工具、各多少錢</td><td>L3 的具名操作(<code>operations.build</code>)<b>需要新增輸出</b></td></tr><tr><td><b>配對</b></td><td>實際配對出來的組合操作,含文件原句與信心度</td><td>同上</td></tr><tr><td><b>時間</b></td><td>四層歸因的數字、目前在哪個階段、階段的起訖</td><td><code>strategy.ts</code> 的結論區、<code>chronicle.json</code></td></tr></tbody></table>
 <p><b>資料品質溶在每個數字旁邊</b>,不另立一頁。口徑偏差(面額 vs 市價、 粒度、插值)掛在它影響的那個數字上。</p>
 <h3 id="10-3">2.4 觀點 · 兩個子分頁</h3>
-<p>格式與機制見 <a href="09-site.md">09-site.md §4</a>。 <b>新聞</b>錨在事件,<b>社論</b>錨在主張(多一個 <code>claim</code> 欄位)。</p>
+<p>格式與機制見 <a href="09-site.md">09-site.md §4</a>。 <b>大事記</b>錨在事件,<b>資本結構</b>錨在主張(多一個 <code>claim</code> 欄位)。</p>
 <h3 id="10-3">2.5 出處(無子分頁)</h3>
 <p>L1 檔案庫清單、稽核軌跡、每一種表單連到 EDGAR。 現有 <code>dataQuality.ts</code> 的「每個數字都指得回一份文件」那一段搬過來。</p>
 <hr>
@@ -1050,7 +1051,7 @@ charts: [{ id: perShare, from: 2026-06-29 }]
 <p>把 <code>overview.ts</code> / <code>accumulation.ts</code> / <code>dataQuality.ts</code> / <code>strategy.ts</code> 的<b>數值</b>段落搬過去。</p>
 <ul><li>驗收:每一個搬過去的數字與舊頁<b>逐字相同</b>(搬家不改值)</li></ul>
 <h3 id="10-4">步驟 4 — 觀點系統</h3>
-<ul><li><code>posts/*.md</code> 的格式、loader、renderer</li><li>圖表以 id + range 重用現有八個元件</li><li><code>pins</code> 快照 + 現值對照(「寫於某日 X,今天 Y」)</li><li>把四段 Era 敘述轉成最早的四篇社論,標上寫作日期</li><li>驗收:四篇的數字與 <code>chronicle.json</code> 當時的值一致;階段骨架只剩 起訖、一句定性、主要工具</li></ul>
+<ul><li><code>posts/*.md</code> 的格式、loader、renderer</li><li>圖表以 id + range 重用現有八個元件</li><li><code>pins</code> 快照 + 現值對照(「寫於某日 X,今天 Y」)</li><li>把四段 Era 敘述轉成最早的四篇「資本結構」,標上寫作日期</li><li>驗收:四篇的數字與 <code>chronicle.json</code> 當時的值一致;階段骨架只剩 起訖、一句定性、主要工具</li></ul>
 <h3 id="10-4">步驟 5 — 換導覽、刪舊頁</h3>
 <ul><li><code>main.ts</code> 的 routes 換成新結構</li><li>刪 <code>pages/{overview,chronicle,structure,operations,strategy,pricing,dataQuality,accumulation}.ts</code></li><li>驗收:全站無 404、<code>npm run build</code> 通過、黃金錨點不動</li></ul>
 <h3 id="10-4">步驟 6 — 情境模擬器歸位</h3>
