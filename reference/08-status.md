@@ -187,7 +187,7 @@ url 與 sha256,任何人都能自己抓來對)。
 7. **出處再往前推一層。** 目前只有「持幣與融資」的週表可以點。
    大事記的階段邊界、資本操作頁的每一筆操作都還沒接上。
 
-### Vite 之前的單檔原型已刪除(2026-10-02)
+### Vite 之前的遺留檔案已清除(2026-10-02)
 
 `web/mstr_capital_structure.html`、它的資料 `web/data.json`、
 產生那份資料的 `web/build_explorer_data.py`,以及它讀的
@@ -197,8 +197,26 @@ url 與 sha256,任何人都能自己抓來對)。
 最後那個特別危險:它與**活的** `web/raw/preferred_prices.json` 同名,
 更新時很容易改錯邊。這次資料落後 10 天的其中一個原因就是這類混淆。
 
-⚠️ `web/` 下還有 20 個同一批的殘骸(18 個 `.part` 片段 + `explorer.css`
-+ 四份一次性的中間產物),共 172 KB,同樣無人引用 —— 還沒刪,見下。
+同一批的殘骸也一起清了:18 個 `.part` 片段(那個單檔原型的組裝素材 ——
+`head.part` 開頭就是它的 `<title>`,`script1.part` 是 `const DATA = __DATA_JSON__`)、
+`explorer.css`,以及四份一次性的中間產物
+(`btc_weekly.json` / `eightk_list.json` / `xbrl_raw.json` / `xbrl_wavg_shares.json`)。
+合計 24 個檔案、約 3,500 行。
+
+`web/` 現在只剩**活的東西**:
+
+```
+web/
+  archive/          稽核軌跡(manifest.json,每列有 url 與 sha256)
+  archive.sqlite    L1 檔案庫(200 份申報,內容定址)
+  raw/              L2 視圖的序列化
+  refresh.py        每週更新的唯一入口
+  build_data.py     app/data/*.json
+  build_pref_weekly.py
+```
+
+一眼看得出什麼是真的 —— 這件事本身就有價值,因為資料會過期往往不是
+忘記更新,是**不確定該更新哪一個檔案**。
 
 ### 交付
 
