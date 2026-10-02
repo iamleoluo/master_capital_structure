@@ -192,8 +192,23 @@ hr{border:0;border-top:1px solid var(--line);margin:30px 0}
 <p>而每股含幣量(sats)的彈性是:</p>
 <div class="eq">$$\frac{\mathrm{d}\ln E}{\mathrm{d}\ln p} = A(p) - 1 = \frac{C}{Hp - C}$$</div>
 <p><b>兩個彈性剛好差一個 1。</b> 這解釋了為什麼美元計價與幣計價的兩張圖長得不一樣: as of 2026-09-22,以美元看普通股是 1.255 倍的比特幣,以幣的顆數看只有 0.255 倍。差的那 1 倍就是「幣價本身漲了」,不是公司替你多賺到的幣。</p>
-<p>$A$ 會隨幣價上升而自然下降(分母裡求償權的比重變小),所以<b>槓桿會自己衰減</b>。 定價頁的「槓桿下限」參數模擬的就是公司持續補倉、把 $A$ 釘住不放。</p>
-<blockquote>實作:<code>app/src/charts/leverage.ts</code>、<code>app/src/pages/pricing.ts</code> 驗證:<code>(1.3) p₀ = C/H 時 E = 0</code></blockquote>
+<p>$A$ 會隨幣價上升而自然下降(分母裡求償權的比重變小),所以<b>槓桿會自己衰減</b>。</p>
+<h3 id="01-6">5.1 把槓桿釘住會發生什麼:冪次成長</h3>
+<p>定價頁的「槓桿下限」就是問:如果公司不接受衰減,一路補倉把 $A$ 釘在 $L$, 普通股會長成什麼樣?</p>
+<p>觸發價來自定義 $A(p^{*}) = L$:</p>
+<div class="eq">$$p^{*} = \frac{L \cdot C}{(L-1) \cdot H}$$</div>
+<p>觸發之後,「釘住 $A = L$」等價於 $\mathrm{NAV} = L \cdot R$ 恆成立($R$ 是殘值)。 公司把募到的錢全部買幣,所以 NAV 只受幣價與新買的幣影響。微分並代入:</p>
+<div class="eq">$$\frac{\mathrm{d}R}{R} = L \cdot \frac{\mathrm{d}p}{p}
+\quad\Longrightarrow\quad
+R(p) = R(p^{*}) \left(\frac{p}{p^{*}}\right)^{L},
+\qquad R(p^{*}) = \frac{H p^{*}}{L}$$</div>
+<p><b>這與固定倍數的槓桿 ETF 是同一個數學結構。</b> 一個值得注意的中間結論: 增發求償權去買幣的那一刻,$R$ 其實<b>不變</b>(募到多少、買進多少,兩邊抵銷)—— 變的是 $H$ 變大,所以下一次幣價變動時 $R$ 走得更快。槓桿不是來自那筆交易本身, 是來自它改變了往後的曝險。</p>
+<h3 id="01-6">5.2 溢價增發:同一個判準的比例形式</h3>
+<p>用市價增發 $X$ 比例的股數、募到的錢全部買幣:</p>
+<div class="eq">$$\text{新每股殘值} = \text{舊每股殘值} \times \frac{1 + Xm}{1 + X}$$</div>
+<p>$m = 1$ 時等於 1(增發無感),$m > 1$ 加分,$m < 1$ 稀釋 —— 與 <a href="02-operations.md">02-operations.md §3</a> 的 ATM 判準 $m > 1$ 是同一件事。</p>
+<blockquote><b>實作</b>:<code>mstr_cebe/scenario.py</code>(公式與推導的來源)、 <code>app/src/charts/leverage.ts</code>(互動模擬器) <b>驗證</b>:<code>(1.3) p₀ = C/H 時 E = 0</code>; <code>tests/test_scenario.py</code> 用<b>離散模擬</b>獨立檢驗上面那條冪次封閉解 —— 逐步升價、每步增發補倉,20,000 步的相對誤差 &lt; 2e-5,而且隨步數收斂。</blockquote>
+<blockquote>⚠️ <b>這一節是唯一一處前端保有金融計算的地方。</b> 定價頁是互動模擬器 (四個連續滑桿 ≈ 2.85 億種組合),不可能預先算好塞進 JSON。 CLAUDE.md 第一條規則的理由是「TS 那側沒有測試守著」,所以這裡的處理是 <b>Python 是來源,TS 由 360 筆黃金樣本逐筆釘住</b> (<code>app/test/scenario.test.ts</code>,<code>npm test</code>)。改了任一側而沒改另一側就會紅。</blockquote>
 <hr>
 <h2 id="01-6">6. 股價恆等式</h2>
 <p>到這裡都還在講「公司有多少幣」。要連到股價,需要一個橋 —— 市場願意付幾倍:</p>

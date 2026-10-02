@@ -63,7 +63,8 @@ python3 -m mstr_cebe.operations rebuild # L3:由事件重算資本操作 + 對�
 python3 -m mstr_cebe.phases            # L4:階段偵測 + 解釋率前提檢查
 python3 web/build_data.py        # 重算 app/data/*.json,含兩個黃金錨點
 python3 reference/build.py       # reference/*.md → reference/index.html
-cd app && npm run build          # 一般建置(Cloudflare 用)
+cd app && npm test               # TS 的情境模擬對 Python 黃金樣本
+cd app && npm run build          # 一般建置(含 tsc + npm test)
 cd app && npm run build:artifact # 單檔 HTML(CSP 禁外部請求)
 ```
 
@@ -76,6 +77,12 @@ cd app && npm run build:artifact # 單檔 HTML(CSP 禁外部請求)
 
 1. **金融計算一律在 Python 端**,前端只做排版與算術。同一條公式有兩個
    實作就會各自漂移,而 TS 那側沒有測試守著。
+
+   **唯一的例外是定價頁的情境模擬**(四個連續滑桿 ≈ 2.85 億種組合,
+   不可能預先算好塞進 JSON)。它的處理方式是把規則的理由補上:
+   公式的來源與推導在 `mstr_cebe/scenario.py`,TS 的實作由 360 筆
+   黃金樣本逐筆釘住(`app/test/scenario.test.ts`)。
+   **要在前端加新的金融計算,先問能不能預先算完;不能的話就照這個模式配測試。**
 2. **加總恆等式要能斷言。** 新增任何拆解,就在 build 時逐列 assert,
    並在 `reference/verify.py` 加同號檢查。
 3. **兩個黃金錨點不能動**(\$92.11 / \$118.31)。它們是官方 FWP 的一手資料。

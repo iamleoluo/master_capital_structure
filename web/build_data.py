@@ -788,6 +788,40 @@ def structural_watch(daily: dict, chronicle: list) -> list:
     return notes
 
 
+def write_scenario_golden(daily: dict) -> None:
+    """定價頁情境模擬的黃金樣本,給前端的測試比對用。
+
+    定價頁是互動模擬器(四個連續滑桿),不可能把結果預先算好塞進 JSON ——
+    所以 TS 必須保留一份實作。CLAUDE.md 第一條規則的理由是「TS 那側沒有
+    測試守著」,這份檔案就是那個「守著」:**Python 是公式的來源與推導處
+    (mstr_cebe/scenario.py),TS 的實作由這 360 筆樣本釘住**。
+
+    刻意**不**放進 app/data —— 它不是前端要顯示的資料,是測試夾具。
+    """
+    from mstr_cebe import scenario as SC                      # noqa: E402
+    from mstr_cebe.toolbox import State                       # noqa: E402
+
+    i = len(daily["date"]) - 1
+    basis = State(
+        held=daily["held"][i],
+        claims=(daily["debt"][i] + daily["pref_total"][i]
+                - daily["cash"][i]) * 1e9,
+        shares=daily["shares"][i] * 1e6,
+        price=daily["btc"][i],
+    )
+    payload = {
+        "as_of": daily["date"][i],
+        "basis": {"held": basis.held, "claims": basis.claims,
+                  "shares": basis.shares, "px0": basis.price},
+        "cases": SC.golden_grid(basis),
+    }
+    path = os.path.join(ROOT, "app", "test", "scenario-golden.json")
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
+    print(f"  app/test/scenario-golden.json  {len(payload['cases'])} 筆樣本")
+
+
 def main() -> int:
     os.makedirs(OUT, exist_ok=True)
     daily = build_daily()
@@ -805,6 +839,8 @@ def main() -> int:
         with open(path, "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
         print(f"  app/data/{name}.json  {os.path.getsize(path)//1024} KB")
+
+    write_scenario_golden(daily)
 
     n = len(daily["date"])
     print(f"\ndaily : {n} 天  {daily['date'][0]} → {daily['date'][-1]}")
