@@ -406,3 +406,9 @@ table.ruler tr.subtotal td{border-top:1px solid var(--line);
   .eq-row{grid-template-columns:1fr;gap:8px}
   .katex{font-size:1em}
 }
+
+/* 出處連結 —— 點數字回到 EDGAR 的那份申報。
+   做成虛線底線而不是一般連結色:整張表都是連結時,滿版的藍色會蓋過數字本身。 */
+a.src{color:inherit;text-decoration:none;border-bottom:1px dotted var(--ink-3)}
+a.src:hover{color:var(--equity);border-bottom-color:var(--equity)}
+a.src::after{content:"↗";font-size:.68em;opacity:.45;margin-left:3px;vertical-align:super}

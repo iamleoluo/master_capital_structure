@@ -553,3 +553,55 @@ def test_real_data_surfaces_conflicts_instead_of_hiding_them():
     assert r.period_end == "2026-03-31"
     assert r.usd == 0.0
     assert abs(r.covered_usd - r.stated_usd) / abs(r.stated_usd) < 0.15
+
+
+# ------------------------------------------------------- 出處要指得對
+
+def test_every_week_points_at_a_filing_that_actually_reports_it():
+    """網站上每一週都連回一份 8-K。**指錯比沒有連結更糟** ——
+    讀者點進去看不到那個數字,就再也不會相信其他的。
+
+    所以逐列驗:accession 對應的那份文件,重新解析之後必須包含這一週。
+    """
+    from mstr_cebe import fetch_8k_btc as FB
+
+    conn = _real()
+    try:
+        rows = E.weekly_activity(conn)
+        by_acc = {r[0]: r[1] for r in conn.execute(
+            "SELECT accession, doc_id FROM documents WHERE accession <> ''")}
+        cache: dict = {}
+        bad = []
+        for r in rows:
+            acc = r["acc"]
+            if acc is None:
+                bad.append((r["week_end"], "沒有 accession"))
+                continue
+            doc = by_acc.get(acc)
+            if doc not in cache:
+                cache[doc] = {p["week_end"]
+                              for p in FB.parse_activity(A.text(conn, doc))}
+            if r["week_end"] not in cache[doc]:
+                bad.append((r["week_end"], acc))
+    finally:
+        conn.close()
+    assert bad == [], f"出處指錯:{bad[:5]}"
+
+
+def test_the_accession_is_the_one_that_was_filed_last_for_that_week():
+    """同一週被多份 8-K 提到時,視圖取申報日最新的那份 ——
+    出處也必須跟著那一份,不能停在舊的。"""
+    conn = _real()
+    try:
+        rows = {r["week_end"]: r for r in E.weekly_activity(conn)}
+        latest = {}
+        for e in E.all_events(conn):
+            if e["kind"] not in ("btc_purchase", "btc_sale"):
+                continue
+            k = e["period_end"]
+            if k not in latest or e["filed"] > latest[k]:
+                latest[k] = e["filed"]
+        for wk, r in rows.items():
+            assert r["filed"] == latest[wk], wk
+    finally:
+        conn.close()

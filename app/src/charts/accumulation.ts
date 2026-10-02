@@ -6,7 +6,7 @@
  */
 import { daily, meta, weekly } from "../data";
 import type { SecurityTicker, Week } from "../types";
-import { btc as fmtBtc, mn, usd0 } from "../lib/format";
+import { btc as fmtBtc, edgarUrl, mn, usd0 } from "../lib/format";
 import { linear } from "../lib/scale";
 import { line, path, rect, svg, text } from "../lib/svg";
 
@@ -171,7 +171,13 @@ export function accumulationTable(): string {
       const v = w.raised_m[s];
       return `<td class="n">${v ? mn(v) : "—"}</td>`;
     }).join("");
-    return `<tr><td class="num">${w.week_end}</td><td class="n">${dCell}</td>`
+    // 出處:點週次就回到那份 8-K 的 EDGAR 索引頁。沒有 acc 的是只有
+    // 持有量觀測、沒有活動表那一列的週次 —— 那就不給連結,不要假裝有。
+    const wk = w.acc
+      ? `<a class="src" href="${edgarUrl(w.acc)}" target="_blank" rel="noopener"`
+        + ` title="EDGAR ${w.acc}">${w.week_end}</a>`
+      : w.week_end;
+    return `<tr><td class="num">${wk}</td><td class="n">${dCell}</td>`
       + `<td class="n">${w.holdings != null ? fmtBtc(w.holdings) : "—"}</td>`
       + `<td class="n">${w.avg_price ? usd0(w.avg_price) : "—"}</td>`
       + `<td style="font-size:.8rem">${src}</td>${cells}`

@@ -675,7 +675,14 @@ def weekly_holdings(conn: sqlite3.Connection) -> List[list]:
 
 
 def weekly_activity(conn: sqlite3.Connection) -> List[dict]:
-    """逐週買賣 —— 等同舊的 btc_activity_weekly.json。"""
+    """逐週買賣 —— 舊 btc_activity_weekly.json 加上 `acc`(出處)。
+
+    `acc` 是這一列所根據的那份 8-K 的 accession。帶著它,網站上每一週的
+    數字才點得回 EDGAR 的原文 —— L1 做內容定址歸檔的意義要能傳到最前面,
+    否則「可追溯」只是後端自己知道。
+    """
+    acc = {r[0]: r[1] for r in conn.execute(
+        "SELECT doc_id, accession FROM documents WHERE accession <> ''")}
     rows = [r for r in all_events(conn)
             if r["kind"] in ("btc_purchase", "btc_sale")]
     out = []
@@ -698,6 +705,7 @@ def weekly_activity(conn: sqlite3.Connection) -> List[dict]:
             "funding_raw": e["attrs"].get("funding_raw", ""),
             "sale_use": e["attrs"].get("sale_use", ""),
             "filed": e["filed"],
+            "acc": acc.get(e["doc_id"]),
         })
     return out
 

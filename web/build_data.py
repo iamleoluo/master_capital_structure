@@ -160,6 +160,9 @@ def build_weekly() -> list:
             "source_kind": source,
             "raised_m": raised,
             "raised_total_m": round(t["total_m"], 1) if t and t.get("total_m") else None,
+            # 出處:這一週的數字來自哪一份 8-K(EDGAR accession)。
+            # 沒有 a 的週次(只有持有量觀測)就沒有,前端顯示為純文字。
+            "acc": a.get("acc"),
         })
     return rows
 

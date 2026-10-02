@@ -1,6 +1,11 @@
 import { daily, meta, N } from "../data";
 import { accumulationStats } from "../charts/accumulation";
+import { edgarFormUrl } from "../lib/format";
 import type { PageFn } from "../router";
+
+const FORM_OF: Record<string, string> = {
+  sec_8k: "8-K", sec_10q: "10-Q", sec_10k: "10-K", sec_424b5: "424B5",
+};
 
 const SRC_LABEL: Record<string, string> = {
   sec_8k: "8-K 每週揭露", sec_10q: "10-Q 季報", sec_10k: "10-K 年報",
@@ -88,8 +93,15 @@ export const dataQualityPage: PageFn = (root) => {
       <div class="card flush" style="margin-bottom:10px"><div class="scroller"><table class="mini">
         <thead><tr><th>表單</th><th>份數</th><th>期間</th><th>原文大小</th></tr></thead>
         <tbody>
-          ${prov.docs.map((d) => `<tr><td>${SRC_LABEL[d.src] ?? d.src}</td>
-            <td>${d.n}</td><td>${d.lo} → ${d.hi}</td><td>${d.mb.toFixed(1)} MB</td></tr>`).join("")}
+          ${prov.docs.map((d) => {
+            const form = FORM_OF[d.src];
+            const label = SRC_LABEL[d.src] ?? d.src;
+            return `<tr><td>${form
+              ? `<a class="src" href="${edgarFormUrl(form)}" target="_blank" rel="noopener"
+                   title="在 EDGAR 上看這家公司的全部 ${form}">${label}</a>`
+              : label}</td>
+            <td>${d.n}</td><td>${d.lo} → ${d.hi}</td><td>${d.mb.toFixed(1)} MB</td></tr>`;
+          }).join("")}
           <tr style="font-weight:600"><td>合計</td><td>${prov.doc_total}</td><td></td>
             <td>${prov.docs.reduce((a, d) => a + d.mb, 0).toFixed(1)} MB</td></tr>
         </tbody></table></div></div>

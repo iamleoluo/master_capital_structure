@@ -51,6 +51,9 @@ export interface Week {
   /** 該週各券種 ATM 淨募資,單位百萬美元 */
   raised_m: Partial<Record<SecurityTicker, number>>;
   raised_total_m: number | null;
+  /** 這一週的數字來自哪一份 8-K 的 EDGAR accession。null = 只有持有量觀測、
+   *  沒有對應的活動表那一列(前端就不給連結)。 */
+  acc: string | null;
 }
 
 export interface Ipo {

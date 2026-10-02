@@ -53,7 +53,11 @@ export const accumulationPage: PageFn = (root) => {
       <h3 style="margin:26px 0 12px">逐週原始資料</h3>
       <div class="card flush"><div class="scroller tall">${accumulationTable()}</div></div>
       <p style="font-size:.8rem;color:var(--ink-3);margin-top:10px">
-        共 ${s.weeks} 週。各券種欄位為該週 ATM 淨募資(百萬美元),「—」代表當週未動用。</p>
+        共 ${s.weeks} 週。各券種欄位為該週 ATM 淨募資(百萬美元),「—」代表當週未動用。<br>
+        <b>週次可以點</b> —— 連回 EDGAR 上那一份 8-K 的申報頁面。
+        申報原文已內容定址存檔,解析只讀檔案庫不碰網路,所以這裡的每個數字
+        都回得到原文;沒有連結的週次代表那一週只有持有量觀測、沒有活動表。
+        完整的檔案庫清單在<a href="#/data-quality">資料品質</a>。</p>
     </div>`;
 
   root.querySelector<HTMLElement>("#accum-legend")!.innerHTML = accumulationLegend();

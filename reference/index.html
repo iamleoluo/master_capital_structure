@@ -428,6 +428,7 @@ R(p) = R(p^{*}) \left(\frac{p}{p^{*}}\right)^{L},
 <p>這些檔案曾經是爬蟲的直接輸出,<b>繞過 L1–L4 從旁邊喂進模型</b> —— 所以修好了事件層、下游仍吃著舊檔。現在它們由 <code>events export</code> 產生:</p>
 <pre><code>文件(L1 檔案庫,內容定址)→ 事件(L2)→ weekly_*() 視圖 → web/raw/*.json</code></pre>
 <p>真相是檔案庫裡的原文。重解文件的修正因此會流到下游,而且可以驗證: 每次 export 的差異必須恰好等於預期的那幾列。</p>
+<p><b>出處會一路傳到網站上。</b> 週視圖帶著 <code>acc</code>(EDGAR accession), 「持幣與融資」頁的每一週都連回那份 8-K 的申報頁面,資料品質頁列出整個 檔案庫。指錯比沒有連結更糟 —— 讀者點進去看不到那個數字,就再也不會 相信其他的 —— 所以 <code>test_every_week_points_at_a_filing_that_actually_reports_it</code> 把那份文件重新解析一次,逐列確認它真的報了那一週。</p>
 <hr>
 <h2 id="03-7">7. 沒有資料的地方</h2>
 <ul><li><b>可轉債沒有市價</b>,面額與市價口徑都按面額計。所以 <a href="04-decisions.md#面額還是市價">04-decisions.md</a> 裡那個偏差的估計是<b>下限</b>。</li><li><b>STRE 沒有公開報價</b>,市價口徑保守地按面額計入(當成零會反過來低估求償權)。</li><li><b>assumed diluted 股數只有單點</b>,官方 FWP 敏感度表揭露過一次,沒有歷史序列。</li><li><b>優先股股數的尾段是外推</b>:最後一個已知精確股數之後,只能用逐週發行減回購推算。</li><li><b>報價 API 尚未歸檔</b>,所以幣價與股價沒有內容定址的出處(見 <a href="07-data-gaps.md">07</a>)。</li></ul>
