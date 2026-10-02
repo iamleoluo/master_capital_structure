@@ -59,6 +59,7 @@
 | [`reference/07-data-gaps.md`](reference/07-data-gaps.md) | 資料缺口:今天的資料夠不夠支撐今天的結論 |
 | [`reference/08-status.md`](reference/08-status.md) | **唯一的進度來源**:現況、施工紀錄、下一步 |
 | [`reference/09-site.md`](reference/09-site.md) | **網站的設計**:理論／觀測／詮釋三分,以及為什麼不能混 |
+| [`reference/10-rebuild-plan.md`](reference/10-rebuild-plan.md) | **前端重排施工計畫**:下一步從這裡接 |
 
 ⚠️ **兩條軸都叫「層」。** 06 的 `L1–L4` 是**資料怎麼流**(程式模組
 `archive`/`events`/`operations`/`phases` 與所有 commit 用這套);
