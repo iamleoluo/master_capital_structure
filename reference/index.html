@@ -633,6 +633,10 @@ L3  資本操作  配對:賣幣+STRC 回購、ATM+STRC 回購、賣幣+USD 儲�
 L2  事件      有名義的原子動作:這是一筆 buyback、這是一筆 ATM
 L1  採集      SEC 檔案、股價 API —— 原始資料本身</code></pre>
 <p>往上一層,<b>資訊減少而意義增加</b>。L1 是事實,L4 是詮釋。 這個方向不可逆,也不能跳層。</p>
+<h3 id="06-2">這四層是<b>數值解</b>那一欄</h3>
+<p>同一個 L1–L4 會被解兩次 —— 這份文件規格化的是<b>數值解</b>(代進真實參數), 另一欄是<b>公式解</b>(純代數,不帶任何數字),實作在 <code>mstr_cebe/toolbox.py</code>:</p>
+<table><thead><tr><th>層</th><th>公式解</th><th>數值解(本文件)</th></tr></thead><tbody><tr><td>L1 量</td><td>$H, C, S, p$ 與 $B, E, m, A, p_0$ 的式子</td><td><code>archive</code> 採集 → 算出今天的值</td></tr><tr><td>L2 工具</td><td>每把工具的 $\Delta B/\Delta E$ 與判準</td><td><code>events</code> 把申報變成具名動作</td></tr><tr><td>L3 配對</td><td>組合的代數(ATM 配買幣、賣幣配回購…)</td><td><code>operations</code> 依文件敘述實際配對</td></tr><tr><td>L4 時間</td><td>逐日鏈結、四層歸因的推導</td><td><code>phases</code> 算出實際的歸因與階段</td></tr></tbody></table>
+<p><b>L1–L4 因此不是工程上的任意切分,它就是模型本身的四個層次。</b> 兩欄走同一條構築線,改了任一欄而另一欄沒跟上,<code>verify.py</code> 與 <code>tests/test_toolbox.py</code> 會紅 —— 那正是「代數是可以被打臉的宣告」的意思。</p>
 <hr>
 <h2 id="06-2">1. 現在的地基有三個洞</h2>
 <p>動手之前要先承認問題,否則會在爛地基上蓋新東西。</p>
