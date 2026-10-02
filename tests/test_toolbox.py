@@ -480,10 +480,13 @@ def test_the_docs_do_not_claim_a_stale_tool_count():
     for f in list((root / "reference").glob("*.md")) + [root / "CLAUDE.md"]:
         text = f.read_text(encoding="utf-8")
         # 排除「一」—— 中文裡「每一把工具」「加一把」是量詞不是計數
+        # 引號裡的是**引用**(例如記錄「文件曾經寫七把」),不是宣稱。
+        # 掃描器要分得出這兩者,否則就沒辦法把走過的彎路寫進文件。
+        quoted = lambda i: i > 0 and text[i - 1] == "\u300c"
         for m in re.finditer(r"([二三四五六七八九十])把(?:原子)?工具", text):
-            if m.group(1) != _CN[len(T.TOOLS)]:
+            if m.group(1) != _CN[len(T.TOOLS)] and not quoted(m.start()):
                 bad.append(f"{f.name}: 「{m.group(0)}」應為 {want_tools}")
         for m in re.finditer(r"([二三四五六七八九十])個組合", text):
-            if m.group(1) != _CN[len(T.COMBOS)]:
+            if m.group(1) != _CN[len(T.COMBOS)] and not quoted(m.start()):
                 bad.append(f"{f.name}: 「{m.group(0)}」應為 {want_combos}")
     assert bad == [], "\n".join(bad)
