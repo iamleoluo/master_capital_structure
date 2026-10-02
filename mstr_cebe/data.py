@@ -709,8 +709,7 @@ FINDING_FDSO_COVERAGE = {
 FINDING_TIER3_NOT_REPRODUCIBLE = {
     "where": "§5.10,2025-11-30 的 0.856 / 0.954 / 1.105 三讀數",
     "problem": (
-        "§5 沒有 2025-11-30 的 btc_held 與股數(最近的觀測是 2025-03-31 的 550,000 BTC "
-        "與 2025-12-31 的 292.4M 股),forward-fill 後算出的 basic mNAV 約 1.4x,"
+        "§5 沒有 2025-11-30 的 btc_held 與股數,forward-fill 後算出的 basic mNAV 約 1.4x,"
         "與 Tier 3 讀數 0.856x 差距過大,無法交叉驗證。"
     ),
     "resolution": (

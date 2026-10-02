@@ -50,9 +50,11 @@
 ## 常用指令
 
 ```bash
+python3 web/refresh.py          # 每週更新:SEC → 事件 → 市場價 → app/data
+python3 web/refresh.py --dry-run # 只看各來源的新鮮度
 python3 reference/verify.py      # 23 條恆等式對真實資料驗證(改模型必跑)
 python3 -m pytest tests/test_toolbox.py -q   # 40 條:代數宣告不能與 apply 不符
-python3 -m pytest tests/ -q      # 227 個測試
+python3 -m pytest tests/ -q      # 320 個測試
 python3 -m mstr_cebe.archive backfill   # L1:補抓 SEC 文件到 web/archive.sqlite
 python3 -m mstr_cebe.archive stats      # 檔案庫現況
 python3 -m mstr_cebe.events rebuild    # L2:由文件重算事件 + 寫出 web/raw 視圖

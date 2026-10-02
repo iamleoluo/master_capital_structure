@@ -245,3 +245,47 @@ def verify_btc_anchors(bars: Sequence[Bar],
             rep.mismatched.append((obs.as_of.isoformat(), obs.btc_price,
                                    bar.close, rel))
     return rep
+
+
+# ---------------------------------------------------------------------------
+# 優先股日收盤 —— web/raw/preferred_prices.json 的來源
+# ---------------------------------------------------------------------------
+
+# STRE 在盧森堡交易所掛牌,Yahoo 沒有報價(見 reference/03-data.md §7)。
+# 這裡只抓掛在 Nasdaq 的四個系列。
+QUOTED_PREFERRED = ("STRC", "STRF", "STRK", "STRD")
+
+
+def fetch_preferred_closes(
+        since: Dict[str, dt.date], end: Optional[dt.date] = None,
+) -> Dict[str, Dict[str, float]]:
+    """各優先股系列的日收盤。`since` 是每個系列的起始日(通常用舊檔的第一天)。
+
+    回傳 {ticker: {date: close}},格式與 web/raw/preferred_prices.json 相同。
+    """
+    end = end or dt.date.today()
+    out: Dict[str, Dict[str, float]] = {}
+    for t in QUOTED_PREFERRED:
+        if t not in since:
+            continue
+        bars = fetch_mstr_yahoo(since[t], end, symbol=t)
+        out[t] = {b.date.isoformat(): round(b.close, 4) for b in bars}
+    return out
+
+
+def diff_closes(old: Dict[str, Dict[str, float]],
+                new: Dict[str, Dict[str, float]],
+                tol_abs: float = 0.02, tol_rel: float = 0.002) -> Dict[str, list]:
+    """重抓的歷史值應該與舊檔一致。不一致的列出來,不要默默覆蓋。
+
+    唯一預期會動的是**前次抓取當天** —— 那天可能抓到盤中價,
+    重抓才拿到最終收盤。其餘任何一天不一致都代表資料源變了,要先看過。
+    """
+    out: Dict[str, list] = {}
+    for t, o in old.items():
+        n = new.get(t, {})
+        bad = [d for d in o if d in n
+               and abs(o[d] - n[d]) > max(tol_abs, abs(o[d]) * tol_rel)]
+        if bad:
+            out[t] = sorted(bad)
+    return out
