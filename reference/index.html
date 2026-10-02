@@ -889,8 +889,10 @@ L4  Phase(mix, layers4, efficiency, price, residual_pct)</code></pre>
 <ul><li><b>13 個「本週無買賣」的 8-K 被歸類成 <code>btc_sale</code></b>(qty=0), <code>min(btc_sale)</code> 因此答 2025-04-06 而不是真正的 2026-05-31。 目前不影響任何數字(金額為 0,下游都跳過),但這類查詢會答錯。 要修得先決定給它什麼名義 —— 那是「揭露了無動作」,既不是買也不是賣。</li></ul>
 <h3 id="08-5">工程,順序可換</h3>
 <p>1. <b>L3 吃季頻。</b> 配對靠文件敘述,而季頻來自 XBRL 標籤,沒有敘述可配 —— 所以季頻在 L3 只能當單一操作,不能進配對器。 2. <b><code>build_operations()</code> 改由逐事件套用 Tool 產生。</b> 這會改變數字, 所以要先有第 1 點。 3. <b><code>chronicle.TOOLS</code> 的 LaTeX 改指向 <code>toolbox</code>。</b> 一條式子只留一份。 4. <b>抽參數收進 <code>extract</code>。</b> 目前散在 <code>build_data.py</code>; 資料來源會變、語意不會,所以這一層要跟 <code>apply</code> 分開。 5. <b>正向模擬改用同一組 Tool。</b> 做完這步,「該不該做」與「做得好不好」 才真的是同一把尺。 6. <b>報價 API 歸檔。</b> L1 唯一還沒覆蓋的來源。 7. <b>出處再往前推一層。</b> 目前只有「持幣與融資」的週表可以點。 大事記的階段邊界、資本操作頁的每一筆操作都還沒接上。</p>
-<h3 id="08-5">三個沒人讀的遺留檔案</h3>
-<p><code>web/data.json</code>、<code>web/mstr_capital_structure.html</code>(2026-08-18)、 <code>web/preferred_prices.json</code>(08-22)是 Vite 之前的單檔原型,活的程式沒有 人讀。最後那個特別危險 —— 它與<b>活的</b> <code>web/raw/preferred_prices.json</code> 同名,更新時很容易改錯邊。留著還是刪掉,等決定。</p>
+<h3 id="08-5">Vite 之前的單檔原型已刪除(2026-10-02)</h3>
+<p><code>web/mstr_capital_structure.html</code>、它的資料 <code>web/data.json</code>、 產生那份資料的 <code>web/build_explorer_data.py</code>,以及它讀的 <code>web/preferred_prices.json</code> —— 四個檔案都停在 2026-08-22 的初始 commit, 活的程式沒有人讀,也沒有部署設定指向它們。</p>
+<p>最後那個特別危險:它與<b>活的</b> <code>web/raw/preferred_prices.json</code> 同名, 更新時很容易改錯邊。這次資料落後 10 天的其中一個原因就是這類混淆。</p>
+<p>⚠️ <code>web/</code> 下還有 20 個同一批的殘骸(18 個 <code>.part</code> 片段 + <code>explorer.css</code> + 四份一次性的中間產物),共 172 KB,同樣無人引用 —— 還沒刪,見下。</p>
 <h3 id="08-5">交付</h3>
 <p>分支尚未合回 <code>master</code>,也尚未部署。</p></section>
 </main>

@@ -187,12 +187,18 @@ url 與 sha256,任何人都能自己抓來對)。
 7. **出處再往前推一層。** 目前只有「持幣與融資」的週表可以點。
    大事記的階段邊界、資本操作頁的每一筆操作都還沒接上。
 
-### 三個沒人讀的遺留檔案
+### Vite 之前的單檔原型已刪除(2026-10-02)
 
-`web/data.json`、`web/mstr_capital_structure.html`(2026-08-18)、
-`web/preferred_prices.json`(08-22)是 Vite 之前的單檔原型,活的程式沒有
-人讀。最後那個特別危險 —— 它與**活的** `web/raw/preferred_prices.json`
-同名,更新時很容易改錯邊。留著還是刪掉,等決定。
+`web/mstr_capital_structure.html`、它的資料 `web/data.json`、
+產生那份資料的 `web/build_explorer_data.py`,以及它讀的
+`web/preferred_prices.json` —— 四個檔案都停在 2026-08-22 的初始 commit,
+活的程式沒有人讀,也沒有部署設定指向它們。
+
+最後那個特別危險:它與**活的** `web/raw/preferred_prices.json` 同名,
+更新時很容易改錯邊。這次資料落後 10 天的其中一個原因就是這類混淆。
+
+⚠️ `web/` 下還有 20 個同一批的殘骸(18 個 `.part` 片段 + `explorer.css`
++ 四份一次性的中間產物),共 172 KB,同樣無人引用 —— 還沒刪,見下。
 
 ### 交付
 
