@@ -36,7 +36,7 @@ as-of 2026-10-02,分支 `rebuild/l1-document-archive`(領先 master 16 個 commi
 |---|---|
 | 量 `State` | ✅ `toolbox.State`;但 `leverage.ts` 有個平行的 `Basis` |
 | 尺 | ✅ 五個純函數;`core.py` 與 `leverage.ts` 各有一份 |
-| 工具 | ✅ 八把,代數與謂詞已綁定 |
+| 工具 | ✅ 九把原子 + 四個組合;代數、謂詞與位置都已綁定,且由 apply 驗 |
 | 組合 | ✅ 三個,封閉性有測試 |
 | 歸因 | ⚠️ `attribution.py` 仍用手寫 delta dict,尚未改由 Tool 產生 |
 | 判斷 | ✅ 謂詞 + 效率 |

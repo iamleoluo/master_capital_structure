@@ -51,7 +51,7 @@
 |---|---|
 | [`reference/00-purpose.md`](reference/00-purpose.md) | 這個系統要回答什麼、決策問題對照表、刻意不做的事 |
 | [`reference/01-model.md`](reference/01-model.md) | 從四個原始量到四層歸因,逐步推導 |
-| [`reference/02-operations.md`](reference/02-operations.md) | 七把工具 + 三個組合的代數 |
+| [`reference/02-operations.md`](reference/02-operations.md) | 九把原子工具 + 四個組合的代數 |
 | [`reference/03-data.md`](reference/03-data.md) | **資料的血統、粒度與邊界**:三種粒度怎麼不重複計算 |
 | [`reference/04-decisions.md`](reference/04-decisions.md) | **被換掉的方法與為什麼換** |
 | [`reference/05-toolbox.md`](reference/05-toolbox.md) | 代數怎麼變成可執行的宣告(**另一條軸**,見下) |

@@ -451,3 +451,39 @@ def test_the_new_combo_is_the_one_the_filings_describe_every_week():
     # 而且持幣一定增加 —— 單純增發不會
     assert T.effect(atm_btc, s, n=1e6, P=hi)["dB"] != \
         T.effect(T.COMMON_ATM, s, n=1e6, P=hi)["dB"]
+
+
+# ------------------------------------------- 文件宣稱的數量不能與程式漂開
+
+_CN = {1: "一", 2: "二", 3: "三", 4: "四", 5: "五", 6: "六",
+       7: "七", 8: "八", 9: "九", 10: "十"}
+
+
+def test_the_docs_do_not_claim_a_stale_tool_count():
+    """reference 與 CLAUDE.md 宣稱的工具數,必須與 toolbox 實際的數量一致。
+
+    這條是補一次實害:合併兩份工具清單之後,README 與 CLAUDE.md 還寫著
+    「七把工具 + 三個組合」,02-operations 的組合章節還列著三個(而且其中
+    一個「賣幣→增加美元儲備」根本是單一工具)。文件與程式各自漂了一段時間,
+    沒有任何東西會紅。
+
+    守門的方式與黃金錨點相同:**把一個容易悄悄失守的規則變成會紅的測試。**
+    """
+    import pathlib
+    import re
+
+    root = pathlib.Path(__file__).resolve().parent.parent
+    want_tools = f"{_CN[len(T.TOOLS)]}把"
+    want_combos = f"{_CN[len(T.COMBOS)]}個組合"
+
+    bad = []
+    for f in list((root / "reference").glob("*.md")) + [root / "CLAUDE.md"]:
+        text = f.read_text(encoding="utf-8")
+        # 排除「一」—— 中文裡「每一把工具」「加一把」是量詞不是計數
+        for m in re.finditer(r"([二三四五六七八九十])把(?:原子)?工具", text):
+            if m.group(1) != _CN[len(T.TOOLS)]:
+                bad.append(f"{f.name}: 「{m.group(0)}」應為 {want_tools}")
+        for m in re.finditer(r"([二三四五六七八九十])個組合", text):
+            if m.group(1) != _CN[len(T.COMBOS)]:
+                bad.append(f"{f.name}: 「{m.group(0)}」應為 {want_combos}")
+    assert bad == [], "\n".join(bad)
