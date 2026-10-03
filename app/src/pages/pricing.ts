@@ -34,7 +34,7 @@ export const pricingPage: PageFn = (root) => {
           BTC 漲,同一筆求償權吃掉的幣變少,實得每股含幣量不用多買一顆就會自己上升;
           BTC 跌則反過來放大。這一頁把這個機制量化,並用三個可調參數模擬不同情境:
           公司會不會補倉槓桿、市場願付多少溢價、溢價增發又會怎麼反過來墊高實得每股含幣量。
-          <a href="#/chronicle">大事記</a>記錄的是這個機制在各階段實際發生了什麼。</p>
+          <a href="#/posts/chronicle">大事記</a>記錄的是這個機制在各階段實際發生了什麼。</p>
       </div>
 
       <div class="card" style="margin-bottom:26px">

@@ -139,7 +139,7 @@ export const structurePage: PageFn = (root) => {
         改變它的方法有限且可窮舉,每一個動作都有明確的代數 ——
         七把工具、三個實際在跑的組合,全部在
         <a href="#/operations">資本操作</a>頁。
-        現在走到哪一段則見<a href="#/chronicle">${latest ? latest.title : "大事記"}</a>。
+        現在走到哪一段則見<a href="#/posts/chronicle">${latest ? latest.title : "大事記"}</a>。
       </div>
 
       <h2 style="margin-bottom:12px">從圖上讀出來</h2>

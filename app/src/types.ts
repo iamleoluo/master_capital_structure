@@ -203,6 +203,9 @@ export interface Post {
   tags: string[];
   /** 只有資本結構那一類有 */
   claim: string;
+  /** 對應的階段 id。有值時,文章旁邊掛上管線算出來的骨架 ——
+   *  **散文不會過期,是因為數字不在散文裡。** */
+  era: string;
   /** 寫作當下釘住的數字,外加它現在的值 —— 兩者並排顯示 */
   pins: { key: string; label: string; then: number; now: number | null; unit: string }[];
   /** 重用全站的圖表元件:id + 區間 */

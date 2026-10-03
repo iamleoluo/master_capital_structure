@@ -21,7 +21,7 @@ export const overviewPage: PageFn = (root) => {
       </div>
 
       ${latest && m ? `
-      <a class="latest-era" href="#/chronicle">
+      <a class="latest-era" href="#/posts/chronicle">
         <div class="latest-era-top">
           <span class="eyebrow" style="margin:0">目前階段</span>
           ${latest.ongoing ? `<span class="badge live"><i class="dot"></i>進行中</span>` : ""}
@@ -62,7 +62,7 @@ export const overviewPage: PageFn = (root) => {
             <a href="#/structure/holdings">持幣與融資</a> ——
             它到底買了多少幣、每一批是拿哪個 ATM 的錢買的,逐週原始資料。</p>
           <p style="font-size:.9rem;color:var(--ink-2);margin-bottom:10px">
-            <a href="#/chronicle">大事記</a> ——
+            <a href="#/posts/chronicle">大事記</a> ——
             公司在不同階段用的是完全不同的資本工具,對股東的後果也完全相反。</p>
           <p style="font-size:.9rem;color:var(--ink-2);margin-bottom:10px">
             <a href="#/structure/model">資本結構</a> ——

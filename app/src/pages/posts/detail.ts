@@ -3,7 +3,10 @@
  *  **凍結的標日期,活的不要手寫。** 文章引用的數字是寫作當下的快照
  *  (存在 pins 裡,永遠不改),現況由資料層給 —— 兩者並排。
  *  這樣你能看到一個觀點寫下時的世界,以及它後來變成什麼。 */
-import { posts } from "../../data";
+import { chronicle, posts } from "../../data";
+import { eraChartSlot, eraSkeleton, mountEraChart } from "../../components/era";
+import { layerBars, layerStats } from "../../components/layers";
+import { toolBadges } from "../../components/toolkit";
 import type { Post } from "../../types";
 import type { PageFn } from "../../router";
 
@@ -47,6 +50,7 @@ function pins(p: Post): string {
 export function postDetail(slug: string): PageFn {
   return (root) => {
     const p = posts.find((x) => x.slug === slug);
+    const era = p?.era ? chronicle.find((e) => e.id === p.era) : undefined;
     if (!p) {
       root.innerHTML = `<div class="wrap"><p class="note">找不到這一篇。</p></div>`;
       return;
@@ -71,6 +75,19 @@ export function postDetail(slug: string): PageFn {
         </div>` : ""}
         ${pins(p)}
         <article class="post-body">${p.html}</article>
+        ${era ? `
+          <h2 style="margin:36px 0 12px">這一段的數字</h2>
+          <p class="lede" style="margin-bottom:14px">
+            以下全部由管線算,不在上面那段文字裡 ——
+            <b>所以它們不會隨文章一起過期</b>。
+          </p>
+          ${toolBadges(era.tools, era.toolsActive)}
+          ${eraChartSlot(era)}
+          ${eraSkeleton(era)}
+          <h3 style="margin:28px 0 10px">四層歸因</h3>
+          ${layerBars(era.layers4, layerStats(era.layers4))}` : ""}
       </div>`;
+
+    return era ? (mountEraChart(root, era) ?? undefined) : undefined;
   };
 }

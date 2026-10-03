@@ -43,7 +43,7 @@ export const boardTimePage: PageFn = (root) => {
       <p class="lede" style="margin-bottom:14px">
         ${era.start} → ${era.ongoing ? "進行中" : era.end} ·
         ${era.days} 天 · 主要手法 ${era.tools.length} 把。
-        完整敘述在<a href="#/chronicle">大事記</a>。
+        完整敘述在<a href="#/posts/chronicle">大事記</a>。
       </p>
       <div class="grid3" style="margin-bottom:18px">
         ${tile("持幣", d(era.metrics.held.pct), "")}
@@ -70,7 +70,7 @@ export const boardTimePage: PageFn = (root) => {
       <div class="note" style="margin-top:24px">
         <b>講義與儀表板都走完了。</b>
         接下來是<b>詮釋</b> —— 這些數字該怎麼看,在
-        <a href="#/chronicle">大事記</a>與<a href="#/structure">資本結構</a>。
+        <a href="#/posts/chronicle">大事記</a>與<a href="#/structure">資本結構</a>。
       </div>
     </div>`;
 };

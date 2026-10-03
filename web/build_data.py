@@ -648,7 +648,7 @@ def build_operations_feed(daily: dict) -> list:
     return out
 
 
-def build_posts(daily: dict, chronicle: list) -> list:
+def build_posts(daily: dict, chronicle: list, meta: dict) -> list:
     """觀點 —— 大事記(事件)與資本結構(主張)。
 
     markdown 在**建置期**轉成 HTML,與 reference/ 共用同一個轉換器
@@ -659,7 +659,8 @@ def build_posts(daily: dict, chronicle: list) -> list:
     """
     from mstr_cebe import posts as P            # noqa: E402
 
-    return P.to_json(P.load_all({"daily": daily, "chronicle": chronicle}))
+    return P.to_json(P.load_all(
+        {"daily": daily, "chronicle": chronicle, "meta": meta}))
 
 
 def build_formulas() -> dict:
@@ -1118,7 +1119,7 @@ def main() -> int:
                           ("meta", meta), ("chronicle", chronicle),
                           ("strategy", strategy), ("formulas", build_formulas()),
                           ("operations", build_operations_feed(daily)),
-                          ("posts", build_posts(daily, chronicle))):
+                          ("posts", build_posts(daily, chronicle, meta))):
         path = os.path.join(OUT, f"{name}.json")
         with open(path, "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))

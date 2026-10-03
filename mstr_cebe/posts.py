@@ -56,6 +56,10 @@ class Post:
     kind: str
     tags: List[str] = field(default_factory=list)
     claim: str = ""
+    # 這一則對應到哪一個階段。有值時,前端會把管線算出來的骨架
+    # (指標表、資金流、期間事件、圖表)掛在散文旁邊 ——
+    # **散文不會過期是因為數字不在散文裡。**
+    era: str = ""
     pins: List[Pin] = field(default_factory=list)
     charts: List[Dict] = field(default_factory=list)
     html: str = ""
@@ -85,9 +89,17 @@ def _now_metric(data: dict, field_: str) -> Optional[float]:
     return d[field_][-1] if field_ in d else None
 
 
+def _program(data: dict, group: str, key: str):
+    p = (data.get("meta") or {}).get("program")
+    if not p:
+        return None
+    return {"split": p["split"], "layer": p["layers4"]}.get(group, {}).get(key)
+
+
 RESOLVERS: Dict[str, Callable] = {
     "era": lambda data, a, b: _era_metric(data, a, b),
     "now": lambda data, a, _b: _now_metric(data, a),
+    "program": lambda data, a, b: _program(data, a, b),
 }
 
 
@@ -156,6 +168,7 @@ def load_all(data: dict, path: str = POSTS_DIR) -> List[Post]:
             slug=slug, title=meta["title"], date=meta["date"],
             author=meta.get("author", ""), kind=meta["kind"],
             tags=meta.get("tags", []), claim=meta.get("claim", ""),
+            era=meta.get("era", ""),
             pins=pins, charts=meta.get("charts", []),
             html=html_body, lede=lede))
     return sorted(out, key=lambda p: (p.date, p.slug), reverse=True)
@@ -164,7 +177,7 @@ def load_all(data: dict, path: str = POSTS_DIR) -> List[Post]:
 def to_json(posts: List[Post]) -> List[dict]:
     return [{
         "slug": p.slug, "title": p.title, "date": p.date, "author": p.author,
-        "kind": p.kind, "tags": p.tags, "claim": p.claim,
+        "kind": p.kind, "tags": p.tags, "claim": p.claim, "era": p.era,
         "charts": p.charts, "html": p.html, "lede": p.lede,
         "pins": [{"key": x.key, "label": x.label, "then": x.then,
                   "now": x.now, "unit": x.unit} for x in p.pins],

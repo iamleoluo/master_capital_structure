@@ -4,6 +4,7 @@
  *  **資本結構那一類帶「主張」,大事記沒有** —— 因為主張可以被後續的
  *  資料檢驗,事件不行。 */
 import { posts } from "../../data";
+import { drawEraStrip } from "../../charts/eraStrip";
 import type { Post } from "../../types";
 import type { PageFn } from "../../router";
 
@@ -62,8 +63,24 @@ export function postList(kind: Post["kind"]): PageFn {
           只有這裡告訴你怎麼看 —— 所以每一則都標日期與作者。
           引用的數字是<b>寫作當下的快照</b>,旁邊會附上它現在的值。
         </div>
+        ${kind === "chronicle"
+          ? `<div id="era-strip" class="era-strip"
+                 style="margin-bottom:22px"></div>` : ""}
         ${list.length ? list.map(card).join("") : EMPTY[kind]}
       </div>`;
+
+    if (kind !== "chronicle") return;
+    const strip = root.querySelector<HTMLElement>("#era-strip");
+    if (!strip) return;
+    drawEraStrip(strip);
+    // 點色塊跳到那一段的那一則 —— 時間軸是導覽,不是裝飾
+    const onClick = (ev: Event) => {
+      const id = (ev.target as HTMLElement)?.getAttribute?.("data-era");
+      const hit = id && posts.find((x) => x.era === id && x.kind === "chronicle");
+      if (hit) location.hash = `/posts/chronicle/${hit.slug}`;
+    };
+    strip.addEventListener("click", onClick);
+    return () => strip.removeEventListener("click", onClick);
   };
 }
 

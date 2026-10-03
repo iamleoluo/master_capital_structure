@@ -18,7 +18,6 @@ const routes: Route[] = [
   { path: "/board/tools", parent: "/board", title: "二 · 工具", page: async () => (await import("./pages/board/tools")).boardToolsPage },
   { path: "/board/pairing", parent: "/board", title: "三 · 配對", page: async () => (await import("./pages/board/pairing")).boardPairingPage },
   { path: "/board/time", parent: "/board", title: "四 · 時間", page: async () => (await import("./pages/board/time")).boardTimePage },
-  { path: "/chronicle", title: "大事記", page: async () => (await import("./pages/chronicle")).chroniclePage },
   { path: "/structure", title: "資本結構", page: async () => (await import("./pages/structure")).structurePage },
   { path: "/structure/model", parent: "/structure", title: "求償權與殘值", page: async () => (await import("./pages/structure")).structurePage },
   { path: "/operations", title: "資本操作", page: async () => (await import("./pages/operations")).operationsPage },

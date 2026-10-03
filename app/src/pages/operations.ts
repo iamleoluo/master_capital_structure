@@ -38,7 +38,7 @@ export const operationsPage: PageFn = (root) => {
           <b>帳面每股 ${tex("B")}</b> 與 <b>實得每股 ${tex("E")}</b> 的效果都有明確的代數,
           而且這兩欄<b>經常是相反的</b> —— 那個相反就是這家公司最常被誤讀的地方。
           符號與兩個指標的定義見<a href="#/structure/model">資本結構</a>頁;
-          公司在各個時期實際用了哪幾把,見<a href="#/chronicle">大事記</a>。</p>
+          公司在各個時期實際用了哪幾把,見<a href="#/posts/chronicle">大事記</a>。</p>
       </div>
 
       <h2 style="margin-bottom:6px">先把符號定好</h2>
@@ -60,7 +60,7 @@ export const operationsPage: PageFn = (root) => {
 
       <div class="note key" style="margin:30px 0">
         <b>目前在哪一段?</b>
-        <a href="#/chronicle">${latest ? latest.title : "—"}</a>
+        <a href="#/posts/chronicle">${latest ? latest.title : "—"}</a>
         ${latest ? `—— ${latest.subtitle}。${latest.ongoing ? "進行中" : ""}` : ""}
       </div>
 
@@ -87,7 +87,7 @@ export const operationsPage: PageFn = (root) => {
         可轉債轉股是同一個條件,只是把 ${tex("P")} 換成轉換價。
         <br><br>
         推導有一個前提:${tex("E > 0")}。當求償權大到把普通股吃光時不等式會反向 ——
-        那正是<a href="#/chronicle">大事記</a>裡「壓力測試」那一段在講的處境。`)}
+        那正是<a href="#/posts/chronicle">大事記</a>裡「壓力測試」那一段在講的處境。`)}
 
       <h2 style="margin:38px 0 8px">每一把工具的代數</h2>
       <p class="lede" style="margin-bottom:16px">
@@ -145,7 +145,7 @@ export const operationsPage: PageFn = (root) => {
            這解釋了一件單看 mNAV 會覺得不合理的事:優先股被打到只認
            73% 面額的那段時間,${tex("d = 0.27")},門檻掉到 ${tex("m > 0.73")} ——
            <b>即使普通股本身在折價交易,增發去買回優先股仍然是加分的</b>。
-           折價越深,這把工具的適用區間越寬。<a href="#/chronicle">大事記</a>裡
+           折價越深,這把工具的適用區間越寬。<a href="#/posts/chronicle">大事記</a>裡
            「信用被打折,折價買回的機會才存在」講的就是這個代數。`)}
       </div>
 
