@@ -1,116 +1,33 @@
 # CLAUDE.md
 
-**MSTR 資本框架分析工具 —— 一個決策工具,不是研究報告。**
-資料每週更新,**但拆解的框架不變**;專案真正在維護的是那個框架。
+**目的:讓 MSTR 長期贏過比特幣。** 比特幣有限,只有一種贏法 —— 每股含幣量變多。
+這個專案存在的理由只有一個:**看懂公司為了那件事做了什麼。**
 
-```
-每股帳面幣值  B/1e8 × p
-− 求償權吃掉  (B−E)/1e8 × p
-= 每股殘值    E/1e8 × p
-× 市場溢價    m
-= 股價        P            ← 拆得開,誤差 0.000%
-```
+工具的演進是把風險往外推:抵押借錢(風險在公司)→ 可轉債 → 永續優先股(風險在市場)。
 
----
+⚠️ **轉嫁出去 ≠ 不用管。** 優先股跌破面額與公司盈虧無關,
+但要繼續買幣擴張,就得把它拉回面額。**風險是市場的,約束是公司的。**
+於是有這個環:
 
-## 最核心的概念:公式解 vs 數值解
+    折價回購 → 拉回面額 → 重新發行 → 買幣 → 槓桿加大 → 每股含幣量上升
 
-**整個系統是同一個 L1–L4,解兩次。** 這是系統結構,不是呈現方式。
+**回購不是為了賺價差,是解鎖下一輪。** 只看當下損益,每一筆操作都會判錯。
 
-| 層 | **公式解**(代數,不帶數字) | **數值解**(代進真實參數) |
+量它有兩種口徑,差別只在分母算不算求償權。⚠️ `mNAV` 不要裸用。
+
+| 分母 | 相對市值 | 相對股數 |
 |---|---|---|
-| L1 量 | $H, C, S, p$ 與 $B, E, m, A, p_0$ 的式子 | 今天各是多少、怎麼從申報算出來 |
-| L2 工具 | 每把工具的 $\Delta B/\Delta E$ 與判準 | 實際用了哪些、各多少錢 |
-| L3 配對 | 組合的公式(ATM 配買幣、賣幣配回購…) | 實際配對出來的具名操作 |
-| L4 時間 | 逐日鏈結為什麼沒有殘差、歸因的推導 | 實際的歸因數字與階段 |
+| 全部持幣 | basic mNAV | 帳面每股 $B$ ← 公司的 BTC Yield |
+| 扣求償權 | CEBE mNAV($m$) | 實得每股 $E$ ← 本站 |
 
-> **判準:一句話裡出現具體數字,它就屬於數值解。**
+$P = m \times E/10^{8} \times p$,誤差 0.000%。
 
-`toolbox` 是公式解的實作;`archive`/`events`/`operations`/`phases` 是數值解的實作。
-**L1–L4 就是模型本身的四個層次**,不是工程上的任意切分。
+**每一段內容都要能指回最上面那個目的。指不回去的是雜訊,不是細節。**
 
----
-
-## 動手之前先讀 `reference/`
-
-推導、口徑選擇與**走過的彎路**都在那裡。不讀就動,很容易把修掉的錯誤再做一次。
-導覽與編號規則見 [`reference/README.md`](reference/README.md)。
-
-**閱讀順序就是編號順序。** 00→04 是一條線:要回答什麼 → **公司在蓋什麼** →
-我們怎麼量 → 它用哪些工具 → **溢價從哪來**。05 之後是工程。
-
-| | |
-|---|---|
-| [00](reference/00-purpose.md) 目的 | 要回答什麼、刻意不做的事 |
-| [01](reference/01-architecture.md) 資本結構 | **標的是什麼形狀**:求償權階梯、三位一體、兩個控制器 |
-| [02](reference/02-model.md) 模型 | 四個原始量 → 四層歸因,逐步推導 |
-| [03](reference/03-operations.md) 操作 | 九把原子工具 + 四個組合的代數 |
-| [04](reference/04-narrative.md) 敘事 | **$m$ 從哪裡來**:唯一沒有一手來源的那一塊 |
-| [05](reference/05-data.md) 資料 | 血統、粒度、邊界;三種粒度怎麼不重複計算 |
-| [06](reference/06-decisions.md) 彎路 | **被換掉的方法與為什麼換** |
-| [07](reference/07-toolbox.md) 工具箱 | 代數怎麼變成可被打臉的宣告 |
-| [08](reference/08-pipeline.md) 管線 | L1–L4 的規格(數值解那一欄) |
-| [09](reference/09-data-gaps.md) 缺口 | 今天的資料夠不夠支撐今天的結論 |
-| [10](reference/10-status.md) 現況 | **唯一的進度來源** |
-| [11](reference/11-site.md) 網站設計 | 理論／觀測／詮釋三分 |
-| [12](reference/12-rebuild-plan.md) 施工計畫 | 版面重排(已完成) |
-| [13](reference/13-exposition.md) 論述結構 | **下一步從這裡接**:一頁之內怎麼講 |
-
----
-
-## 常用指令
+主線在 [reference/](reference/README.md) 00→04,進度只在 [10-status](reference/10-status.md)。
 
 ```bash
-python3 web/refresh.py           # 每週更新(--dry-run 只看新鮮度)
-python3 -m pytest tests/ -q      # 全部測試
-python3 reference/verify.py      # 恆等式對真實資料驗證(改模型必跑)
-python3 web/build_data.py        # 重算 app/data/*.json,含兩個黃金錨點
-python3 reference/build.py       # reference/*.md → index.html
-cd app && npm run build          # 建置(含 tsc + vitest)
+python3 -m pytest tests/ -q && python3 reference/verify.py && python3 web/build_data.py
+cd app && npm run build && npx wrangler pages deploy dist --project-name mstr-capital-structure --branch master
 ```
-
-逐層重跑:`python3 -m mstr_cebe.{archive backfill, events rebuild, operations rebuild, phases}`
-
-部署:`cd app && npx wrangler pages deploy dist --project-name mstr-capital-structure --branch master`
-(生產分支是 `master`;下成 `main` 只會建出 preview)
-
----
-
-## 硬規則
-
-1. **金融計算一律在 Python 端。** 同一條公式有兩個實作就會各自漂移。
-   唯一的例外是定價頁的情境模擬(連續滑桿無法預先算),它由 360 筆黃金樣本
-   釘住 —— 要在前端加新計算,先問能不能預先算完,不能就照那個模式配測試。
-2. **加總恆等式要能斷言。** 新增任何拆解就在 build 時逐列 assert,
-   並在 `verify.py` 加同號檢查。
-3. **兩個黃金錨點不能動**(\$92.11 / \$118.31,官方 FWP 一手資料)。
-4. **口徑選了就要寫下它偏在哪一邊**,而且寫在使用者看得到的地方。
-5. **不要用淨額當佔比的分母** —— 各層會互相抵銷,會吐出 158%、−100%。
-
----
-
-## 詞彙(不要再發明新的)
-
-| 顯示名稱 | 符號 | 技術名(只在定義處出現) |
-|---|---|---|
-| 帳面每股含幣量 | $B = H/S \times 10^8$ | Gross BPS / 公司的 BTC Yield |
-| 實得每股含幣量 | $E = (H - C/p)/S \times 10^8$ | CEBE |
-| 決策 / 行情 | — | 逐日鏈結 |
-
-⚠️ **`mNAV` 不要裸用。** 本站的 $m$ 是 **CEBE mNAV**(分母是殘值),
-與一般講的 mNAV(分母是全部持幣)不同 —— 同一天可以一個溢價一個折價。
-
-## 網站結構
-
-```
-總覽 │ 推導 │ 儀表板 │ 槓桿與定價 │ 觀點 │ 出處
-       │       │                      └ 大事記 · 機制解讀
-       │       └ 每股計量 · 資本操作 · 來源與用途 · 績效歸因
-       └ 資本架構 · 每股計量 · 資本操作 · 來源與用途 · 績效歸因
-```
-
-**推導 = 公式解,儀表板 = 數值解**,所以四個子分頁同名同序。
-「資本架構」只在推導那一側(它是前提,不是量出來的東西)。
-
-版面已依 [12](reference/12-rebuild-plan.md) 重排完成;
-論述的重排計畫在 [13](reference/13-exposition.md),尚未施工。現況一律見 [10](reference/10-status.md)。
+⚠️ Pages 沒接 git,push 不會部署 —— 一定要手動下最後那行。
