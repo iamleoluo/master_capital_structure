@@ -20,8 +20,10 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def _data():
+    """pin 解析器要用到的那幾份。**少載一份就等於那一類 pin 全部解不開** ——
+    `program:` 的三個 pin 曾經因為這裡沒載 meta 而全軍覆沒。"""
     out = {}
-    for k in ("daily", "chronicle"):
+    for k in ("daily", "chronicle", "meta"):
         with open(os.path.join(ROOT, "app", "data", f"{k}.json"),
                   encoding="utf-8") as f:
             out[k] = json.load(f)
