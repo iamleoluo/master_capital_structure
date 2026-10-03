@@ -1,0 +1,136 @@
+/** 講義 · 量 —— L1 的公式解。
+ *
+ *  推導來源:reference/01-model.md §1–6。這一頁是那幾節的網頁版,
+ *  不是重寫 —— 改模型時兩邊要一起改,reference/verify.py 會驗同號式子。 */
+import { symbolTable } from "../../components/symbols";
+import { lectureHead, steps } from "../../components/lecture";
+import { eqCard, tex, texAlign, texBlock } from "../../lib/math";
+import type { PageFn } from "../../router";
+
+export const lectureQuantitiesPage: PageFn = (root) => {
+  root.innerHTML = `
+    <div class="wrap">
+      ${lectureHead("一 · 量", "四個數字就決定了全部",
+        `要回答「我這一股背後有多少顆幣是我的」,最少需要四個量。
+         這一頁從那四個量出發,一路定義到股價的恆等式 ——
+         後面三頁的工具、配對、時間,全部建立在這裡的符號上。`)}
+
+      ${symbolTable(["H", "S", "C", "p"])}
+
+      ${steps([
+        {
+          q: "為什麼恰好是這四個?",
+          body: `
+            <p>前兩個是直覺的:幣要除以股數才是每股。真正的內容在第三與第四個 ——
+            而<b>第四個之所以出現,完全是因為第三個以美元計價</b>。</p>
+            ${eqCard(texBlock(String.raw`\text{每股} = \frac{H - C/p}{S}`),
+              "求償權是美元、持幣是幣,兩個單位要靠幣價換算才能相減。這一步決定了後面所有的複雜度,包括為什麼必須把「決策」與「行情」拆開。")}`,
+          edge: `這四個量**不包含營運業務**。MSTR 原本的軟體事業有自己的現金流,
+            但相對於比特幣部位的規模小到可以忽略 —— 這是一個刻意的簡化,不是疏漏。`,
+        },
+        {
+          q: "求償權為什麼要把現金抵掉?",
+          body: `
+            <p>可轉債與優先股在清償順位上排在普通股前面,各自有一筆<b>固定美元面額</b>的
+            請求權。公司手上的美元流動性可以直接抵掉其中一部分 ——
+            那筆錢本來就是準備拿去付利息與股息的。</p>
+            ${eqCard(texBlock(String.raw`C = \underbrace{D}_{\text{可轉債}} + \underbrace{L}_{\text{優先股清算優先權}} - \underbrace{U}_{\text{美元流動性}}`))}
+            <p>三個選擇值得記下來:</p>
+            <ol class="lec-list">
+              <li><b>優先股用清算優先權,不用市價。</b>法律上公司欠的就是那個金額。
+                這個選擇有已知的偏差 —— 市場把優先股標在面額以下時,面額口徑會高估求償權。</li>
+              <li><b>現金抵在最優先的可轉債層</b>,而不是平均分攤。換一種抵法,
+                堆疊圖就不會剛好收斂到 ${tex("H")}。</li>
+              <li><b>${tex("C")} 可以是負的</b>(流動性大於求償權),式子照樣成立,不需要特例。</li>
+            </ol>
+            <div class="note key" style="margin-top:14px">
+              <b>${tex("U")} 是全部的美元流動性,不是只有 USD Reserve。</b>
+              公司自己把它分成兩塊:USD Reserve 由董事會政策指定,<b>只能付優先股股息與債息</b>,
+              由賣幣或資本市場活動補充;其餘是募資到部署之間的過路現金,通常當週就用掉。
+              代數不區分這兩塊,因為 ${tex("C")} 問的是「有多少美元可以抵掉求償權」,
+              不問那筆錢被指定做什麼用。
+            </div>`,
+          edge: `可轉債沒有公開市價,所以面額口徑與市價口徑在它身上沒有差別 ——
+            也就是說,「面額口徑高估多少」這個估計是一個<b>下限</b>。`,
+        },
+        {
+          q: "每股要除以哪個股數?",
+          body: `
+            <p>這裡有一個容易踩的坑:<b>這家公司同時存在三個股數分母</b>,而且差距不小。</p>
+            <div class="lec-table"><table class="mini">
+              <thead><tr><th>分母</th><th>包含什麼</th><th>誰在用</th></tr></thead>
+              <tbody>
+                <tr><td>basic shares</td><td>實際在外的普通股</td><td>本站所有圖表</td></tr>
+                <tr><td>FDSO</td><td>再加上已歸屬的員工權益</td><td>公司的 Net BPS</td></tr>
+                <tr><td>assumed diluted</td><td>再假設全部可轉債都轉股</td><td>公司的 Gross BPS</td></tr>
+              </tbody></table></div>
+            <p>三者不可混用。同一個「每股含幣量」用不同分母算出來的數字會差上幾個百分點,
+            而那個差距足以讓一段期間的結論反向。</p>`,
+          check: `官方 FWP 的敏感度表用的是公司自己的定義。管線拿它當回歸錨點,
+            對不上就讓建置失敗 —— 那是確認分母沒有被悄悄換掉的方法。`,
+        },
+        {
+          q: "兩把尺:帳面與實得",
+          body: `
+            <p>同一堆幣,兩種算法。差別只有一項:<b>要不要把求償權扣掉</b>。</p>
+            ${eqCard(texAlign([
+              String.raw`B &= \frac{H}{S}\times 10^{8} &&\quad\text{帳面每股含幣量}`,
+              String.raw`E &= \frac{H - C/p}{S}\times 10^{8} &&\quad\text{實得每股含幣量}`,
+            ]), "單位都是 sats(1 BTC = 1e8 sats),所以兩者可以直接相減。")}
+            <p>${tex("B")} 的式子裡<b>沒有 ${tex("C")}、也沒有 ${tex("p")}</b> ——
+            所以任何只動到求償權的操作,在 ${tex("B")} 上恆等於零。
+            ${tex("E")} 看得見求償權,代價是也看得見幣價。</p>
+            ${eqCard(texBlock(String.raw`B - E = \frac{C}{p\,S}\times 10^{8}`),
+              "兩把尺的差就是「求償權吃掉的每股幣量」。幣價上漲時固定的美元求償權在幣計價下縮小,這個差自己會收斂。")}
+            <p><b>兩欄不一致的地方,就是這家公司最常被誤讀的地方。</b>
+            公司的 KPI 用 ${tex("B")},而股東真正拿到的是 ${tex("E")}。</p>`,
+          check: `${tex("(1.2)")} 普通股殘量 ${tex(String.raw`= H - C/p`)}`,
+        },
+        {
+          q: "槓桿:一個除法推出兩個彈性",
+          body: `
+            <p>先看曲線與橫軸的交點。${tex("E = 0")} 時:</p>
+            ${eqCard(texBlock(String.raw`H = \frac{C}{p} \quad\Longrightarrow\quad p_{0} = \frac{C}{H}`),
+              "也就是平均每顆幣背了多少美元的求償權。幣價跌到這裡,普通股的殘值歸零。")}
+            <p>再看放大倍數。每股殘值(美元)是 ${tex(String.raw`(Hp-C)/S`)},對幣價取彈性:</p>
+            ${eqCard(texAlign([
+              String.raw`A(p) &= \frac{\mathrm{d}\ln\left((Hp-C)/S\right)}{\mathrm{d}\ln p} = \frac{Hp}{Hp - C} = \frac{1}{1 - p_{0}/p}`,
+              String.raw`\frac{\mathrm{d}\ln E}{\mathrm{d}\ln p} &= A(p) - 1 = \frac{C}{Hp - C}`,
+            ]), "兩個彈性剛好差一個 1。")}
+            <p>這解釋了為什麼美元計價與幣計價的兩張圖長得不一樣:差的那 1 倍
+            <b>就是幣價本身漲了</b>,不是公司替你多賺到的幣。</p>
+            <p>${tex("A")} 會隨幣價上升而自然下降(分母裡求償權的比重變小),
+            所以<b>槓桿會自己衰減</b> —— 除非公司持續補倉把它釘住。</p>`,
+          edge: `${tex("A - 1")} 是<b>導數</b>,只在小變動下成立。單日大幅波動時
+            實測比值與它會有可觀的落差 —— 那不是模型錯了,是導數本來就只描述極限。
+            恆等式(下一節)沒有這個問題。`,
+        },
+        {
+          q: "把它接到股價:恆等式",
+          body: `
+            <p>到這裡都還在講「公司有多少幣」。要連到股價,需要一座橋 —— 市場願意付幾倍:</p>
+            ${eqCard(texBlock(String.raw`m = \frac{P}{\;E/10^{8} \times p\;}
+              \qquad\Longrightarrow\qquad \boxed{\;P = m \times \frac{E}{10^{8}} \times p\;}`))}
+            <div class="note key">
+              <b>注意 ${tex("m")} 的分母是 ${tex("E")},不是 ${tex("H")}。</b>
+              這不是隨便選的 —— 恆等式要成立,${tex("m")} 的分母就必須跟 ${tex("E")} 一致。
+              代價是這個 ${tex("m")} 跟一般人講的 mNAV<b>不是同一個數</b>:
+              一般的 mNAV 分母是總持幣,本站的分母是殘值。
+              同一天可以一個折價、一個溢價,因為分母差了一整個求償權。
+              <br><br>
+              所以看到 ${tex("m")} 偏高不要直接讀成「市場很熱」——
+              它主要反映的是<b>槓桿有多高</b>。
+            </div>`,
+          check: `${tex("(2.1)")} ${tex(String.raw`P = m \times E/10^{8} \times p`)},
+            相對誤差小於 ${tex("5\\times10^{-4}")}。這是恆等式,不是近似 ——
+            驗不過就是資料或模型真的錯了。`,
+        },
+      ])}
+
+      <div class="note" style="margin-top:30px">
+        <b>接下來:</b>這四個量會怎麼變?
+        <a href="#/lecture/tools">講義 · 工具</a>把公司能做的動作窮舉出來 ——
+        而且因為位置只有四個,動作是<b>可以列完</b>的。
+      </div>
+    </div>`;
+};

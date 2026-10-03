@@ -412,3 +412,40 @@ table.ruler tr.subtotal td{border-top:1px solid var(--line);
 a.src{color:inherit;text-decoration:none;border-bottom:1px dotted var(--ink-3)}
 a.src:hover{color:var(--equity);border-bottom-color:var(--equity)}
 a.src::after{content:"↗";font-size:.68em;opacity:.45;margin-left:3px;vertical-align:super}
+
+/* ── 講義 ───────────────────────────────────────────────────────
+   每一節固定是「問題 → 推導 → 驗證 → 邊界」。編號與左邊那條線讓
+   讀者一眼看出層次,而不是靠一直往下滑去推測自己在哪裡。 */
+.lec-step{border-left:2px solid var(--line);padding:0 0 0 22px;margin:0 0 38px}
+.lec-step>h2{display:flex;align-items:baseline;gap:11px;font-size:1.18rem;
+  margin:0 0 14px;line-height:1.4}
+.lec-n{flex:none;width:25px;height:25px;border-radius:50%;background:var(--surface-2);
+  color:var(--ink-3);font:600 .76rem var(--mono);display:grid;place-items:center;
+  margin-left:-35px}
+.lec-body>p{margin:0 0 13px}
+.lec-list{margin:0 0 13px;padding-left:1.25em}
+.lec-list>li{margin-bottom:9px}
+.lec-table{overflow-x:auto;margin:0 0 14px}
+.lec-check,.lec-edge{font-size:.84rem;margin:14px 0 0;padding:9px 13px;
+  border-radius:6px;line-height:1.65}
+.lec-check{background:var(--surface-2);color:var(--ink-2)}
+.lec-check b{color:var(--good)}
+.lec-edge{background:color-mix(in srgb,var(--warn) 9%,transparent);color:var(--ink-2)}
+.lec-edge b{color:var(--warn)}
+
+/* 四個位置的圖 —— 講義「工具」那一層的主軸 */
+.place-map{margin:0 0 32px;padding:0}
+.place-map svg{width:100%;height:auto;max-width:620px;display:block;margin:0 auto}
+.place-map figcaption{font-size:.84rem;color:var(--ink-2);line-height:1.7;
+  max-width:46em;margin:6px auto 0;text-align:center}
+.pm-arrow{opacity:.85}
+.pm-arrow:hover{opacity:1}
+
+/* 工具卡片上的路徑標示 */
+.tool-path{font:.76rem var(--mono);color:var(--ink-3);white-space:nowrap}
+.tool-path .arr{opacity:.55;margin:0 2px}
+
+@media(max-width:640px){
+  .lec-step{padding-left:16px}
+  .lec-n{margin-left:-29px;width:22px;height:22px;font-size:.7rem}
+}

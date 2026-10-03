@@ -490,3 +490,23 @@ def test_the_docs_do_not_claim_a_stale_tool_count():
             if m.group(1) != _CN[len(T.COMBOS)] and not quoted(m.start()):
                 bad.append(f"{f.name}: 「{m.group(0)}」應為 {want_combos}")
     assert bad == [], "\n".join(bad)
+
+
+def test_tool_notes_do_not_leak_code_identifiers():
+    """工具說明是**給讀者看的**,不該出現 Python 的識別字。
+
+    這一條是補一次實害:講義頁上出現過「見 CONVERT_CONVERSION」——
+    程式註解的寫法直接流到了使用者眼前。toolbox 的 note 欄位有雙重身分
+    (程式註解 + 網頁文案),所以要有東西盯著它別寫成前者。
+    """
+    import re
+
+    bad = []
+    for t in list(T.TOOLS) + list(T.COMBOS):
+        ids = re.findall(r"\b[A-Z][A-Z_]{3,}\b", t.note)
+        # 允許的全大寫詞:金融術語與券種代碼,不是識別字
+        ids = [i for i in ids if i not in {"ATM", "KPI", "USD", "BTC", "MSTR",
+                                           "STRC", "STRF", "STRK", "STRD", "STRE"}]
+        if ids:
+            bad.append(f"{t.id}: {ids}")
+    assert bad == [], "\n".join(bad)

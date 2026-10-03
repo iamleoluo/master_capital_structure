@@ -294,7 +294,7 @@ ISSUE_PREFERRED = Tool(
     accretive=lambda s, k: k["c"] > k["F"],      # 溢價發行才加分,實務上罕見
     latex_b=r"\Delta B = \frac{c}{p\,S}\times 10^{8} > 0",
     latex_e=r"\Delta E = \frac{c - F}{p\,S}\times 10^{8} \le 0",
-    note="與 BUY_BTC 串起來就是 phantom growth:B 上升而 E 下降。",
+    note="與「用現金買幣」串起來就是 phantom growth:B 上升而 E 下降。",
 )
 
 BUYBACK_PREFERRED = Tool(
@@ -316,7 +316,7 @@ CONVERT_ISSUE = Tool(
     latex_b=r"\Delta B = \frac{c}{p\,S}\times 10^{8} > 0",
     latex_e=r"\Delta E = \frac{c - F}{p\,S}\times 10^{8} \le 0",
     note="與優先股發行同形。平價發行時 c = F,對 E 恰好中性 —— "
-         "真正的差別在價內時會轉成股票(見 CONVERT_CONVERSION),"
+         "真正的差別在價內時會轉成股票(見「可轉債轉股」),"
          "求償權自動消失,所以它是唯一會自己蒸發的那種槓桿。",
 )
 

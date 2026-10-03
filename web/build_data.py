@@ -582,6 +582,26 @@ def build_program(daily: dict, weekly: list) -> dict:
 # meta.json
 # ---------------------------------------------------------------------------
 
+def build_formulas() -> dict:
+    """**公式解**那一欄的資料檔 —— `app/data/formulas.json`。
+
+    講義只准吃這一份。裡面沒有任何觀測值:位置、工具、組合、各自的代數
+    與判準,全部來自 `toolbox`(公式解的實作),改了幣價也不會變一個字。
+
+    與 `meta.toolkit` 同源(`build_toolkit()`),但分成兩個檔案是刻意的 ——
+    `meta.json` 裡有大量數值(錨點、findings、敏感度表),讓講義 import 它
+    就等於把數值解的大門開著。見 CLAUDE.md 的「公式解 vs 數值解」。
+    """
+    from mstr_cebe import toolbox as TB         # noqa: E402
+
+    return {
+        "places": [{"id": k, "label": v} for k, v in TB.PLACES.items()],
+        "assets": list(TB.ASSET_PLACES),
+        "sources": list(TB.SOURCE_PLACES),
+        "tools": build_toolkit(),
+    }
+
+
 def build_provenance(daily: dict, chronicle: list) -> dict:
     """出處、粒度、資金對帳 —— 資料品質頁的三個新區塊。
 
@@ -1016,7 +1036,7 @@ def main() -> int:
 
     for name, payload in (("daily", daily), ("weekly", weekly),
                           ("meta", meta), ("chronicle", chronicle),
-                          ("strategy", strategy)):
+                          ("strategy", strategy), ("formulas", build_formulas())):
         path = os.path.join(OUT, f"{name}.json")
         with open(path, "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))

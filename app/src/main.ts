@@ -8,6 +8,11 @@ import { startRouter, topRoutes, type Route } from "./router";
  *  同一個題目的兩半,但各自夠長,合成一頁會變成很難找東西的長捲軸。 */
 const routes: Route[] = [
   { path: "/", title: "總覽", page: async () => (await import("./pages/overview")).overviewPage },
+  { path: "/lecture", title: "講義", page: async () => (await import("./pages/lecture/quantities")).lectureQuantitiesPage },
+  { path: "/lecture/quantities", parent: "/lecture", title: "一 · 量", page: async () => (await import("./pages/lecture/quantities")).lectureQuantitiesPage },
+  { path: "/lecture/tools", parent: "/lecture", title: "二 · 工具", page: async () => (await import("./pages/lecture/tools")).lectureToolsPage },
+  { path: "/lecture/pairing", parent: "/lecture", title: "三 · 配對", page: async () => (await import("./pages/lecture/pairing")).lecturePairingPage },
+  { path: "/lecture/time", parent: "/lecture", title: "四 · 時間", page: async () => (await import("./pages/lecture/time")).lectureTimePage },
   { path: "/chronicle", title: "大事記", page: async () => (await import("./pages/chronicle")).chroniclePage },
   { path: "/structure", title: "資本結構", page: async () => (await import("./pages/structure")).structurePage },
   { path: "/structure/holdings", parent: "/structure", title: "持幣與融資", page: async () => (await import("./pages/accumulation")).accumulationPage },
