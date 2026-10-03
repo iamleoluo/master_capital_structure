@@ -25,7 +25,7 @@ const LADDER: Array<[string, string, string, string]> = [
 export const lectureStructurePage: PageFn = (root) => {
   root.innerHTML = `
     <div class="wrap">
-      ${lectureHead("〇 · 資本架構", "風險怎麼一步步被推出去",
+      ${lectureHead("〇 · 資本架構", "風險的轉嫁路徑與其約束",
         `後面四節從四個原始量開始。但那四個量不是會計事實 ——
          <b>求償權是三代工具堆出來的結果</b>,而溢價能大於一是因為有人全職在維持它。
          這一節講公司在蓋什麼、為什麼非得這樣蓋,四節的符號才有意義。`)}

@@ -27,7 +27,7 @@ export const provenancePage: PageFn = (root) => {
     <div class="wrap">
       <div class="page-head">
         <p class="eyebrow">出處</p>
-        <h1>每個數字是怎麼來的</h1>
+        <h1>資料的來源與可信度</h1>
         <p class="lede">申報原文全部內容定址存檔,解析器只讀檔案庫、不碰網路 ——
           同一份原文永遠解出同一個數字。這一頁講的是<b>數字怎麼來的</b>;
           <b>能信多少</b>(插值距離、口徑偏差)貼在

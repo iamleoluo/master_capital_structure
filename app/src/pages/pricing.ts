@@ -28,7 +28,7 @@ export const pricingPage: PageFn = (root) => {
     <div class="wrap">
       <div class="page-head">
         <p class="eyebrow">槓桿與定價</p>
-        <h1>槓桿怎麼放大,價格怎麼回推</h1>
+        <h1>槓桿的放大倍數與價格回推</h1>
         <p class="lede">求償權的面額鎖死在美元,所以它在幣計價下的大小完全由 BTC 價格決定 ——
           這讓普通股的實得每股含幣量變成一個<b>對 BTC 價格有槓桿的部位</b>:
           BTC 漲,同一筆求償權吃掉的幣變少,實得每股含幣量不用多買一顆就會自己上升;

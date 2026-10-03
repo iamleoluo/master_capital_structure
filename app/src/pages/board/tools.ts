@@ -51,7 +51,7 @@ export const boardToolsPage: PageFn = (root) => {
 
   root.innerHTML = `
     <div class="wrap">
-      ${boardHead("二 · 資本操作", "實際動用過的工具",
+      ${boardHead("二 · 資本操作", "已動用工具的規模與分布",
         `${"推導列出公司<b>能做</b>的九個動作。這一頁是它<b>做過</b>的每一筆 ——"
         }以及每一筆對帳面每股與實得每股的效果。
          效果由同一套代數算出來,不是另外估的。`,

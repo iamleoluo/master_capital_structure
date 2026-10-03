@@ -27,7 +27,7 @@ export const boardQuantitiesPage: PageFn = (root) => {
 
   root.innerHTML = `
     <div class="wrap">
-      ${boardHead("一 · 每股計量", "四個量的當期讀數", 
+      ${boardHead("一 · 每股計量", "當期的兩種每股含幣量", 
         `${"推導說只需要四個量就能決定全部。這一頁是那四個量今天的值,"
         }以及每一個是<b>申報當日的硬資料</b>還是插值出來的。`,
         "#/lecture/quantities", daily.date[i]!)}

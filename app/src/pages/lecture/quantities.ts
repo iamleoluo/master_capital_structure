@@ -10,7 +10,7 @@ import type { PageFn } from "../../router";
 export const lectureQuantitiesPage: PageFn = (root) => {
   root.innerHTML = `
     <div class="wrap">
-      ${lectureHead("一 · 每股計量", "公司公布的每股,與股東實得的每股",
+      ${lectureHead("一 · 每股計量", "兩種口徑下的每股含幣量",
         `上一節說目的只有一個:<b>每一股背後含有的比特幣要變多</b>。
          問題是 ——「每股含幣量」有<b>兩種算法</b>,而且它們常常給出相反的答案。
          <br>公司公布的那個,分子是<b>總持幣,不扣求償權</b>;

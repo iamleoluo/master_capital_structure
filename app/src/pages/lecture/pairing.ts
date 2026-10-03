@@ -36,7 +36,7 @@ function card(t: Formula): string {
 export const lecturePairingPage: PageFn = (root) => {
   root.innerHTML = `
     <div class="wrap">
-      ${lectureHead("三 · 來源與用途", "把募資與動用連起來",
+      ${lectureHead("三 · 來源與用途", "資金來源與用途的配對",
         `單看一把工具,說不出淨效果 —— 募資與償還會讓求償權與現金同方向移動。
          更重要的是:<b>單看一筆動作,也看不出它為了什麼。</b>
          折價回購看起來是賺一點價差,但它真正的用途是<b>把閘門打開</b>,

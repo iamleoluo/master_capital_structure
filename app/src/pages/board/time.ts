@@ -83,7 +83,7 @@ export const boardTimePage: PageFn = (root) => {
     <div class="wrap">
       <div class="page-head">
         <p class="eyebrow">儀表板 · 四 · 績效歸因</p>
-        <h1>這波漲幅,有多少是公司做出來的</h1>
+        <h1>當期區間的四層歸因結果</h1>
         <p class="lede">從<b>第一次賣幣</b>(${WINDOW_START})起算 —— 那是這家公司第一次
           必須在「繼續累積」與「守住結構」之間做取捨,在那之前沒有什麼好歸因的。
           選一個起點,看到今天為止股東拿到的報酬怎麼分層:哪些來自比特幣本身、

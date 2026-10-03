@@ -42,7 +42,7 @@ function card(t: Formula): string {
 export const lectureToolsPage: PageFn = (root) => {
   root.innerHTML = `
     <div class="wrap">
-      ${lectureHead("二 · 資本操作", "每一種操作,對兩把尺各自做了什麼",
+      ${lectureHead("二 · 資本操作", "資本操作對兩項每股指標的效果",
         `要讓每股含幣量變多,就得動作 —— 發行、買幣、回購、賣幣。
          公司把這套叫「動態再平衡的雙向資本工具箱」。
          <b>但那個說法說得出用了哪一把,說不出對股東是加分還減分。</b>

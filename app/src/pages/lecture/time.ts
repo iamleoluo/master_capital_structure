@@ -11,7 +11,7 @@ import type { PageFn } from "../../router";
 export const lectureTimePage: PageFn = (root) => {
   root.innerHTML = `
     <div class="wrap">
-      ${lectureHead("四 · 績效歸因", "這段漲幅,有多少是公司做出來的",
+      ${lectureHead("四 · 績效歸因", "區間報酬的四層分解",
         `回到最前面那個問題:<b>長期到底有沒有贏過比特幣?</b>
          公司公布的「比特幣收益率」是一段期間的相對增長率,
          <b>但它不告訴你那段變化裡有多少是幣價漲的、多少是公司做出來的。</b>
