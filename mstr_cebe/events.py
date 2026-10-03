@@ -212,7 +212,7 @@ def all_events(conn: sqlite3.Connection, *, kind: Optional[str] = None,
 #    dividends on Strategy's preferred stock and $52.3 million ... were used to
 #    fund repurchases of STRC Stock under the Digital Credit Securities
 #    Repurchase Program."
-# 這是**文件自己寫的分配**,比任何金額相似度推論都強 —— L3 的配對要靠它,
+# 這是**文件自己寫的分配**,是 L3 最強的那一級配對證據 ——
 # 所以在 L2 就解析成結構,而不是留一段自由文字給上層去猜。
 _ALLOC_PAT = re.compile(
     r"\$([\d,.]+)\s*(million|billion)\s+in proceeds from the bitcoin sales?\s+"

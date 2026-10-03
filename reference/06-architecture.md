@@ -298,16 +298,27 @@ CREATE TABLE operation_events (
 
 | 規則 | 來源事件 | 用途事件 | 對帳條件 |
 |---|---|---|---|
-| `sell_to_buyback` | `btc_sale` | `preferred_repurchase` | 賣幣所得 ≈ 回購成本 |
-| `atm_to_buyback` | `atm_issue(MSTR)` | `preferred_repurchase` | 淨募資 ≈ 回購成本 |
+| `atm_to_btc` | `atm_issue(MSTR)` | `btc_purchase` | 淨募資 ≈ 買幣金額 |
 | `preferred_to_btc` | `atm_issue(STRx)` | `btc_purchase` | 淨募資 ≈ 買幣金額 |
-| `sell_to_reserve` | `btc_sale` | `reserve_change(+)` | 賣幣所得 ≈ 儲備增加 |
+| `atm_to_buyback` | `atm_issue(MSTR)` | `preferred_repurchase` | 淨募資 ≈ 回購成本 |
+| `sell_to_buyback` | `btc_sale` | `preferred_repurchase` | 賣幣所得 ≈ 回購成本 |
+
+> ⚠️ 早期版本還列了 `sell_to_reserve`。**那不是組合,是單一工具** ——
+> 美元流動性本來就是賣幣的終點,不需要第二步(見 [02 §4](02-operations.md))。
 
 信心度由證據強度決定:
 
-- **高** — 同一份 8-K,金額誤差 < 5%,且敘述句同時提到兩者
-- **中** — 同一份 8-K 或同一週,金額誤差 < 15%
-- **低** — 只有時間相近
+| | 條件 | 信心 |
+|---|---|---|
+| 文件明寫用途 | 敘述句直接說這筆錢拿去做那件事,金額誤差 < 5% | 0.9 |
+| 金額 | 一來源對一用途且誤差 < 5%;或多來源的**加總** ≈ 用途 | 0.8 |
+| 只支應一部分 | 文件寫了用途,但金額只覆蓋一部分 → 不合併,記下關係 | 0.6 |
+
+> **這張表一直是對的 —— 走偏的是實作。** 規格從第一天就寫著
+> 「找到角色互補、**金額對得上**的事件」,而實作卻收窄成「只看文件明寫」,
+> 然後把那個收窄當成設計決定寫回文件。2026-10-03 改回來:
+> 配出來的組合從 2 筆變成 14 筆,另有 34 筆多來源關係。
+> 記在 [04-decisions.md](04-decisions.md)。
 
 ### 三條不可妥協的性質
 

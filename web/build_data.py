@@ -629,7 +629,12 @@ def build_operations_feed(daily: dict) -> list:
                 "kind": "combo" if op.combo_id in {c.id for c in T.COMBOS}
                         else "atom",
                 "lo": op.window_lo, "hi": op.window_hi,
-                "qty": op.params.get("qty"), "usd": op.params.get("usd"),
+                # 組合操作的參數是 (n, P) / (c, F) 這種代數形狀,沒有 usd 欄位 ——
+                # 金額從證據裡取,否則前端會顯示一排空白
+                "qty": op.params.get("qty"),
+                "usd": (op.params.get("usd")
+                        or op.evidence.get("sources_total_usd")
+                        or op.evidence.get("stated_usd")),
                 "dB": round(eff["dB"], 2) if eff else None,
                 "dE": round(eff["dE"], 2) if eff else None,
                 # None = 這把工具結構上恆中性,不是「算不出來」
