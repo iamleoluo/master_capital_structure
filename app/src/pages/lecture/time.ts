@@ -113,7 +113,7 @@ export const lectureTimePage: PageFn = (root) => {
         <a href="#/lecture/quantities">量</a> →
         <a href="#/lecture/tools">工具</a> →
         <a href="#/lecture/pairing">配對</a> → 時間。
-        同一套結構代進真實參數,就是數值解 —— 見<a href="#/">總覽</a>。
+        同一套結構代進真實參數,就是<a href="#/board">儀表板</a>。
       </div>
     </div>`;
 };

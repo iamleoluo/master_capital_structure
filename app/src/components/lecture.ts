@@ -26,8 +26,7 @@ export function lectureHead(eyebrow: string, title: string, lede: string): strin
     </div>
     <div class="note" style="margin-bottom:28px">
       <b>這一頁不帶任何數字。</b>講義解的是<b>公式解</b> ——
-      同一套 L1–L4 代進真實參數之後就是數值解,今天的讀數在
-      <a href="#/">總覽</a>與其他頁。兩邊是同一個結構,解兩次。
+      同一套 L1–L4 代進真實參數之後就是數值解,今天的讀數在<a href="#/board">儀表板</a>。兩邊是同一個結構,解兩次。
     </div>`;
 }
 

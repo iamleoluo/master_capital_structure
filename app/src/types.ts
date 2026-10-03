@@ -173,6 +173,28 @@ export interface Provenance {
            prorated_b: number; resolvable: boolean }[];
 }
 
+/** L3 的一筆具名資本操作(數值解)。
+ *  公式解那一欄的對應物是 formulas.ts 的 Formula ——
+ *  同一把工具,一個講代數、一個講這一週實際做了多少。 */
+export interface Operation {
+  id: string;
+  /** toolbox 的工具 id,可以對回 formulas.byId */
+  tool: string;
+  kind: "atom" | "combo";
+  lo: string; hi: string;
+  qty: number | null; usd: number | null;
+  /** 對兩把尺的效果(sats)。由 toolbox.effect() 算,不是前端算的 */
+  dB: number | null; dE: number | null;
+  /** true/false = 加分/減分;null = 這把工具結構上恆中性 */
+  accretive: boolean | null;
+  /** 配對規則與信心度。unpaired = 單一操作,沒有配對 */
+  rule: string; conf: number;
+  /** 文件原句 —— 配對的依據。沒有配對就是 null */
+  quote: string | null;
+  /** 來源申報的 EDGAR accession */
+  acc: string[];
+}
+
 export interface Meta {
   ipos: Ipo[];
   /** 資本結構工具箱 —— 公司能動用的完整槓桿清單 */
