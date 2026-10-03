@@ -60,6 +60,9 @@ CREATE INDEX IF NOT EXISTS idx_ev_doc ON events(doc_id);
 KINDS: Dict[str, tuple] = {
     "btc_purchase":           ("action", "buy_btc"),
     "btc_sale":               ("action", "sell_btc"),
+    # 揭露了「本週無買賣」。是**觀測**不是動作 —— 公司什麼都沒做,
+    # 但它確實告訴了我們這件事,所以不能當成沒有這筆資料。
+    "btc_no_activity":        ("observation", None),
     "atm_issue":              ("action", None),   # 工具看 instrument,見 tool_for()
     "preferred_repurchase":   ("action", "buyback_preferred"),
     "convert_issue":          ("action", "issue_preferred"),
@@ -390,7 +393,13 @@ def derive(conn: sqlite3.Connection, *, since: dt.date = dt.date(2024, 7, 1),
         for rec in fetch_8k_btc.parse_activity(html):
             delta = rec["btc_delta"]
             px = rec.get("avg_price")
-            kind = "btc_purchase" if delta > 0 else "btc_sale"
+            # delta == 0 是「本週揭露了,但沒有買賣」——
+            # 它既不是買也不是賣。歸成 btc_sale 會讓 min(btc_sale) 之類的
+            # 查詢答出一個公司根本沒賣幣的日期(實測答 2025-04-06 而不是
+            # 真正的首次賣出)。金額為零所以不影響任何數字,但語意是錯的。
+            kind = ("btc_purchase" if delta > 0
+                    else "btc_sale" if delta < 0
+                    else "btc_no_activity")
             # 季末的 8-K 會附一列「該季合計」,格式與週列一模一樣。
             # 把它當週紀錄會與那一季的各週重複計算 —— 實測 2025 年因此
             # 多算了 $19.4B(10-K 宣稱全年 $22.47B,現行管線算出 $35.88B)。
@@ -688,7 +697,7 @@ def weekly_activity(conn: sqlite3.Connection) -> List[dict]:
     out = []
     for period, evs in sorted(_latest_per_period(rows).items()):
         e = evs[0]
-        # 「本週無買賣」的 8-K 也會出一列(qty=0),目前被歸成 btc_sale ——
+        # 「本週無買賣」現在歸成 btc_no_activity(觀測),不會走到這裡。
         # 乘上 -1 會產生 -0.0,序列化出去就與舊檔不同。判斷要帶上 qty。
         sign = -1 if (e["kind"] == "btc_sale" and e["qty"]) else 1
         holdings = None

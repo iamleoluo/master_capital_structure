@@ -2,7 +2,7 @@
  *
  *  推導列出公司能做的九個動作;這一頁列出它**實際做過**的每一筆,
  *  以及每一筆對兩把尺的效果。效果由 Python 的 toolbox 算,前端只排版。 */
-import { operations } from "../../data";
+import { meta, operations } from "../../data";
 import { byId } from "../../formulas";
 import { boardHead, tile } from "../../components/board";
 import { edgarUrl } from "../../lib/format";
@@ -97,6 +97,48 @@ export const boardToolsPage: PageFn = (root) => {
           <th class="n">ΔB</th><th class="n">ΔE</th><th>判準</th></tr></thead>
         <tbody>${recent.map(row).join("")}</tbody>
       </table></div></div>
+
+      <h2 style="margin:32px 0 10px">還能做多少:兩條上界</h2>
+      <p class="lede" style="margin-bottom:12px">
+        上面是<b>做過什麼</b>。這一節是<b>還能做多少</b> ——
+        兩條都不進任何恆等式,所以它們不會讓建置失敗,
+        但它們決定公司會不會被迫做不划算的事。
+      </p>
+      <div class="grid2" style="gap:14px;margin-bottom:12px">
+        <div class="card" style="padding:16px 18px">
+          <div class="eyebrow" style="margin:0 0 8px">增厚上界</div>
+          <div style="font-size:1.6rem;font-weight:600">${meta.limits.ceiling.toFixed(1)}%</div>
+          <p style="font-size:.84rem;color:var(--ink-2);margin:8px 0 0">
+            以今天的 CEBE mNAV <b>${meta.limits.mnav.toFixed(3)}x</b>,
+            年度實得每股含幣量的成長率<b>最多只能到這裡</b> ——
+            推導見 <a href="#/lecture/structure">推導 · 資本架構</a>最後一節。
+          </p>
+          <div class="scroller" style="margin-top:10px"><table class="mini">
+            <thead><tr><th>目標年成長</th><th class="n">需要增發的股數比例</th></tr></thead>
+            <tbody>${meta.limits.need.map((n) => `
+              <tr><td>${n.y}%</td>
+                  <td class="n">${n.x == null
+                    ? `<b class="down">不可達</b>`
+                    : n.x.toFixed(1) + "%"}</td></tr>`).join("")}</tbody>
+          </table></div>
+          <p style="font-size:.78rem;color:var(--ink-3);margin:8px 0 0">
+            「不可達」不是「需要很大的增發」—— 是<b>在數學上做不到</b>。
+          </p>
+        </div>
+        <div class="card" style="padding:16px 18px">
+          <div class="eyebrow" style="margin:0 0 8px">現金跑道</div>
+          <div style="font-size:1.6rem;font-weight:600">${meta.limits.runwayYears.toFixed(1)} 年</div>
+          <p style="font-size:.84rem;color:var(--ink-2);margin:8px 0 0">
+            美元儲備 <b>\$${meta.limits.reserveB.toFixed(2)}B</b> ÷
+            年化股息與利息 <b>\$${meta.limits.annualObligationsB.toFixed(2)}B</b>。
+            董事會的硬性底線是<b>不得低於 12 個月</b>。
+          </p>
+          <p style="font-size:.78rem;color:var(--ink-3);margin:8px 0 0">
+            ⚠️ 年化承諾目前是<b>單一常數</b>,不隨發行事件變動 ——
+            所以這個數字會隨新發行而偏高。已知缺口。
+          </p>
+        </div>
+      </div>
 
       <div class="note" style="margin-top:28px">
         <b>接下來:</b>公司幾乎不會只做一個動作。

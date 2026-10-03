@@ -377,6 +377,10 @@ def test_parser_output_still_matches_the_committed_raw_files(no_network):
                        for r in _E.all_events(econn, granularity="quarter")
                        if r["kind"] in ("btc_purchase", "btc_sale")
                        and r["locator"].startswith("activity/")}
+        # 「本週無買賣」(qty=0)不是動作,所以不進 web/raw 的活動檔。
+        # 它仍然是一筆**觀測** —— 公司確實揭露了「這週什麼都沒做」。
+        ev_idle = {r["period_end"] for r in _E.all_events(econn)
+                   if r["kind"] == "btc_no_activity"}
         raw_holdings = dict(_json.load(open(
             os.path.join(raw, "btc_holdings_weekly.json"), encoding="utf-8")))
         raw_weeks = {a["week_end"] for a in _json.load(open(
@@ -392,8 +396,10 @@ def test_parser_output_still_matches_the_committed_raw_files(no_network):
     for d, v in ev_holdings.items():
         assert raw_holdings[d] == v, d
 
-    # 活動檔則相反 —— 恰好少掉季合計那幾列,而且每一列都還在事件層裡
-    assert {a["week_end"] for a in activity} - raw_weeks == ev_quarters
+    # 活動檔則相反 —— 恰好少掉兩種列:季合計,以及「本週無買賣」。
+    # 兩者都還在事件層裡,只是一個是別的粒度、一個是觀測而非動作。
+    assert {a["week_end"] for a in activity} - raw_weeks == ev_quarters | ev_idle
+    assert not (ev_quarters & ev_idle)
     assert raw_weeks == ev_weeks          # 週粒度的那些一列不少
     assert not (ev_weeks & ev_quarters)   # 兩種粒度沒有落在同一個期末
 

@@ -457,10 +457,20 @@ def main(argv: Optional[List[str]] = None) -> int:
         ev = op.evidence
         print(f"\n配對 {op.combo_id}  {op.window_lo} → {op.window_hi}"
               f"  信心 {op.confidence}")
+        # 每一種規則帶的證據欄位不同(敘述配對有原話與同文件旗標,
+        # 金額配對只有金額差,多來源關係兩者都沒有)—— 所以逐欄問,
+        # 不要假設它們長一樣。
         kind = "只支應一部分" if ev.get("partial") else "全額支應"
-        print(f"  {kind}  依據:{ev['basis']}  金額差 {ev['amount_gap_pct']}%"
-              f"  同一份文件:{ev['same_document']}")
-        print(f"  文件原話:「{ev['quoted'][:110]}」")
+        bits = [kind, f"依據:{ev.get('basis', op.rule)}"]
+        if ev.get("amount_gap_pct") is not None:
+            bits.append(f"金額差 {ev['amount_gap_pct']}%")
+        if "same_document" in ev:
+            bits.append(f"同一份文件:{ev['same_document']}")
+        print("  " + "  ".join(bits))
+        # 金額配對沒有文件原話 —— 它的依據就是金額本身。
+        # 無條件印會 KeyError,而那正是「依據不是敘述」的情況。
+        if ev.get("quoted"):
+            print(f"  文件原話:「{ev['quoted'][:110]}」")
     return 0
 
 

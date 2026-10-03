@@ -782,6 +782,38 @@ def build_vol_ladder(daily: dict, window: int = 30) -> dict:
             "amp": round(mstr / btc, 2) if btc and mstr else None}
 
 
+def build_limits(daily: dict) -> dict:
+    """兩條會限制住擴張的量,放在同一個地方因為它們問的是同一件事:
+    **公司還能不能繼續做下去。**
+
+      * 增厚上界 —— 以今天的 CEBE mNAV,年度每股含幣量成長率最多到哪
+        (03-operations §3.1 的 y < m−1);
+      * 現金跑道 —— 美元儲備能支應幾年的股息與利息。
+
+    兩者都不進任何恆等式,所以漏掉不會讓測試變紅 —— 但它們決定
+    「公司會不會被迫做不划算的事」,而那正是這個工具要回答的問題。
+    """
+    import mstr_cebe.data as D
+    from mstr_cebe import scenario as SC
+
+    m = daily["mnav_cebe"][-1]
+    ceiling = SC.max_accretion_yield(m)
+    # 幾個代表性的目標要多少稀釋 —— None 代表在數學上不可達
+    targets = [0.05, 0.10, 0.15, 0.20]
+    need = [{"y": round(t * 100), "x": (None if (v := SC.dilution_for_yield(m, t)) is None
+                                        else round(v * 100, 1))} for t in targets]
+    runway = (D.PARAMS_2026_08_24["usd_reserve"]
+              / D.FWP_2026_08_24_ANNUAL_OBLIGATIONS)
+    return {
+        "mnav": round(m, 3),
+        "ceiling": round(ceiling * 100, 1),
+        "need": need,
+        "runwayYears": round(runway, 1),
+        "annualObligationsB": round(D.FWP_2026_08_24_ANNUAL_OBLIGATIONS / 1e9, 2),
+        "reserveB": round(D.PARAMS_2026_08_24["usd_reserve"] / 1e9, 2),
+    }
+
+
 def build_gate(daily: dict) -> dict:
     """閘門:STRC 市價相對面額。
 
@@ -1179,6 +1211,7 @@ def main() -> int:
     meta["prov"] = build_provenance(daily, chronicle)
     meta["vol"] = build_vol_ladder(daily)
     meta["gate"] = build_gate(daily)
+    meta["limits"] = build_limits(daily)
 
     for name, payload in (("daily", daily), ("weekly", weekly),
                           ("meta", meta), ("chronicle", chronicle),

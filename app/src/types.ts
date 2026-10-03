@@ -216,6 +216,14 @@ export interface Post {
 }
 
 export interface Meta {
+  /** 兩條限制擴張的量:增厚上界(y < m−1)與現金跑道。
+   *  need[].x 為 null 代表那個目標在數學上不可達,不是「需要很大的增發」。 */
+  limits: {
+    mnav: number; ceiling: number;
+    need: Array<{ y: number; x: number | null }>;
+    runwayYears: number; annualObligationsB: number; reserveB: number;
+  };
+
   /** 閘門:STRC 市價相對 $100 面額。開著才能再發行、買幣、加槓桿。
    *  只看 STRC —— 它是唯一一檔被主動管理回面額的。見 reference/00-purpose §3。 */
   gate: {

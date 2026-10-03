@@ -358,3 +358,20 @@ def test_a_common_stock_buyback_is_not_priced_at_par():
     tool, kw = O.tool_params(fake)
     assert tool is T.BUYBACK_PREFERRED
     assert kw["F"] == 1e6 * O.PAR_PER_SHARE
+
+
+def test_the_cli_survives_every_pairing_rule(capsys) -> None:
+    """`python3 -m mstr_cebe.operations rebuild` 要對**每一種規則**都印得出來。
+
+    由來:2026-10-04。`main()` 無條件印 `quoted` 與 `same_document`,
+    但那兩個欄位只有**敘述配對**才有 —— 金額配對的依據就是金額本身。
+    於是 CLI 在跑到第一筆金額配對時 KeyError 當掉。
+
+    ⚠️ 這個 bug 一直都在,而且**測試全綠** —— 因為測試呼叫的是 `build()`,
+    從來沒有人跑過 `main()` 的列印路徑。
+    與 `test_module_main_guard_is_last` 同一類:CLI 壞了而測試看不到。
+    """
+    import mstr_cebe.operations as O
+    assert O.main(["rebuild"]) == 0
+    out = capsys.readouterr().out
+    assert "對帳" in out and "配對" in out
