@@ -20,7 +20,6 @@ const routes: Route[] = [
   { path: "/board/time", parent: "/board", title: "四 · 時間", page: async () => (await import("./pages/board/time")).boardTimePage },
   { path: "/chronicle", title: "大事記", page: async () => (await import("./pages/chronicle")).chroniclePage },
   { path: "/structure", title: "資本結構", page: async () => (await import("./pages/structure")).structurePage },
-  { path: "/structure/holdings", parent: "/structure", title: "持幣與融資", page: async () => (await import("./pages/accumulation")).accumulationPage },
   { path: "/structure/model", parent: "/structure", title: "求償權與殘值", page: async () => (await import("./pages/structure")).structurePage },
   { path: "/operations", title: "資本操作", page: async () => (await import("./pages/operations")).operationsPage },
   { path: "/strategy", title: "績效歸因", page: async () => (await import("./pages/strategy")).strategyPage },
@@ -32,7 +31,7 @@ const routes: Route[] = [
   { path: "/posts/structure", parent: "/posts", title: "資本結構",
     page: async () => (await import("./pages/posts/list")).postsStructurePage,
     dynamic: async (slug) => (await import("./pages/posts/detail")).postDetail(slug) },
-  { path: "/data-quality", title: "資料品質", page: async () => (await import("./pages/dataQuality")).dataQualityPage },
+  { path: "/provenance", title: "出處", page: async () => (await import("./pages/provenance")).provenancePage },
 ];
 
 const THEME_KEY = "mstr-theme";

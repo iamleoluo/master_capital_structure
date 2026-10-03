@@ -1,5 +1,12 @@
-import { daily, meta, N } from "../data";
-import { accumulationStats } from "../charts/accumulation";
+/** 出處 —— L1 的檔案庫、粒度規則與資金對帳。
+ *
+ *  **「這個數字能信多少」溶在儀表板每個數字旁邊;這一頁講的是
+ *  「這個數字是怎麼來的」。** 兩件事不同(見 reference/09-site.md §2.1)。
+ *
+ *  由 pages/dataQuality.ts 改名而來:原本那一頁把兩件事混在一起,
+ *  讀者要讀完整頁才知道哪裡不能信。插值距離與結構變化偵測已搬到
+ *  儀表板 · 量,留在這裡的是出處本身。 */
+import { meta } from "../data";
 import { edgarFormUrl } from "../lib/format";
 import type { PageFn } from "../router";
 
@@ -13,76 +20,21 @@ const SRC_LABEL: Record<string, string> = {
   sec_submissions: "申報索引",
 };
 
-export const dataQualityPage: PageFn = (root) => {
-  const buckets = { live: 0, near: 0, far: 0 };
-  for (const s of daily.stale) {
-    if (s <= 15) buckets.live++;
-    else if (s <= 90) buckets.near++;
-    else buckets.far++;
-  }
-  const anchors = meta.anchors.btc_held;
-  const gaps = anchors.slice(1).map((a, i) =>
-    (new Date(a[0]).getTime() - new Date(anchors[i]![0]).getTime()) / 86400000);
-  const maxGap = Math.max(...gaps);
-  const avgGap = gaps.reduce((s, g) => s + g, 0) / gaps.length;
-  // 與「持幣與融資」頁共用同一套定義,避免同一個網站出現兩個不一樣的涵蓋率:
-  // 分母只算真的有進出幣的週次(零交易週不需要資金來源),
-  // 分子是敘述句明示 + 由 ATM 表推得。
-  const st = accumulationStats();
+export const provenancePage: PageFn = (root) => {
   const prov = meta.prov;
 
   root.innerHTML = `
     <div class="wrap">
       <div class="page-head">
-        <p class="eyebrow">資料品質</p>
-        <h1>這份分析站不住的地方</h1>
-        <p class="lede">每個數字的來源與可信度都攤開來講。原始數值全部保留未改 ——
-          發現來源自相矛盾時記錄下來,而不是悄悄修掉。</p>
+        <p class="eyebrow">出處</p>
+        <h1>每個數字是怎麼來的</h1>
+        <p class="lede">申報原文全部內容定址存檔,解析器只讀檔案庫、不碰網路 ——
+          同一份原文永遠解出同一個數字。這一頁講的是<b>數字怎麼來的</b>;
+          <b>能信多少</b>(插值距離、口徑偏差)貼在
+          <a href="#/board">儀表板</a>每個數字旁邊。</p>
       </div>
 
-      <div class="grid3" style="margin-bottom:26px">
-        <div class="tile"><div class="k">BTC 持有量錨點</div><div class="v">${anchors.length}</div>
-          <div class="d">8-K 週報為主,季度申報補空檔<br>平均間隔 ${avgGap.toFixed(1)} 天,最長 ${maxGap.toFixed(0)} 天</div></div>
-        <div class="tile"><div class="k">日頻覆蓋</div><div class="v">${N}</div>
-          <div class="d">交易日<br>${daily.date[0]} → ${daily.date[N - 1]}</div></div>
-        <div class="tile"><div class="k">融資來源涵蓋率</div><div class="v">${(st.coveredPct * 100).toFixed(0)}%</div>
-          <div class="d">${st.statedWeeks + st.derivedWeeks}/${st.activeWeeks} 個有買賣的週次<br>
-            ${st.statedWeeks} 明示 + ${st.derivedWeeks} 推得</div></div>
-        <div class="tile"><div class="k">官方錨點誤差</div><div class="v">&lt;1bp</div>
-          <div class="d">FWP 敏感度表六列全數重現</div></div>
-      </div>
-
-      <h3 style="margin-bottom:12px">插值距離分布</h3>
-      <div class="card" style="margin-bottom:8px">
-        <div style="display:flex;height:26px;border-radius:3px;overflow:hidden;margin-bottom:10px">
-          <div style="width:${(buckets.live / N) * 100}%;background:var(--equity)"></div>
-          <div style="width:${(buckets.near / N) * 100}%;background:var(--good)"></div>
-          <div style="width:${(buckets.far / N) * 100}%;background:var(--senti)"></div>
-        </div>
-        <div class="legend">
-          <span><i class="swatch" style="background:var(--equity)"></i>±15 天內有真實申報 · ${buckets.live} 天(${((buckets.live / N) * 100).toFixed(0)}%)</span>
-          <span><i class="swatch" style="background:var(--good)"></i>16–90 天 · ${buckets.near} 天(${((buckets.near / N) * 100).toFixed(0)}%)</span>
-          <span><i class="swatch" style="background:var(--senti)"></i>90 天以上 · ${buckets.far} 天(${((buckets.far / N) * 100).toFixed(0)}%)</span>
-        </div>
-      </div>
-      <p style="font-size:.82rem;color:var(--ink-3);margin-bottom:30px">
-        這個指標只看真正牽動 mNAV 讀數的欄位(BTC 持有量、股數、可轉債、現金、STRC)。
-        STRF/STRK/STRD 的股數已用 ATM 表重建成逐週序列,STRE 沒有 ATM 只有單點;
-        可轉債與現金來自季度 XBRL,本來就只有季頻,是目前插值距離的主要來源。</p>
-
-      <h3 style="margin-bottom:12px">結構變化偵測</h3>
-      <p style="font-size:.86rem;color:var(--ink-2);margin-bottom:12px">
-        分期是編輯判斷,不是演算法切出來的 —— 但「該不該重新檢視分期」可以自動提醒。
-        每次跑資料管線時會比對目前狀態與<a href="#/chronicle">當期</a>起點,
-        在求償權變動超過 5%、優先股穿越面額($100)、或當期已經持續超過半年時列出提示。
-      </p>
-      ${meta.watch.length ? `
-        <ul class="watch-list">
-          ${meta.watch.map((w) => `<li>${w}</li>`).join("")}
-        </ul>` : `
-        <p class="note" style="margin-top:0">目前沒有觸發任何提示。</p>`}
-
-      <h3 style="margin:34px 0 12px">每個數字都指得回一份文件</h3>
+            <h2 style="margin:0 0 12px">檔案庫</h2>
       <p style="font-size:.86rem;color:var(--ink-2);margin-bottom:14px">
         申報原文全部內容定址存檔(sha256),解析器只讀檔案庫、不碰網路 ——
         所以同一份原文永遠解出同一個數字,而且任何一個數字都能回推到
@@ -112,7 +64,7 @@ export const dataQualityPage: PageFn = (root) => {
         混在一起會把「餘額變了」讀成「公司做了什麼」。
       </p>
 
-      <h3 style="margin-bottom:12px">三種粒度,粗的只能補洞</h3>
+      <h2 style="margin:34px 0 12px">三種粒度,粗的只能補洞</h2>
       <p style="font-size:.86rem;color:var(--ink-2);margin-bottom:14px">
         同一批動作會被三份文件各講一次 —— 8-K 的週表、10-Q 的季表、10-K 的年表。
         <strong>三者不得相加</strong>,否則同一筆錢會被算好幾次。規則是粗粒度只能
@@ -134,7 +86,7 @@ export const dataQualityPage: PageFn = (root) => {
           ${prov.conflicts.length} 筆跨文件對不上的粗粒度事件,全部列在下方
           「建置期發現的問題」裡 —— 不會被悄悄抹平。</p>` : ""}
 
-      <h3 style="margin-bottom:12px">買幣的錢對得上嗎</h3>
+      <h2 style="margin:34px 0 12px">買幣的錢對得上嗎</h2>
       <p style="font-size:.86rem;color:var(--ink-2);margin-bottom:14px">
         這是對整份分析最直接的檢查:<strong>買幣 + 股息 + 回購 + 儲備增加
         = 各種募資 + 賣幣</strong>。兩邊都是現金口徑,所以不受「優先股按面額
@@ -161,14 +113,14 @@ export const dataQualityPage: PageFn = (root) => {
           可用粒度比分析窗口還粗的時候,對帳不會錯,它只是不成立。` : ""}
       </p>
 
-      <h3 style="margin:30px 0 14px">建置期發現的問題</h3>
+      <h2 style="margin:30px 0 14px">建置期發現的問題</h2>
       <div class="grid2">
         ${meta.findings.map((f) => `
           <div class="card"><h3 style="font-size:1rem;margin-bottom:7px">${f.t}</h3>
           <p style="font-size:.87rem;color:var(--ink-2);margin:0">${f.b}</p></div>`).join("")}
       </div>
 
-      <h3 style="margin:32px 0 12px">資料來源</h3>
+      <h2 style="margin:34px 0 12px">資料來源</h2>
       <div class="card flush"><div class="scroller"><table class="mini">
         <thead><tr><th>資料</th><th>來源</th><th>頻率</th><th>取得方式</th></tr></thead>
         <tbody>

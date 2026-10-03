@@ -145,7 +145,7 @@ export const strategyPage: PageFn = (root) => {
         求償權採 CEBE 定義(可轉債 + 優先股清算優先權 − USD 流動性)。
         USD 流動性以 8-K 每週揭露的 USD Reserve + USD Cash 為主、季度 XBRL 為輔 ——
         2026 下半年靠 ATM 募資進入儲備的約 $44 億,只看季度資料會完全漏掉,
-        歸因也會跟著反向。詳見<a href="#/data-quality">資料品質</a>。
+        歸因也會跟著反向。詳見<a href="#/provenance">出處</a>。
       </p>
     </div>`;
 

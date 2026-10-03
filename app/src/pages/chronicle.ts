@@ -241,7 +241,7 @@ export const chroniclePage: PageFn = (root) => {
       <p style="font-size:.8rem;color:var(--ink-3);margin-top:28px">
         分期是編輯判斷,不是演算法切出來的。管線每次更新會比對目前狀態與當期起點,
         在求償權變動超過 5%、優先股穿越面額、或出現新的政策斷點時提醒該重新檢視分期
-        —— 提醒內容列在<a href="#/data-quality">資料品質</a>頁。</p>
+        —— 提醒內容列在<a href="#/provenance">出處</a>頁。</p>
     </div>`;
 
   drawEraStrip(root.querySelector<HTMLElement>("#era-strip")!);
