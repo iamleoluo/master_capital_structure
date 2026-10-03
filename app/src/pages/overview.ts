@@ -74,6 +74,37 @@ export const overviewPage: PageFn = (root) => {
         </div>
       </div>
 
+      <div class="card" style="padding:16px 18px;margin-bottom:24px">
+        <div class="eyebrow" style="margin:0 0 10px">閘門現況 · STRC 相對 \$${meta.gate.par} 面額</div>
+        <div style="display:flex;gap:28px;flex-wrap:wrap;align-items:baseline">
+          <div>
+            <div style="font-size:1.6rem;font-weight:600">\$${meta.gate.px.toFixed(2)}</div>
+            <div style="font-size:.8rem;color:var(--ink-3)">最新收盤</div>
+          </div>
+          <div>
+            <div style="font-size:1.6rem;font-weight:600"
+                 class="${meta.gate.gap >= 0 ? "up" : "down"}">${meta.gate.gap >= 0 ? "+" : ""}${meta.gate.gap.toFixed(1)}%</div>
+            <div style="font-size:.8rem;color:var(--ink-3)">相對面額</div>
+          </div>
+          <div>
+            <div style="font-size:1.6rem;font-weight:600">${meta.gate.open ? "開" : "關"}</div>
+            <div style="font-size:.8rem;color:var(--ink-3)">能不能再發行</div>
+          </div>
+        </div>
+        <p style="font-size:.86rem;color:var(--ink-2);margin:14px 0 0">
+          2026-06-26 最低跌到 <b>\$${meta.gate.lowPx.toFixed(2)}</b>(${meta.gate.lowGap.toFixed(1)}%)——
+          有紀錄的 ${meta.gate.days} 個交易日裡,<b>${meta.gate.shutDays} 天是關著的</b>。
+          那段期間公司做的事(折價回購、調高股息率、把美元儲備從不到十億拉到五十億)
+          全部指向同一個目標:<b>把它帶回面額</b>。
+        </p>
+        <p style="font-size:.78rem;color:var(--ink-3);margin:8px 0 0">
+          面額就是 \$${meta.gate.par},沒有別的口徑。只看 STRC ——
+          它是唯一一檔被主動管理回面額的(浮動股息 + 折價回購);
+          其餘幾檔是固定利率,價格怎麼走不構成「能不能再發行」的約束。
+          「開/關」以低於面額 5% 為分界,那是顯示用的,不是公司的條款。
+        </p>
+      </div>
+
       ${latest && m ? `
       <a class="latest-era" href="#/posts/chronicle">
         <div class="latest-era-top">

@@ -216,6 +216,14 @@ export interface Post {
 }
 
 export interface Meta {
+  /** 閘門:STRC 市價相對 $100 面額。開著才能再發行、買幣、加槓桿。
+   *  只看 STRC —— 它是唯一一檔被主動管理回面額的。見 reference/00-purpose §3。 */
+  gate: {
+    par: number; px: number; gap: number; open: boolean;
+    lowPx: number; lowGap: number; lowDate: string;
+    shutDays: number; days: number;
+  };
+
   /** 已實現波動階梯 —— 把「剝離波動」從宣稱變成量測(見 reference/01 §2.1)。
    *  rows 依實測波動由高到低排,**不是**依清償順位 —— 兩者不一致正是重點。 */
   vol: {

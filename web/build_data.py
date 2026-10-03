@@ -782,6 +782,39 @@ def build_vol_ladder(daily: dict, window: int = 30) -> dict:
             "amp": round(mstr / btc, 2) if btc and mstr else None}
 
 
+def build_gate(daily: dict) -> dict:
+    """閘門:STRC 市價相對面額。
+
+    面額就是 \$100,沒有別的口徑 —— 所以這裡不需要任何模型,只要相除。
+    只看 STRC:它是唯一一檔被**主動管理回面額**的(浮動股息 + 折價回購)。
+    其餘幾檔是固定利率,價格怎麼走不構成「能不能再發行」的約束。
+
+    這道閘門是 00-purpose §3 的核心:開著才能再發行、買幣、加槓桿。
+    """
+    from mstr_cebe.operations import PAR_PER_SHARE as PAR
+
+    rows = [(d, px) for d, px in zip(daily["date"], daily["strc_price"]) if px]
+    if not rows:
+        return {}
+    date_now, px_now = rows[-1]
+    date_lo, px_lo = min(rows, key=lambda r: r[1])
+    # 低於面額 5% 以上就當閘門關著 —— 這是一個**顯示用的分界**,
+    # 不是公司的條款。條款只說股息率要怎麼調,沒有定義「關」。
+    SHUT = PAR * 0.95
+    shut = [d for d, px in rows if px < SHUT]
+    return {
+        "par": PAR,
+        "px": round(px_now, 2),
+        "gap": round(100 * (px_now / PAR - 1), 1),
+        "open": px_now >= SHUT,
+        "lowPx": round(px_lo, 2),
+        "lowGap": round(100 * (px_lo / PAR - 1), 1),
+        "lowDate": date_lo,
+        "shutDays": len(shut),
+        "days": len(rows),
+    }
+
+
 def build_meta(daily: dict) -> dict:
     # 前端顯示的官方錨點一律用**最新一份** FWP(2026-08-24)。
     # 舊的 08-13 那份留在 data.py 與 tests/ 裡當回歸錨點,不對外顯示 ——
@@ -1145,6 +1178,7 @@ def main() -> int:
     meta["watch"] = structural_watch(daily, chronicle)
     meta["prov"] = build_provenance(daily, chronicle)
     meta["vol"] = build_vol_ladder(daily)
+    meta["gate"] = build_gate(daily)
 
     for name, payload in (("daily", daily), ("weekly", weekly),
                           ("meta", meta), ("chronicle", chronicle),
