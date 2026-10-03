@@ -144,7 +144,7 @@ def fetch_all(start: dt.date = dt.date(2026, 1, 1),
 
     預設從 2026-01-01 起 —— 回購表 2026-07-27 才首次出現,更早的申報沒有這張表。
 
-    讀 L1 檔案庫,**完全不碰網路**(設計圖 reference/06-architecture.md §3)。
+    讀 L1 檔案庫,**完全不碰網路**(設計圖 reference/08-pipeline.md §3)。
     文件要先用 `python3 -m mstr_cebe.archive backfill` 抓下來。
     """
     own = conn is None

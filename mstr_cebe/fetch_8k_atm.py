@@ -152,7 +152,7 @@ def fetch_all(start: dt.date = dt.date(2024, 7, 1),
               verbose: bool = True, conn=None) -> List[Dict]:
     """逐週 ATM 募資。同一週有多份申報時取最新那份。
 
-    讀 L1 檔案庫,**完全不碰網路**(設計圖 reference/06-architecture.md §3)。
+    讀 L1 檔案庫,**完全不碰網路**(設計圖 reference/08-pipeline.md §3)。
     文件要先用 `python3 -m mstr_cebe.archive backfill` 抓下來。
     """
     own = conn is None

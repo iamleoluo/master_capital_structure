@@ -1,6 +1,6 @@
 /** 講義 · 配對 —— L3 的公式解。
  *
- *  推導來源:reference/02-operations.md §4。
+ *  推導來源:reference/03-operations.md §4。
  *  注意這一層講的是**組合的公式**,不是實際配對出來的結果 ——
  *  後者是數值解,在儀表板。 */
 import { combos, PLACE, type Formula } from "../../formulas";

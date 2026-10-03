@@ -107,7 +107,7 @@ def test_issuing_at_fair_value_changes_nothing(s):
 
 @pytest.mark.parametrize("m,better", [(1.5, True), (0.7, False)])
 def test_the_atm_verdict_is_the_same_as_the_toolbox(s, m, better):
-    """m > 1 加分、m < 1 稀釋 —— 與 02-operations.md 的 ATM 判準一致。"""
+    """m > 1 加分、m < 1 稀釋 —— 與 03-operations.md 的 ATM 判準一致。"""
     base = 1e9 / 100e6
     r, sh = SC.apply_atm_accretion(1e9, 100e6, mnav=m, dilution=0.2)
     assert ((r / sh) > base) is better

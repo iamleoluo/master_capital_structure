@@ -38,7 +38,7 @@ $$\\frac{dR}{R} = L \\cdot \\frac{dp}{p} \;\\Longrightarrow\; \\ln R = L \\ln p 
 $$\\text{新每股殘值} = \\text{舊每股殘值} \\times \\frac{1 + X m}{1 + X}$$
 
 $m = 1$ 時等於 1(增發無感),$m > 1$ 加分,$m < 1$ 稀釋 ——
-與 02-operations.md 的 ATM 判準 $m > 1$ 完全一致,只是寫成了比例形式。
+與 03-operations.md 的 ATM 判準 $m > 1$ 完全一致,只是寫成了比例形式。
 """
 from __future__ import annotations
 

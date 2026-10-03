@@ -4,7 +4,7 @@
 每一把工具的 `accretive` 謂詞都拿 `apply` 去驗,門檻兩側各驗一次。
 改了 apply 卻沒改謂詞(或反過來),這裡就會紅。
 
-reference/05-toolbox.md 的論述成不成立,看這支過不過。
+reference/07-toolbox.md 的論述成不成立,看這支過不過。
 """
 from __future__ import annotations
 

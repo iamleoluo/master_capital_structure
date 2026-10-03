@@ -1,6 +1,6 @@
 /** 講義 · 時間 —— L4 的公式解。
  *
- *  推導來源:reference/01-model.md §7–9。
+ *  推導來源:reference/02-model.md §7–9。
  *  這一層是整個模型最花力氣的地方:E 的式子裡有幣價,不拆開的話,
  *  幣價上漲會被誤讀成公司做得好。 */
 import { lectureHead, steps } from "../../components/lecture";

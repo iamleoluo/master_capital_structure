@@ -1,6 +1,6 @@
 """L4 — 階段:把時間序加進來。
 
-設計圖:reference/06-architecture.md §6
+設計圖:reference/08-pipeline.md §6
 
 設計圖主張「**階段 = 工具組合的穩定期**,邊界在組合改變的地方,
 不在新聞發生的地方」。這份模組實作那個偵測器,**並且量化它現在還不能用的原因**。
@@ -10,7 +10,7 @@
 可轉債發行與優先股 IPO。`explained_share()` 把這個缺口算成數字。
 
 所以偵測器可以跑、可以比對,但**還不能取代人工分期**。
-要能取代,缺的不是演算法,是 L1 的涵蓋範圍(見 reference/08-status.md §3 第 6 步)。
+要能取代,缺的不是演算法,是 L1 的涵蓋範圍(見 reference/10-status.md §3 第 6 步)。
 """
 from __future__ import annotations
 

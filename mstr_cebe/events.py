@@ -1,6 +1,6 @@
 """L2 — 事件:有名義的原子動作。
 
-設計圖:reference/06-architecture.md §4
+設計圖:reference/08-pipeline.md §4
 
 這一層是「資料」變成「動作」的地方。在此之前,`web/raw/atm_weekly.json`
 只是「這一週各券種合計募了多少」—— 名義藏在**檔名**裡,所以問得出
@@ -12,7 +12,7 @@
   observation  觀測 —— 狀態是多少。**沒有**對應工具。
 
 混在一起的後果是把「餘額變了」讀成「公司做了什麼」,而那正是四層歸因
-最想避免的錯誤(見 01-model.md §8)。
+最想避免的錯誤(見 02-model.md §8)。
 
 週聚合從此是**視圖**而不是真相:`weekly_*()` 由事件即時算出來,
 並且與舊的 `web/raw/*.json` 逐筆相同(tests/test_events.py 驗)。
@@ -56,7 +56,7 @@ CREATE INDEX IF NOT EXISTS idx_ev_doc ON events(doc_id);
 """
 
 # 事件種類 → (家族, 對應的 toolbox 工具 id)。None 表示這是觀測,沒有工具。
-# 這張表就是 L2 與 toolbox.py 的接點 —— 見 06-architecture.md §4。
+# 這張表就是 L2 與 toolbox.py 的接點 —— 見 08-pipeline.md §4。
 KINDS: Dict[str, tuple] = {
     "btc_purchase":           ("action", "buy_btc"),
     "btc_sale":               ("action", "sell_btc"),

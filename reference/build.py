@@ -34,16 +34,18 @@ KATEX = os.path.join(ROOT, "app", "node_modules", "katex", "dist")
 
 ORDER = [
     ("00-purpose.md", "這個系統是拿來做什麼的"),
-    ("01-model.md", "模型怎麼一步一步長出來"),
-    ("02-operations.md", "每一種操作的代數"),
-    ("03-data.md", "資料的血統、粒度與邊界"),
-    ("04-decisions.md", "走過的彎路"),
-    ("05-toolbox.md", "工具箱:代數怎麼變成可執行的宣告"),
-    ("06-architecture.md", "四層架構規格"),
-    ("07-data-gaps.md", "資料缺口清單"),
-    ("08-status.md", "現況與施工紀錄"),
-    ("09-site.md", "網站的設計:理論／觀測／詮釋"),
-    ("10-rebuild-plan.md", "前端重排施工計畫"),
+    ("01-architecture.md", "資本結構:這家公司在蓋什麼"),
+    ("02-model.md", "模型怎麼一步一步長出來"),
+    ("03-operations.md", "每一種操作的代數"),
+    ("04-narrative.md", "敘事:溢價從哪裡來"),
+    ("05-data.md", "資料的血統、粒度與邊界"),
+    ("06-decisions.md", "走過的彎路"),
+    ("07-toolbox.md", "工具箱:代數怎麼變成可執行的宣告"),
+    ("08-pipeline.md", "資料管線規格:L1–L4"),
+    ("09-data-gaps.md", "資料缺口清單"),
+    ("10-status.md", "現況與施工紀錄"),
+    ("11-site.md", "網站的設計:理論／觀測／詮釋"),
+    ("12-rebuild-plan.md", "前端重排施工計畫"),
 ]
 
 

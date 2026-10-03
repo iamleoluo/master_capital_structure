@@ -1,0 +1,29 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>找不到 · MSTR 資本結構解剖</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!--
+  這一頁存在的理由不是給人看的,是為了讓 Cloudflare Pages 對「找不到的檔案」
+  回 404 而不是 200 + index.html。
+
+  沒有它的時候:剛部署完邊緣節點還沒同步,瀏覽器請求 /assets/xxx.js 會拿到
+  index.html 的內容、狀態 200。瀏覽器於是把「這個 JS 的正確回應是一段 HTML」
+  存進快取,之後怎麼重新整理都還是壞的(Safari 尤其黏)。
+  症狀是 "'text/html' is not a valid JavaScript MIME type for module script"。
+
+  這個站用 hash 路由(#/lecture/tools),所有真實路徑都是 /,
+  **不需要 SPA fallback** —— 所以讓 404 就是 404,沒有任何損失。
+-->
+<style>
+  :root { color-scheme: dark }
+  body { margin:0; min-height:100vh; display:grid; place-items:center;
+         background:#0c1216; color:#e6edf3;
+         font:16px/1.7 system-ui,-apple-system,"Noto Sans TC",sans-serif }
+  .box { max-width:34rem; padding:0 24px; text-align:center }
+  a { color:#5ac8fa }
+</style>
+<div class="box">
+  <h1>找不到這個位置</h1>
+  <p>網址可能打錯了,或是這個頁面在改版時搬了家。</p>
+  <p><a href="/">回總覽</a></p>
+</div>

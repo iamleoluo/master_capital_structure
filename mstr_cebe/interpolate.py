@@ -111,7 +111,7 @@ def btc_held_anchors() -> List[Tuple[date, float]]:
     來源,但它的四筆有效值裡兩筆是錯的(2025-03-31、2026-01-31),
     而且錯的方式相同:抄的是申報當日餘額、標的卻是期末日期。
     它們能存活是因為剛好落在沒有其他來源報數的日期上 —— 只要 8-K 的觀測
-    完整進來,這一層就沒有存在的必要。詳見 reference/03-data.md。
+    完整進來,這一層就沒有存在的必要。詳見 reference/05-data.md。
     """
     return _merge(D.XBRL_BTC_HELD, _btc_weekly_cache())  # 8-K 優先權最高
 

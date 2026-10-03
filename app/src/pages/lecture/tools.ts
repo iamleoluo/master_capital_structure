@@ -1,6 +1,6 @@
 /** 講義 · 工具 —— L2 的公式解。
  *
- *  推導來源:reference/02-operations.md §1–3。
+ *  推導來源:reference/03-operations.md §1–3。
  *  主軸是四個位置:因為位置只有四個,動作就是可窮舉的。 */
 import { atoms, PLACE, type Formula } from "../../formulas";
 import { lectureHead, steps } from "../../components/lecture";

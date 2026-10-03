@@ -1,6 +1,6 @@
 /** 講義 · 量 —— L1 的公式解。
  *
- *  推導來源:reference/01-model.md §1–6。這一頁是那幾節的網頁版,
+ *  推導來源:reference/02-model.md §1–6。這一頁是那幾節的網頁版,
  *  不是重寫 —— 改模型時兩邊要一起改,reference/verify.py 會驗同號式子。 */
 import { symbolTable } from "../../components/symbols";
 import { lectureHead, steps } from "../../components/lecture";

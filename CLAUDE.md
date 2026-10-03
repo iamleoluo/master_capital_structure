@@ -36,19 +36,24 @@
 推導、口徑選擇與**走過的彎路**都在那裡。不讀就動,很容易把修掉的錯誤再做一次。
 導覽與編號規則見 [`reference/README.md`](reference/README.md)。
 
+**閱讀順序就是編號順序。** 00→04 是一條線:要回答什麼 → **公司在蓋什麼** →
+我們怎麼量 → 它用哪些工具 → **溢價從哪來**。05 之後是工程。
+
 | | |
 |---|---|
 | [00](reference/00-purpose.md) 目的 | 要回答什麼、刻意不做的事 |
-| [01](reference/01-model.md) 模型 | 四個原始量 → 四層歸因,逐步推導 |
-| [02](reference/02-operations.md) 操作 | 九把原子工具 + 四個組合的代數 |
-| [03](reference/03-data.md) 資料 | 血統、粒度、邊界;三種粒度怎麼不重複計算 |
-| [04](reference/04-decisions.md) 彎路 | **被換掉的方法與為什麼換** |
-| [05](reference/05-toolbox.md) 工具箱 | 代數怎麼變成可被打臉的宣告 |
-| [06](reference/06-architecture.md) 架構 | L1–L4 的規格(數值解那一欄) |
-| [07](reference/07-data-gaps.md) 缺口 | 今天的資料夠不夠支撐今天的結論 |
-| [08](reference/08-status.md) 現況 | **唯一的進度來源** |
-| [09](reference/09-site.md) 網站設計 | 理論／觀測／詮釋三分 |
-| [10](reference/10-rebuild-plan.md) 施工計畫 | **下一步從這裡接** |
+| [01](reference/01-architecture.md) 資本結構 | **標的是什麼形狀**:求償權階梯、三位一體、兩個控制器 |
+| [02](reference/02-model.md) 模型 | 四個原始量 → 四層歸因,逐步推導 |
+| [03](reference/03-operations.md) 操作 | 九把原子工具 + 四個組合的代數 |
+| [04](reference/04-narrative.md) 敘事 | **$m$ 從哪裡來**:唯一沒有一手來源的那一塊 |
+| [05](reference/05-data.md) 資料 | 血統、粒度、邊界;三種粒度怎麼不重複計算 |
+| [06](reference/06-decisions.md) 彎路 | **被換掉的方法與為什麼換** |
+| [07](reference/07-toolbox.md) 工具箱 | 代數怎麼變成可被打臉的宣告 |
+| [08](reference/08-pipeline.md) 管線 | L1–L4 的規格(數值解那一欄) |
+| [09](reference/09-data-gaps.md) 缺口 | 今天的資料夠不夠支撐今天的結論 |
+| [10](reference/10-status.md) 現況 | **唯一的進度來源** |
+| [11](reference/11-site.md) 網站設計 | 理論／觀測／詮釋三分 |
+| [12](reference/12-rebuild-plan.md) 施工計畫 | **下一步從這裡接** |
 
 ---
 
@@ -94,4 +99,4 @@ cd app && npm run build          # 建置(含 tsc + vitest)
 ⚠️ **`mNAV` 不要裸用。** 本站的 $m$ 是 **CEBE mNAV**(分母是殘值),
 與一般講的 mNAV(分母是全部持幣)不同 —— 同一天可以一個溢價一個折價。
 
-網站結構正在依 [10](reference/10-rebuild-plan.md) 重排,現況見該文件 §1。
+網站結構正在依 [12](reference/12-rebuild-plan.md) 重排,現況見該文件 §1。

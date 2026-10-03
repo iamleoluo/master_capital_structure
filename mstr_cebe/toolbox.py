@@ -1,6 +1,6 @@
 """資本操作工具箱 —— 把公式、程式碼與判斷條件包成同一個物件。
 
-設計論述在 reference/05-toolbox.md,這裡是實作。
+設計論述在 reference/07-toolbox.md,這裡是實作。
 
 核心觀察:整個系統早就有一個狀態
 
@@ -72,7 +72,7 @@ def mnav(s: State, share_price: float) -> float:
     """CEBE mNAV —— 分母是**殘值**,不是全部持幣。
 
     這是股價恆等式 P = m × E/1e8 × p 裡的 m。與一般講的 mNAV 不是同一個數,
-    見 reference/04-decisions.md。
+    見 reference/06-decisions.md。
     """
     return share_price / (cebe(s) / SATS * s.price)
 
@@ -335,7 +335,7 @@ COMMON_ATM = Tool(
     moves=("S", "U"), verdict="mNAV > 1 才加分",
     apply=lambda s, k: replace(s, shares=s.shares + k["n"],
                                claims=s.claims - k["n"] * k["P"]),
-    # 推導見 reference/02-operations.md §3:化簡到底就是 m > 1
+    # 推導見 reference/03-operations.md §3:化簡到底就是 m > 1
     accretive=lambda s, k: mnav(s, k["P"]) > 1,
     latex_b=r"\Delta B > 0 \iff \frac{P}{p}\times 10^{8} > B",
     latex_e=r"\Delta E > 0 \iff \frac{P}{p}\times 10^{8} > E \iff m > 1",

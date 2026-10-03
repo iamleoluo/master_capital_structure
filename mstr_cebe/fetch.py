@@ -251,7 +251,7 @@ def verify_btc_anchors(bars: Sequence[Bar],
 # 優先股日收盤 —— web/raw/preferred_prices.json 的來源
 # ---------------------------------------------------------------------------
 
-# STRE 在盧森堡交易所掛牌,Yahoo 沒有報價(見 reference/03-data.md §7)。
+# STRE 在盧森堡交易所掛牌,Yahoo 沒有報價(見 reference/05-data.md §7)。
 # 這裡只抓掛在 Nasdaq 的四個系列。
 QUOTED_PREFERRED = ("STRC", "STRF", "STRK", "STRD")
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """驗證 reference/ 裡每一條編號恆等式,對象是真實資料。
 
-文件會腐爛,可執行的斷言不會。reference/01-model.md 與 02-operations.md 的
+文件會腐爛,可執行的斷言不會。reference/02-model.md 與 03-operations.md 的
 每一條式子在這裡都有對應的檢查,編號一致。改了模型卻沒改文件,這支會紅。
 
     python3 reference/verify.py
