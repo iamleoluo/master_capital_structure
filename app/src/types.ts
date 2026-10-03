@@ -216,6 +216,14 @@ export interface Post {
 }
 
 export interface Meta {
+  /** 已實現波動階梯 —— 把「剝離波動」從宣稱變成量測(見 reference/01 §2.1)。
+   *  rows 依實測波動由高到低排,**不是**依清償順位 —— 兩者不一致正是重點。 */
+  vol: {
+    window: number;
+    amp: number | null;          // MSTR / BTC 的放大倍數
+    rows: Array<{ t: string; vol: number; damp: number | null }>;
+  };
+
   ipos: Ipo[];
   /** 資本結構工具箱 —— 公司能動用的完整槓桿清單 */
   toolkit: ToolSpec[];

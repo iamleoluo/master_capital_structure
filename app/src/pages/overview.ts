@@ -1,4 +1,4 @@
-import { chronicle, daily, N } from "../data";
+import { chronicle, daily, meta, N } from "../data";
 import { explorer } from "../components/explorer";
 import { btc as fmtBtc, pct } from "../lib/format";
 import type { PageFn } from "../router";
@@ -59,6 +59,34 @@ export const overviewPage: PageFn = (root) => {
           不是哪一組比較準 —— 是<b>它們回答不同的問題</b>,
           而且同一天可以一個折價、一個溢價,因為分母差了一整個求償權。
           下面第二張圖畫的就是這兩條線的間距。
+        </p>
+
+        <h2 style="margin:4px 0 8px">波動被分層了,而且量得出來</h2>
+        <p class="lede" style="margin-bottom:14px">
+          「把波動剝下來賣」聽起來像說法。它不是 —— 把每一檔的日線拿來算
+          ${meta.vol.window} 天年化已實現波動率就看得到:
+        </p>
+        <div class="card flush" style="margin-bottom:12px"><div class="scroller">
+          <table class="mini">
+            <thead><tr><th>工具</th><th class="n">年化已實現波動</th>
+              <th class="n">相對普通股剝離</th></tr></thead>
+            <tbody>${meta.vol.rows.map((r) => `
+              <tr><td><b>${r.t}</b></td>
+                  <td class="n">${r.vol.toFixed(1)}%</td>
+                  <td class="n">${r.damp == null ? "—" : r.damp.toFixed(0) + "%"}</td></tr>`
+            ).join("")}</tbody>
+          </table>
+        </div></div>
+        <p class="lede" style="margin-bottom:20px">
+          普通股的波動是比特幣的 <b>${meta.vol.amp?.toFixed(2)}x</b> ——
+          那就是「剩餘波動全部塞給普通股」在資料上的樣子。
+          而優先股那幾檔剝掉了大部分。
+          <br><br>
+          <b>注意 STRK 比 STRD 優先,波動卻高得多。</b>
+          如果低波動只是順位的副產品,這裡應該反過來。它沒有,
+          因為 STRK 嵌了轉換權、繼承了股權的波動 ——
+          <b>波動階梯跟著條款走,不跟著順位走</b>。
+          逐條的設計在 <a href="#/lecture/structure">推導 · 資本架構</a>。
         </p>
 
         <div class="note key">

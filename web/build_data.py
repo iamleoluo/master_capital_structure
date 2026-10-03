@@ -752,6 +752,36 @@ def build_provenance(daily: dict, chronicle: list) -> dict:
     }
 
 
+def build_vol_ladder(daily: dict, window: int = 30) -> dict:
+    """已實現波動階梯 —— 把「波動阻尼」從公司的宣稱變成量測值。
+
+    順序刻意按**實測波動**排,不按清償順位。兩者不一致的地方正是重點:
+    STRK 比 STRD 優先,但波動高得多 —— 因為它嵌了轉換權,
+    所以它繼承了股權的波動。**波動階梯跟著條款走,不跟著順位走。**
+    """
+    import mstr_cebe.volatility as VOL
+    eq = VOL.realized_vol(daily["mstr"], window)
+    rows = []
+    for key, label in (("btc", "BTC"), ("mstr", "MSTR"),
+                       ("strk_price", "STRK"), ("strd_price", "STRD"),
+                       ("strf_price", "STRF"), ("strc_price", "STRC")):
+        v = VOL.realized_vol(daily[key], window)
+        if v is None:
+            continue
+        rows.append({
+            "t": label,
+            "vol": round(v * 100, 1),
+            # BTC 沒有「相對普通股剝離了多少」這個概念 —— 它是底層不是衍生層
+            "damp": (None if label in ("BTC", "MSTR")
+                     else round(VOL.damping(v, eq) * 100, 0)),
+        })
+    rows.sort(key=lambda r: -r["vol"])
+    btc = next((r["vol"] for r in rows if r["t"] == "BTC"), None)
+    mstr = next((r["vol"] for r in rows if r["t"] == "MSTR"), None)
+    return {"window": window, "rows": rows,
+            "amp": round(mstr / btc, 2) if btc and mstr else None}
+
+
 def build_meta(daily: dict) -> dict:
     # 前端顯示的官方錨點一律用**最新一份** FWP(2026-08-24)。
     # 舊的 08-13 那份留在 data.py 與 tests/ 裡當回歸錨點,不對外顯示 ——
@@ -1114,6 +1144,7 @@ def main() -> int:
     strategy = build_strategy(daily, weekly, chronicle)
     meta["watch"] = structural_watch(daily, chronicle)
     meta["prov"] = build_provenance(daily, chronicle)
+    meta["vol"] = build_vol_ladder(daily)
 
     for name, payload in (("daily", daily), ("weekly", weekly),
                           ("meta", meta), ("chronicle", chronicle),
