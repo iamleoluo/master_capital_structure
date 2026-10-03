@@ -465,3 +465,33 @@ a.src::after{content:"↗";font-size:.68em;opacity:.45;margin-left:3px;vertical-
   font:italic .86rem/1.65 var(--serif);color:var(--ink-2)}
 .pair-rule{font-size:.83rem;color:var(--ink-2);margin:0}
 .pair-src{font-size:.74rem;font-family:var(--mono);color:var(--ink-3);margin:8px 0 0}
+
+/* ── 觀點 ───────────────────────────────────────────────────── */
+.post-card{display:block;text-decoration:none;color:inherit;
+  background:var(--surface);border:1px solid var(--line);border-radius:10px;
+  padding:18px 20px;margin:0 0 14px;transition:border-color .12s,background .12s}
+.post-card:hover{border-color:var(--equity);background:var(--surface-2)}
+.post-card h3{margin:8px 0 0;font-size:1.08rem;line-height:1.45}
+.post-meta{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  font-size:.76rem;color:var(--ink-3);font-family:var(--mono)}
+.post-author{color:var(--ink-2)}
+.post-tag{background:var(--surface-2);border-radius:3px;padding:1px 7px;
+  font-family:var(--sans);font-size:.72rem}
+.post-claim{margin:9px 0 0;font-size:.85rem;color:var(--equity)}
+.post-lede{margin:8px 0 0;font-size:.86rem;color:var(--ink-2);line-height:1.7}
+
+.post-claim-box{margin-bottom:22px}
+.post-claim-box b{display:block;font-size:.76rem;color:var(--ink-3);
+  letter-spacing:.06em;margin-bottom:5px}
+
+/* 寫的時候 vs 今天 —— 這張表是這個系統才做得到的東西 */
+.pins{background:var(--surface-2);border-radius:9px;padding:15px 18px;margin:0 0 26px}
+.pins-head{font-size:.78rem;color:var(--ink-3);margin-bottom:9px}
+.pins table{width:100%}
+.pins-note{font-size:.78rem;color:var(--ink-3);margin:10px 0 0;line-height:1.7}
+
+.post-body{max-width:44em}
+.post-body h2{font-size:1.15rem;margin:30px 0 10px}
+.post-body p{margin:0 0 14px;line-height:1.85}
+.post-body blockquote{margin:0 0 16px;padding:10px 16px;
+  border-left:3px solid var(--line-2);color:var(--ink-2);font-size:.9rem}

@@ -25,6 +25,13 @@ const routes: Route[] = [
   { path: "/operations", title: "資本操作", page: async () => (await import("./pages/operations")).operationsPage },
   { path: "/strategy", title: "績效歸因", page: async () => (await import("./pages/strategy")).strategyPage },
   { path: "/pricing", title: "槓桿與定價", page: async () => (await import("./pages/pricing")).pricingPage },
+  { path: "/posts", title: "觀點", page: async () => (await import("./pages/posts/list")).postsChroniclePage },
+  { path: "/posts/chronicle", parent: "/posts", title: "大事記",
+    page: async () => (await import("./pages/posts/list")).postsChroniclePage,
+    dynamic: async (slug) => (await import("./pages/posts/detail")).postDetail(slug) },
+  { path: "/posts/structure", parent: "/posts", title: "資本結構",
+    page: async () => (await import("./pages/posts/list")).postsStructurePage,
+    dynamic: async (slug) => (await import("./pages/posts/detail")).postDetail(slug) },
   { path: "/data-quality", title: "資料品質", page: async () => (await import("./pages/dataQuality")).dataQualityPage },
 ];
 

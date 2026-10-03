@@ -5,7 +5,8 @@ import metaJson from "../data/meta.json";
 import chronicleJson from "../data/chronicle.json";
 import strategyJson from "../data/strategy.json";
 import operationsJson from "../data/operations.json";
-import type { Daily, Era, Meta, Operation, Strategy, Week } from "./types";
+import postsJson from "../data/posts.json";
+import type { Daily, Era, Meta, Operation, Post, Strategy, Week } from "./types";
 
 export const daily = dailyJson as unknown as Daily;
 export const weekly = weeklyJson as unknown as Week[];
@@ -17,6 +18,9 @@ export const strategy = strategyJson as unknown as Strategy;
 
 /** L3 的具名資本操作,依期末正序。儀表板的「工具」與「配對」兩頁吃它。 */
 export const operations = operationsJson as unknown as Operation[];
+
+/** 觀點,依日期倒序(最新在上)。 */
+export const posts = postsJson as unknown as Post[];
 
 export const N = daily.date.length;
 

@@ -648,6 +648,20 @@ def build_operations_feed(daily: dict) -> list:
     return out
 
 
+def build_posts(daily: dict, chronicle: list) -> list:
+    """觀點 —— 大事記(事件)與資本結構(主張)。
+
+    markdown 在**建置期**轉成 HTML,與 reference/ 共用同一個轉換器
+    (`mstr_cebe.md`),所以同一段文字在講義與文章裡長得一樣。
+
+    `pins` 的現值也在這裡查:文章釘住寫作當下的數字,資料層給今天的 ——
+    兩個並排,就看得到一個觀點寫下時的世界與它後來變成什麼。
+    """
+    from mstr_cebe import posts as P            # noqa: E402
+
+    return P.to_json(P.load_all({"daily": daily, "chronicle": chronicle}))
+
+
 def build_formulas() -> dict:
     """**公式解**那一欄的資料檔 —— `app/data/formulas.json`。
 
@@ -1103,7 +1117,8 @@ def main() -> int:
     for name, payload in (("daily", daily), ("weekly", weekly),
                           ("meta", meta), ("chronicle", chronicle),
                           ("strategy", strategy), ("formulas", build_formulas()),
-                          ("operations", build_operations_feed(daily))):
+                          ("operations", build_operations_feed(daily)),
+                          ("posts", build_posts(daily, chronicle))):
         path = os.path.join(OUT, f"{name}.json")
         with open(path, "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))

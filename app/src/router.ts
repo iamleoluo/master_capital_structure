@@ -10,6 +10,10 @@ export interface Route {
   /** 上層分頁的 path。有值 = 這是子分頁,不出現在主導覽,
    *  而是出現在「所屬上層分頁被選中時」的第二排導覽裡。 */
   parent?: string;
+  /** 動態子路徑。`#/posts/structure/<slug>` 這種,path 底下再接一段。
+   *  有值時,凡是以 `path + "/"` 開頭而且沒有精確匹配的,都交給它 ——
+   *  收到的是剩下那一段。這樣文章不必每篇註冊一條路由。 */
+  dynamic?: (rest: string) => Promise<PageFn> | PageFn;
 }
 
 /** 主導覽只放沒有 parent 的。 */
@@ -29,11 +33,27 @@ function current(): string {
 
 async function render(): Promise<void> {
   const path = current();
-  let route = routes.find((r) => r.path === path) ?? routes[0]!;
+  let route = routes.find((r) => r.path === path);
+  let dynamicRest: string | null = null;
+
+  if (!route) {
+    // 沒有精確匹配:找有 dynamic 的上層,把剩下那一段交給它。
+    // 取最長的前綴,否則 /posts 會搶走 /posts/structure 的動態路徑。
+    const host = routes
+      .filter((r) => r.dynamic && path.startsWith(r.path + "/"))
+      .sort((a, b) => b.path.length - a.path.length)[0];
+    if (host) {
+      route = host;
+      dynamicRest = path.slice(host.path.length + 1);
+    }
+  }
+  route = route ?? routes[0]!;
 
   // 點到有子分頁的上層 path(例如導覽列那顆),自動落到第一個子分頁
-  const kids = subRoutes(routes, route.path);
-  if (kids.length) route = kids[0]!;
+  if (dynamicRest === null) {
+    const kids = subRoutes(routes, route.path);
+    if (kids.length) route = kids[0]!;
+  }
 
   // 主導覽要高亮的是「上層」,子分頁也算在它的上層底下
   const top = route.parent ?? route.path;
@@ -64,7 +84,9 @@ async function render(): Promise<void> {
 
   let page: PageFn;
   try {
-    page = await route.page();
+    page = dynamicRest !== null && route.dynamic
+      ? await route.dynamic(dynamicRest)
+      : await route.page();
   } catch (err) {
     // 動態 import 失敗最常見的原因是剛部署完、邊緣節點還沒同步到該 chunk,
     // 請求拿到 SPA fallback(200 但內容是 HTML)。瀏覽器會把「這個 URL 的

@@ -195,6 +195,23 @@ export interface Operation {
   acc: string[];
 }
 
+/** 一篇觀點。大事記(錨在事件)與資本結構(錨在主張)共用這個形狀 ——
+ *  差別只有 `claim`:主張可以被後續的資料檢驗,事件不行。 */
+export interface Post {
+  slug: string; title: string; date: string; author: string;
+  kind: "chronicle" | "structure";
+  tags: string[];
+  /** 只有資本結構那一類有 */
+  claim: string;
+  /** 寫作當下釘住的數字,外加它現在的值 —— 兩者並排顯示 */
+  pins: { key: string; label: string; then: number; now: number | null; unit: string }[];
+  /** 重用全站的圖表元件:id + 區間 */
+  charts: { id: string; from?: string; to?: string }[];
+  /** 建置期由 markdown 轉好的 HTML */
+  html: string;
+  lede: string;
+}
+
 export interface Meta {
   ipos: Ipo[];
   /** 資本結構工具箱 —— 公司能動用的完整槓桿清單 */
