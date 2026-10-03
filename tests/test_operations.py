@@ -273,3 +273,88 @@ def test_confidence_never_exceeds_what_the_evidence_supports():
         assert 0 < op.confidence <= 1.0
         if op.rule != "unpaired":
             assert op.confidence <= O.HIGH
+
+
+# ------------------------------------------- 操作 → 工具的對應與效果
+
+def test_the_param_translation_is_the_only_one():
+    """L3 記 (qty, usd),toolbox 的參數是 (c, F, n, P, x) ——
+    兩者之間的翻譯只能寫在一個地方,否則「網站顯示的效果」與
+    「測試驗的效果」會各自漂開。那正是 CLAUDE.md 第一條規則在防的事。
+    """
+    conn = _real()
+    try:
+        ops = O.build(conn)
+        missing = [o.combo_id for o in ops if O.tool_params(o, conn) is None]
+    finally:
+        conn.close()
+    assert missing == [], f"這些操作翻不成工具參數:{sorted(set(missing))}"
+
+
+def _state_at(day: str):
+    import json
+    import os
+    from mstr_cebe import toolbox as T
+
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    with open(os.path.join(root, "app", "data", "daily.json"),
+              encoding="utf-8") as f:
+        d = json.load(f)
+    i = d["date"].index(day) if day in d["date"] else len(d["date"]) - 1
+    return T.State(held=d["held"][i],
+                   claims=(d["debt"][i] + d["pref_total"][i]
+                           - d["cash"][i]) * 1e9,
+                   shares=d["shares"][i] * 1e6, price=d["btc"][i])
+
+
+def test_every_operation_effect_matches_its_tools_structural_claim():
+    """每一筆操作的 ΔB / ΔE 必須符合那把工具在代數上的宣告。
+
+    這是把講義與儀表板綁在一起:講義說「買幣對實得每股恆中性」,
+    那麼儀表板上**每一筆**買幣的 ΔE 都必須是 0。
+    說一套做一套的話,兩邊就不是同一個模型了。
+    """
+    conn = _real()
+    try:
+        ops = O.build(conn)
+        bad = []
+        for op in ops:
+            eff = O.effect_of(op, _state_at(op.window_hi), conn)
+            assert eff is not None, op.combo_id
+            if op.combo_id == "buy_btc":
+                # 買幣:B 上升、E 恰好中性
+                if not (eff["dB"] > 0 and abs(eff["dE"]) < 1e-6):
+                    bad.append((op.window_hi, "buy_btc", eff))
+            elif op.combo_id == "buyback_preferred":
+                # 折價回購:B 完全看不到(式子裡沒有求償權)、E 上升
+                if not (abs(eff["dB"]) < 1e-9 and eff["dE"] > 0):
+                    bad.append((op.window_hi, "buyback", eff))
+            elif op.combo_id == "sell_btc":
+                if not (eff["dB"] < 0 and abs(eff["dE"]) < 1e-6):
+                    bad.append((op.window_hi, "sell_btc", eff))
+            elif op.combo_id == "common_atm":
+                # 增發必定稀釋帳面每股;對實得的方向由 m 決定,不在這裡斷言
+                if not eff["dB"] < 0:
+                    bad.append((op.window_hi, "common_atm", eff))
+    finally:
+        conn.close()
+    assert bad == [], f"與代數宣告不符:{bad[:3]}"
+
+
+def test_a_common_stock_buyback_is_not_priced_at_par():
+    """普通股沒有面額。真的出現普通股庫藏時,`qty × $100` 的對應不成立 ——
+    要擋掉而不是算出一個看起來合理的數字。
+
+    目前公司的普通股回購授權掛著沒動用(見 chronicle.UNUSED_BY_DESIGN),
+    所以這條現在是預防性的 —— 哪天開始動用,它會逼人回來處理。
+    """
+    from mstr_cebe import toolbox as T
+
+    fake = O.Operation(
+        combo_id="buyback_preferred", window_lo="2026-09-01",
+        window_hi="2026-09-07", rule="unpaired", confidence=1.0,
+        params={"qty": 1e6, "usd": -3e8}, members=())
+    # 沒有 conn 就查不到標的,維持原本的優先股對應
+    tool, kw = O.tool_params(fake)
+    assert tool is T.BUYBACK_PREFERRED
+    assert kw["F"] == 1e6 * O.PAR_PER_SHARE

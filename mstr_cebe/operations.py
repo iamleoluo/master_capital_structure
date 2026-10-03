@@ -295,3 +295,75 @@ def main(argv: Optional[List[str]] = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+
+# ---------------------------------------------------------------------------
+# 操作 → toolbox 工具:把 L3 的 (qty, usd) 翻成代數的參數
+# ---------------------------------------------------------------------------
+
+# 優先股的清算優先權。STRC/STRF/STRK/STRD 都是每股 $100。
+# ⚠️ 普通股沒有面額 —— 真的出現普通股庫藏時這個對應不成立,所以要擋掉。
+PAR_PER_SHARE = 100.0
+
+
+def tool_params(op: Operation, conn=None) -> Optional[tuple]:
+    """這個操作對應到哪一把 toolbox 工具、參數是多少。
+
+    L3 記的是 `(qty, usd)` —— 文件直接揭露的兩個量;toolbox 的參數是
+    `(c, F, n, P, x)` —— 代數需要的量。兩者之間的翻譯只能寫在一個地方,
+    否則「網站顯示的效果」與「測試驗的效果」會各自漂開。
+
+    回傳 `(tool, kwargs)`;翻不過去就回 None(不要硬湊一個看起來合理的)。
+    """
+    from . import toolbox as T
+
+    p = op.params
+    qty, usd = p.get("qty") or 0.0, p.get("usd") or 0.0
+
+    if op.combo_id == "sell_to_buyback":
+        return T.SELL_TO_BUYBACK, {"x": p["x"], "F": p["F"]}
+    if op.combo_id == "buy_btc":
+        return T.BUY_BTC, {"c": abs(usd)}          # usd 為負(現金流出)
+    if op.combo_id == "sell_btc":
+        return T.SELL_BTC, {"x": qty}
+    if op.combo_id == "issue_preferred":
+        return T.ISSUE_PREFERRED, {"c": usd, "F": qty * PAR_PER_SHARE}
+    if op.combo_id == "buyback_preferred":
+        if conn is not None and _touches_common(op, conn):
+            return None                            # 普通股沒有面額,見上
+        return T.BUYBACK_PREFERRED, {"c": abs(usd), "F": qty * PAR_PER_SHARE}
+    if op.combo_id == "common_atm":
+        if not qty:
+            return None                            # 沒有股數就算不出每股價
+        return T.COMMON_ATM, {"n": qty, "P": abs(usd) / qty}
+    return None
+
+
+def _touches_common(op: Operation, conn) -> bool:
+    ids = [m[0] for m in op.members]
+    if not ids:
+        return False
+    q = ",".join("?" * len(ids))
+    rows = conn.execute(
+        f"SELECT DISTINCT instrument FROM events WHERE event_id IN ({q})", ids)
+    return any(r[0] == "MSTR" for r in rows)
+
+
+def effect_of(op: Operation, state, conn=None) -> Optional[dict]:
+    """這個操作對兩把尺的效果。**用 toolbox 算,不自己寫一份。**
+
+    `state` 是操作發生當下的資本結構 —— 效果取決於當時的規模,
+    同一筆 $1 億在求償權 $5B 與 $20B 的時候意義完全不同。
+    """
+    from . import toolbox as T
+
+    tp = tool_params(op, conn)
+    if tp is None:
+        return None
+    tool, kw = tp
+    eff = T.effect(tool, state, **kw)
+    verdict = None
+    if tool.accretive is not None:
+        verdict = bool(tool.accretive(state, kw))
+    return {"dB": eff["dB"], "dE": eff["dE"], "accretive": verdict,
+            "tool": tool.id, "params": kw}

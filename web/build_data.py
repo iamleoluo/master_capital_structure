@@ -582,6 +582,67 @@ def build_program(daily: dict, weekly: list) -> dict:
 # meta.json
 # ---------------------------------------------------------------------------
 
+def build_operations_feed(daily: dict) -> list:
+    """L3 的具名資本操作 —— 儀表板「工具」與「配對」兩頁的素材。
+
+    這是**數值解**那一欄的 L2/L3:公式解講「ATM 增發在 m > 1 時加分」,
+    這裡講「2026-09-27 那一週實際增發了多少、當時的 m 讓它加分還是減分」。
+
+    ΔB / ΔE 一律由 `toolbox.effect()` 算,參數的翻譯收在
+    `operations.tool_params()` —— 否則「網站顯示的效果」與「測試驗的效果」
+    會各自漂開,而那正是 CLAUDE.md 第一條規則在防的事。
+    """
+    from mstr_cebe import operations as O          # noqa: E402
+    from mstr_cebe import toolbox as T             # noqa: E402
+
+    conn = O.connect()
+    try:
+        O.rebuild(conn)
+        ops = O.build(conn)
+        acc = {r[0]: r[1] for r in conn.execute(
+            "SELECT doc_id, accession FROM documents WHERE accession <> ''")}
+        doc_of = {r[0]: r[1] for r in conn.execute(
+            "SELECT event_id, doc_id FROM events")}
+
+        idx = {d: i for i, d in enumerate(daily["date"])}
+
+        def state_at(day: str) -> T.State:
+            i = idx.get(day)
+            if i is None:
+                i = next((j for j, d in enumerate(daily["date"]) if d >= day),
+                         len(daily["date"]) - 1)
+            return T.State(
+                held=daily["held"][i],
+                claims=(daily["debt"][i] + daily["pref_total"][i]
+                        - daily["cash"][i]) * 1e9,
+                shares=daily["shares"][i] * 1e6,
+                price=daily["btc"][i])
+
+        out = []
+        for op in sorted(ops, key=lambda o: (o.window_hi, o.combo_id)):
+            eff = O.effect_of(op, state_at(op.window_hi), conn)
+            accs = sorted({acc[doc_of[e]] for e, _, _ in op.members
+                           if doc_of.get(e) in acc})
+            out.append({
+                "id": op.op_id,
+                "tool": op.combo_id,
+                "kind": "combo" if op.combo_id in {c.id for c in T.COMBOS}
+                        else "atom",
+                "lo": op.window_lo, "hi": op.window_hi,
+                "qty": op.params.get("qty"), "usd": op.params.get("usd"),
+                "dB": round(eff["dB"], 2) if eff else None,
+                "dE": round(eff["dE"], 2) if eff else None,
+                # None = 這把工具結構上恆中性,不是「算不出來」
+                "accretive": eff["accretive"] if eff else None,
+                "rule": op.rule, "conf": op.confidence,
+                "quote": op.evidence.get("quoted"),
+                "acc": accs,
+            })
+    finally:
+        conn.close()
+    return out
+
+
 def build_formulas() -> dict:
     """**公式解**那一欄的資料檔 —— `app/data/formulas.json`。
 
@@ -1036,7 +1097,8 @@ def main() -> int:
 
     for name, payload in (("daily", daily), ("weekly", weekly),
                           ("meta", meta), ("chronicle", chronicle),
-                          ("strategy", strategy), ("formulas", build_formulas())):
+                          ("strategy", strategy), ("formulas", build_formulas()),
+                          ("operations", build_operations_feed(daily))):
         path = os.path.join(OUT, f"{name}.json")
         with open(path, "w", encoding="utf-8") as f:
             json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
