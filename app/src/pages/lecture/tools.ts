@@ -6,7 +6,7 @@ import { atoms, PLACE, type Formula } from "../../formulas";
 import { lectureHead, steps } from "../../components/lecture";
 import { placeMap } from "../../components/placeMap";
 import { symbolTable } from "../../components/symbols";
-import { eqCard, tex, texBlock } from "../../lib/math";
+import { eqCard, tex, texAlign, texBlock } from "../../lib/math";
 import type { PageFn } from "../../router";
 
 const TONE: Record<string, string> = {
@@ -81,6 +81,26 @@ export const lectureToolsPage: PageFn = (root) => {
             所以測試拿轉移函數去反推方向,打臉那個宣告。
             曾經為了讓規則成立而把「可轉債轉股」寫成「發新股去消滅求償權」,
             那是兩回事:轉股沒有現金那一步。<b>為了救規則去改模型是本末倒置。</b>`,
+        },
+        {
+          q: "推一個給你看:普通股 ATM 增發",
+          body: `
+            <p>底下那些判準不是背出來的,是推出來的。這一個最繞,
+            推完之後其餘八把就好讀了。</p>
+            ${eqCard(texAlign([
+              String.raw`\frac{\,H - (C - nP)/p\,}{S + n} &> \frac{\,H - C/p\,}{S}`,
+              String.raw`\iff\quad \frac{P}{p}\times 10^{8} &> E`,
+              String.raw`\iff\quad m &> 1`,
+            ]), `以每股 ${tex("P")} 發出 ${tex("n")} 股、募到的 ${tex("nP")} 全部拿去抵求償權,
+              「增發後的每股含幣量要比增發前高」就是第一行。三行等價:
+              第二行是<b>發行價換算成幣,要比當下的實得每股多</b>;
+              把股價恆等式代進去就化簡成第三行 ——
+              <b>增發是否增值,完全等於 ${tex("m")} 是否大於 1</b>,
+              跟募到多少、發了幾股都無關。`)}
+            <p>可轉債轉股是同一個條件,只是把 ${tex("P")} 換成轉換價。</p>`,
+          edge: `這個推導有一個前提:${tex("E > 0")}。
+            求償權大到把普通股吃光時不等式會反向 —— 那時候增發的判準整個不同,
+            而那正是這個模型最不該被外推的地方。`,
         },
         {
           q: "求償權那一欄為什麼有問號",
