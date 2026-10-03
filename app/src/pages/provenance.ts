@@ -5,7 +5,7 @@
  *
  *  由 pages/dataQuality.ts 改名而來:原本那一頁把兩件事混在一起,
  *  讀者要讀完整頁才知道哪裡不能信。插值距離與結構變化偵測已搬到
- *  儀表板 · 量,留在這裡的是出處本身。 */
+ *  儀表板 · 每股計量,留在這裡的是出處本身。 */
 import { meta } from "../data";
 import { edgarFormUrl } from "../lib/format";
 import type { PageFn } from "../router";

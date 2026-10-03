@@ -10,7 +10,7 @@ import { toolBadges } from "../../components/toolkit";
 import type { Post } from "../../types";
 import type { PageFn } from "../../router";
 
-const KIND_LABEL = { chronicle: "大事記", structure: "資本結構" } as const;
+const KIND_LABEL = { chronicle: "大事記", structure: "機制解讀" } as const;
 
 /** 百分比保留一位小數 —— 小數值捨成整數會讓「+1.1%」變成「+1%」,
  *  而那一位正是重點(優先股堆疊那一段的實得每股幾乎持平)。 */
@@ -71,7 +71,7 @@ export function postDetail(slug: string): PageFn {
         ${p.claim ? `<div class="note key post-claim-box">
           <b>主張</b>${p.claim}
           <p style="margin:8px 0 0;font-size:.82rem;color:var(--ink-3)">
-            主張可以被後續的資料檢驗 —— 這是資本結構那一類與大事記的差別。</p>
+            主張可以被後續的資料檢驗 —— 這是機制解讀那一類與大事記的差別。</p>
         </div>` : ""}
         ${pins(p)}
         <article class="post-body">${p.html}</article>

@@ -1,4 +1,4 @@
-/** 講義 · 工具 —— L2 的公式解。
+/** 推導 · 資本操作 —— L2 的公式解。
  *
  *  推導來源:reference/03-operations.md §1–3。
  *  主軸是四個位置:因為位置只有四個,動作就是可窮舉的。 */
@@ -42,7 +42,7 @@ function card(t: Formula): string {
 export const lectureToolsPage: PageFn = (root) => {
   root.innerHTML = `
     <div class="wrap">
-      ${lectureHead("二 · 工具", "公司能做的動作是列得完的",
+      ${lectureHead("二 · 資本操作", "每一種操作,對兩把尺各自做了什麼",
         `資本只會在四個位置之間移動。因為位置只有四個,<b>動作就是可窮舉的</b> ——
          這不是「我們想到這幾個」,是結構上就只有這幾條。
          每一條都要問兩次:對帳面每股怎麼樣?對實得每股怎麼樣?`)}
@@ -113,7 +113,7 @@ export const lectureToolsPage: PageFn = (root) => {
             硬填一個箭頭等於假裝模型知道它不知道的事,所以那一欄顯示問號,
             把答案交給右邊的代數與判準。</p>
             <p>組合反而明確 —— 因為 ${tex("U")} 在中間抵銷掉了(見
-            <a href="#/lecture/pairing">講義 · 配對</a>)。</p>`,
+            <a href="#/lecture/pairing">推導 · 來源與用途</a>)。</p>`,
           edge: `這是四位置模型的真實邊界,不是瑕疵。
             它的用途是<b>窮舉動作</b>,不是計算效果。`,
         },
@@ -124,7 +124,7 @@ export const lectureToolsPage: PageFn = (root) => {
             動作有時間點、有大小。</p>
             <p>但公司身上還有一類東西不長這樣 —— <b>反饋律</b>。
             浮動利率優先股的股息率就是:董事會按期依市價與約定面額的偏差校準下一期的利率
-            (見<a href="#/lecture/structure">〇 · 結構</a>的閉環控制器)。
+            (見<a href="#/lecture/structure">〇 · 資本架構</a>的閉環控制器)。
             它持續運轉、沒有「發生」的那一刻。</p>
             <div class="note key">
               <b>它不列入工具清單。</b>它決定的是「股息與債息」那把工具<b>每一期的大小</b>,
@@ -163,7 +163,7 @@ export const lectureToolsPage: PageFn = (root) => {
 
       <div class="note" style="margin-top:30px">
         <b>接下來:</b>公司幾乎不會只做一個動作 —— 錢要先從某處來,才能往某處去。
-        <a href="#/lecture/pairing">講義 · 配對</a>把兩條箭頭串起來,
+        <a href="#/lecture/pairing">推導 · 來源與用途</a>把兩條箭頭串起來,
         而那正是真實世界的樣子。
       </div>
     </div>`;

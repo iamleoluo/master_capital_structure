@@ -1,10 +1,10 @@
-/** 講義 · 〇 · 結構 —— 讀四節之前要先知道的事。
+/** 推導 · 〇 · 資本架構 —— 讀四節之前要先知道的事。
  *
  *  推導來源:reference/01-architecture.md。這一頁回答的不是「我們怎麼量」,
  *  是「**標的是什麼形狀**」—— 四個原始量不是會計事實,是一座刻意蓋出來的
  *  階梯留下的痕跡。
  *
- *  ⚠️ 這一頁與其他講義頁同樣受 test_lecture_is_formula_only 管:
+ *  ⚠️ 這一頁與其他推導頁同樣受 test_lecture_is_formula_only 管:
  *  階梯只能放**順位與條款類型**,不能放票息率(百分比會被抓)。
  *  那些數字屬於數值解,在儀表板。 */
 import { lectureHead, steps } from "../../components/lecture";
@@ -24,7 +24,7 @@ const LADDER: Array<[string, string, string, string]> = [
 export const lectureStructurePage: PageFn = (root) => {
   root.innerHTML = `
     <div class="wrap">
-      ${lectureHead("〇 · 結構", "資本結構的設計意圖",
+      ${lectureHead("〇 · 資本架構", "一個資產,三種證券,三種買方",
         `後面四節從四個原始量開始。但那四個量不是從天上掉下來的會計事實 ——
          求償權是一座<b>刻意蓋出來的階梯</b>,股數的每次變動都是為了讓持幣長大,
          而溢價能大於一是因為有人全職在維持它。
@@ -51,7 +51,7 @@ export const lectureStructurePage: PageFn = (root) => {
             ${tex("B")} 量的是「幣堆多大」,${tex("E")} 量的是「剝完之後普通股還剩多少」。
             第四節會看到它們的答案常常相反。</p>`,
           edge: `「剝離波動」是結構的意圖,不是保證。真正做到什麼程度要看市價 ——
-            而市價會脫錨。這一頁講設計,<a href="#/board/tools">儀表板 · 工具</a>講實際發生了什麼。`,
+            而市價會脫錨。這一頁講設計,<a href="#/board/tools">儀表板 · 資本操作</a>講實際發生了什麼。`,
         },
         {
           q: "三層定位:資本、股權、信貸",
@@ -91,7 +91,7 @@ export const lectureStructurePage: PageFn = (root) => {
                  <td>${cum}</td><td>${conv}</td></tr>`).join("")}</tbody>
             </table></div>
             <p style="font-size:.8rem;color:var(--ink-3);margin-top:8px">
-              票息率與各層金額屬於數值解,在<a href="#/board/quantities">儀表板 · 量</a>。
+              票息率與各層金額屬於數值解,在<a href="#/board/quantities">儀表板 · 每股計量</a>。
               這裡只放結構 —— 它不會因為下一份申報而改變。</p>
             <p style="margin-top:16px">順位本身是常識。<b>真正改變解讀的是三條條款:</b></p>`,
         },
@@ -154,7 +154,7 @@ export const lectureStructurePage: PageFn = (root) => {
             </div>`,
           edge: `前饋控制器的輸出<b>不是單調的</b>:同一套論述在一個受眾那裡加分、
             在另一個受眾那裡扣分。${tex("m")} 會波動,一部分就來自這裡。
-            這一層講義只給機制,不給預測。`,
+            這一層推導只給機制,不給預測。`,
         },
         {
           q: "增厚機制的上界",
@@ -188,7 +188,7 @@ export const lectureStructurePage: PageFn = (root) => {
 
       <div class="note" style="margin-top:30px">
         <b>接下來:</b>知道形狀之後再去量它。
-        <a href="#/lecture/quantities">講義 · 一 · 量</a>從四個原始量出發,
+        <a href="#/lecture/quantities">推導 · 每股計量</a>從四個原始量出發,
         一路定義到股價的恆等式。
       </div>
     </div>`;

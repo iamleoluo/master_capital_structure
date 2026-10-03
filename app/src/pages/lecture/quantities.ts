@@ -1,4 +1,4 @@
-/** 講義 · 量 —— L1 的公式解。
+/** 推導 · 每股計量 —— L1 的公式解。
  *
  *  推導來源:reference/02-model.md §1–6。這一頁是那幾節的網頁版,
  *  不是重寫 —— 改模型時兩邊要一起改,reference/verify.py 會驗同號式子。 */
@@ -10,11 +10,11 @@ import type { PageFn } from "../../router";
 export const lectureQuantitiesPage: PageFn = (root) => {
   root.innerHTML = `
     <div class="wrap">
-      ${lectureHead("一 · 量", "四個數字就決定了全部",
+      ${lectureHead("一 · 每股計量", "公司公布的每股,與股東實得的每股",
         `要回答「我這一股背後有多少顆幣是我的」,最少需要四個量。
          這一頁從那四個量出發,一路定義到股價的恆等式 ——
          後面三頁的工具、配對、時間,全部建立在這裡的符號上。
-         <br>還沒讀<a href="#/lecture/structure">〇 · 結構</a>的話先讀那一節:
+         <br>還沒讀<a href="#/lecture/structure">〇 · 資本架構</a>的話先讀那一節:
          這四個量是一座刻意蓋出來的階梯留下的痕跡,不是任意挑的。`)}
 
       ${symbolTable(["H", "S", "C", "p"])}
@@ -38,7 +38,7 @@ export const lectureQuantitiesPage: PageFn = (root) => {
             那筆錢本來就是準備拿去付利息與股息的。</p>
             <p>這條式子把<b>一整座階梯壓成一個數</b>。誰排在誰前面、哪些條款會改變
             實質負擔(股息水壩、累積與非累積、沒有一層設質),在
-            <a href="#/lecture/structure">〇 · 結構</a> ——
+            <a href="#/lecture/structure">〇 · 資本架構</a> ——
             讀過那一節,下面三個選擇才看得出它們各自偏在哪一邊。</p>
             ${eqCard(texBlock(String.raw`C = \underbrace{D}_{\text{可轉債}} + \underbrace{L}_{\text{優先股清算優先權}} - \underbrace{U}_{\text{美元流動性}}`))}
             <p>三個選擇值得記下來:</p>
@@ -100,7 +100,7 @@ export const lectureQuantitiesPage: PageFn = (root) => {
               `也就是平均每顆幣背了多少美元的求償權。幣價跌到這裡,普通股的<b>帳面</b>殘值歸零。`)}
             <div class="note key" style="margin-bottom:14px">
               <b>⚠️ 這不是清算觸發價。</b>沒有一層求償權以比特幣設質
-              (<a href="#/lecture/structure">〇 · 結構</a>),所以不存在強制平倉機制。
+              (<a href="#/lecture/structure">〇 · 資本架構</a>),所以不存在強制平倉機制。
               跌破 ${tex("p_{0}")} 只代表帳面殘值為負,公司照樣運作;
               真正會致命的是付不出股息與利息。
             </div>
@@ -141,7 +141,7 @@ export const lectureQuantitiesPage: PageFn = (root) => {
 
       <div class="note" style="margin-top:30px">
         <b>接下來:</b>這四個量會怎麼變?
-        <a href="#/lecture/tools">講義 · 工具</a>把公司能做的動作窮舉出來 ——
+        <a href="#/lecture/tools">推導 · 資本操作</a>把公司能做的動作窮舉出來 ——
         而且因為位置只有四個,動作是<b>可以列完</b>的。
       </div>
     </div>`;

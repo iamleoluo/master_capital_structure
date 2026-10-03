@@ -1,14 +1,14 @@
-/** 觀點 —— 大事記與資本結構共用這一份清單。
+/** 觀點 —— 大事記與機制解讀共用這一份清單。
  *
  *  兩者讀起來像新聞與社論,但那是比喻。結構上真正的差別只有一個:
- *  **資本結構那一類帶「主張」,大事記沒有** —— 因為主張可以被後續的
+ *  **機制解讀那一類帶「主張」,大事記沒有** —— 因為主張可以被後續的
  *  資料檢驗,事件不行。 */
 import { posts } from "../../data";
 import { drawEraStrip } from "../../charts/eraStrip";
 import type { Post } from "../../types";
 import type { PageFn } from "../../router";
 
-const KIND_LABEL = { chronicle: "大事記", structure: "資本結構" } as const;
+const KIND_LABEL = { chronicle: "大事記", structure: "機制解讀" } as const;
 
 const LEDE: Record<Post["kind"], string> = {
   chronicle: `某個時間點發生了什麼事,或一段期間裡發生了什麼、大概的原因。
@@ -22,13 +22,13 @@ const LEDE: Record<Post["kind"], string> = {
 const EMPTY: Record<Post["kind"], string> = {
   chronicle: `<p class="note">還沒有大事記。</p>`,
   structure: `<div class="note key">
-    <b>還沒有資本結構的論述。</b>
+    <b>還沒有機制解讀的文章。</b>
     這一類放的是對公司營運與資本結構的<b>主張</b> —— 例如:
     推出一個新券種對長期價值的影響是什麼、為什麼現在做這個資本操作、
     它往後對市場會產生什麼效益、最終目的是什麼。
     <br><br>
     與<a href="#/posts/chronicle">大事記</a>的差別不在深度,在<b>錨點</b>:
-    大事記錨在一個事件,資本結構錨在一個<b>可以被後續資料檢驗的主張</b>。
+    大事記錨在一個事件,機制解讀錨在一個<b>可以被後續資料檢驗的主張</b>。
     所以這一類多一個「主張」欄位 —— 寫下來之後,資料會自己去驗它。
   </div>`,
 };
@@ -59,7 +59,7 @@ export function postList(kind: Post["kind"]): PageFn {
         </div>
         <div class="note" style="margin-bottom:26px">
           <b>這一層是詮釋,不是觀測。</b>
-          公式在<a href="#/lecture">講義</a>、數字在<a href="#/board">儀表板</a>,
+          公式在<a href="#/lecture">推導</a>、數字在<a href="#/board">儀表板</a>,
           只有這裡告訴你怎麼看 —— 所以每一則都標日期與作者。
           引用的數字是<b>寫作當下的快照</b>,旁邊會附上它現在的值。
         </div>

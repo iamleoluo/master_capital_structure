@@ -1,6 +1,6 @@
-/** 儀表板 · 量 —— L1 的數值解。
+/** 儀表板 · 每股計量 —— L1 的數值解。
  *
- *  講義說「只需要四個量」,這一頁說「今天這四個量各是多少、從哪來」。 */
+ *  推導說「只需要四個量」,這一頁說「今天這四個量各是多少、從哪來」。 */
 import { daily, meta, N } from "../../data";
 import { accumulationStats, accumulationTable, drawAccumulation }
   from "../../charts/accumulation";
@@ -27,8 +27,8 @@ export const boardQuantitiesPage: PageFn = (root) => {
 
   root.innerHTML = `
     <div class="wrap">
-      ${boardHead("一 · 量", "今天這四個數字", 
-        `${"講義說只需要四個量就能決定全部。這一頁是那四個量今天的值,"
+      ${boardHead("一 · 每股計量", "今天這四個數字", 
+        `${"推導說只需要四個量就能決定全部。這一頁是那四個量今天的值,"
         }以及每一個是<b>申報當日的硬資料</b>還是插值出來的。`,
         "#/lecture/quantities", daily.date[i]!)}
 
@@ -122,7 +122,7 @@ export const boardQuantitiesPage: PageFn = (root) => {
 
       <div class="note" style="margin-top:28px">
         <b>接下來:</b>這四個量怎麼變成現在這樣的?
-        <a href="#/board/tools">儀表板 · 工具</a>列出公司實際用過的每一個動作。
+        <a href="#/board/tools">儀表板 · 資本操作</a>列出公司實際用過的每一個動作。
       </div>
     </div>`;
 
@@ -135,5 +135,5 @@ export const boardQuantitiesPage: PageFn = (root) => {
   return () => { teardownExplorer(); z.destroy(); };
 };
 
-/** 行內符號。講義那邊用 KaTeX,這裡只是要一個等寬的 C,不值得載整個 KaTeX。 */
+/** 行內符號。推導那邊用 KaTeX,這裡只是要一個等寬的 C,不值得載整個 KaTeX。 */
 const tex0 = (s: string) => `<i style="font-family:var(--serif)">${s}</i>`;

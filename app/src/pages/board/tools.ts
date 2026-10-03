@@ -1,6 +1,6 @@
-/** 儀表板 · 工具 —— L2 的數值解。
+/** 儀表板 · 資本操作 —— L2 的數值解。
  *
- *  講義列出公司能做的九個動作;這一頁列出它**實際做過**的每一筆,
+ *  推導列出公司能做的九個動作;這一頁列出它**實際做過**的每一筆,
  *  以及每一筆對兩把尺的效果。效果由 Python 的 toolbox 算,前端只排版。 */
 import { operations } from "../../data";
 import { byId } from "../../formulas";
@@ -51,8 +51,8 @@ export const boardToolsPage: PageFn = (root) => {
 
   root.innerHTML = `
     <div class="wrap">
-      ${boardHead("二 · 工具", "它實際用過哪幾把",
-        `${"講義列出公司<b>能做</b>的九個動作。這一頁是它<b>做過</b>的每一筆 ——"
+      ${boardHead("二 · 資本操作", "它實際用過哪幾把",
+        `${"推導列出公司<b>能做</b>的九個動作。這一頁是它<b>做過</b>的每一筆 ——"
         }以及每一筆對帳面每股與實得每股的效果。
          效果由同一套代數算出來,不是另外估的。`,
         "#/lecture/tools", span[1] ?? "")}
@@ -61,7 +61,7 @@ export const boardToolsPage: PageFn = (root) => {
         ${tile("具名操作", operations.length.toLocaleString(), 
           `${span[0]} → ${span[1]}`)}
         ${tile("用過幾把工具", String(byTool.size),
-          `講義列了 ${Object.keys(byId).length} 把(含組合)`)}
+          `推導列了 ${Object.keys(byId).length} 把(含組合)`)}
         ${tile("最常用的", byId[[...byTool.entries()]
           .sort((a, b) => b[1].length - a[1].length)[0]![0]]?.label ?? "—",
           `${[...byTool.values()].sort((a, b) => b.length - a.length)[0]!.length} 筆`)}
@@ -89,7 +89,7 @@ export const boardToolsPage: PageFn = (root) => {
       <h2 style="margin-bottom:10px">最近 ${recent.length} 筆</h2>
       <p class="lede" style="margin-bottom:12px">
         ΔB 是對帳面每股的效果,ΔE 是對實得每股 —— 單位都是 sats。
-        <b>兩欄常常相反</b>,那個相反就是講義在講的事。
+        <b>兩欄常常相反</b>,那個相反就是推導在講的事。
         週次可以點,連回那份 8-K。
       </p>
       <div class="card flush"><div class="scroller tall"><table class="mini">
@@ -100,7 +100,7 @@ export const boardToolsPage: PageFn = (root) => {
 
       <div class="note" style="margin-top:28px">
         <b>接下來:</b>公司幾乎不會只做一個動作。
-        <a href="#/board/pairing">儀表板 · 配對</a>列出文件明寫「這筆錢拿去做那件事」的那些。
+        <a href="#/board/pairing">儀表板 · 來源與用途</a>列出文件明寫「這筆錢拿去做那件事」的那些。
       </div>
     </div>`;
 };

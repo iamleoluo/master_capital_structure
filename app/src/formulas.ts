@@ -1,10 +1,10 @@
-/** 公式解的資料入口 —— **講義只准 import 這一個檔案**。
+/** 公式解的資料入口 —— **推導只准 import 這一個檔案**。
  *
  *  `app/data/formulas.json` 裡沒有任何觀測值:位置、工具、組合、各自的代數
  *  與判準,全部來自 Python 的 `toolbox`。改了幣價也不會變一個字。
  *
  *  為什麼不直接吃 `meta.toolkit`:`meta.json` 裡有大量數值(錨點、findings、
- *  敏感度表),讓講義 import 它就等於把數值解的大門開著。
+ *  敏感度表),讓推導 import 它就等於把數值解的大門開著。
  *  見 CLAUDE.md 的「公式解 vs 數值解」。 */
 import formulasJson from "../data/formulas.json";
 

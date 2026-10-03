@@ -1,4 +1,4 @@
-/** 講義 · 時間 —— L4 的公式解。
+/** 推導 · 績效歸因 —— L4 的公式解。
  *
  *  推導來源:reference/02-model.md §7–9。
  *  這一層是整個模型最花力氣的地方:E 的式子裡有幣價,不拆開的話,
@@ -10,7 +10,7 @@ import type { PageFn } from "../../router";
 export const lectureTimePage: PageFn = (root) => {
   root.innerHTML = `
     <div class="wrap">
-      ${lectureHead("四 · 時間", "哪些是公司做的,哪些只是行情",
+      ${lectureHead("四 · 績效歸因", "這段漲幅,有多少是公司做出來的",
         `前三頁都在講「做了這個動作會怎樣」。這一頁加入時間序,回答
          <b>「觀察到的這段歷史裡,每一塊變化分別來自哪裡」</b> ——
          而這件事比它看起來難,因為實得每股的式子裡本來就有幣價。`)}
@@ -19,7 +19,7 @@ export const lectureTimePage: PageFn = (root) => {
         {
           q: "取對數,報酬就可加",
           body: `
-            <p>股價是三個因子相乘(見<a href="#/lecture/quantities">講義 · 量</a>),
+            <p>股價是三個因子相乘(見<a href="#/lecture/quantities">推導 · 每股計量</a>),
             取對數之後變成相加:</p>
             ${eqCard(texBlock(String.raw`\ln\frac{P_{1}}{P_{0}}
               = \underbrace{\ln\frac{p_{1}}{p_{0}}}_{\text{幣價}}
@@ -100,7 +100,7 @@ export const lectureTimePage: PageFn = (root) => {
               恆等式保證四層加起來剛好等於總報酬,殘差是零;
               但那不代表我們知道 ${tex("m")} 為什麼動。
             </div>
-            <p style="margin-top:14px">結構上它由<a href="#/lecture/structure">〇 · 結構</a>
+            <p style="margin-top:14px">結構上它由<a href="#/lecture/structure">〇 · 資本架構</a>
             那個開環前饋控制器維持。這裡要補的是另一半:<b>什麼時候不該假設它還成立。</b></p>
             <div class="lec-table"><table class="mini">
               <thead><tr><th>失效機制</th><th>症狀</th><th>模型上的後果</th></tr></thead>
@@ -146,11 +146,11 @@ export const lectureTimePage: PageFn = (root) => {
       ])}
 
       <div class="note" style="margin-top:30px">
-        <b>講義到這裡結束。</b>從形狀到四層,公式解已經完整:
-        <a href="#/lecture/structure">結構</a> →
-        <a href="#/lecture/quantities">量</a> →
-        <a href="#/lecture/tools">工具</a> →
-        <a href="#/lecture/pairing">配對</a> → 時間。
+        <b>推導到這裡結束。</b>從資本架構到四層歸因,公式解已經完整:
+        <a href="#/lecture/structure">資本架構</a> →
+        <a href="#/lecture/quantities">每股計量</a> →
+        <a href="#/lecture/tools">資本操作</a> →
+        <a href="#/lecture/pairing">來源與用途</a> → 績效歸因。
         同一套結構代進真實參數,就是<a href="#/board">儀表板</a>。
       </div>
     </div>`;

@@ -1,4 +1,4 @@
-/** 講義 · 配對 —— L3 的公式解。
+/** 推導 · 來源與用途 —— L3 的公式解。
  *
  *  推導來源:reference/03-operations.md §4。
  *  注意這一層講的是**組合的公式**,不是實際配對出來的結果 ——
@@ -35,7 +35,7 @@ function card(t: Formula): string {
 export const lecturePairingPage: PageFn = (root) => {
   root.innerHTML = `
     <div class="wrap">
-      ${lectureHead("三 · 配對", "錢要先從某處來,才能往某處去",
+      ${lectureHead("三 · 來源與用途", "把募資與動用連起來",
         `單一工具拆開看是為了把代數講乾淨,但公司幾乎不會只做一個動作。
          真實世界的操作是<b>兩條箭頭串起來</b> —— 而串起來的地方,
          每一次都是同一個位置。`)}
@@ -131,7 +131,7 @@ export const lecturePairingPage: PageFn = (root) => {
 
       <div class="note" style="margin-top:30px">
         <b>接下來:</b>以上都是「做了這個動作會怎樣」。
-        <a href="#/lecture/time">講義 · 時間</a>加入時間序,
+        <a href="#/lecture/time">推導 · 績效歸因</a>加入時間序,
         回答「觀察到的這段歷史裡,哪些是公司做的、哪些是行情」。
       </div>
     </div>`;

@@ -1,9 +1,9 @@
-/** 講義的共用版型。
+/** 推導的共用版型。
  *
  *  每一節的結構固定:**問題 → 推導 → 驗證 → 邊界**(見 reference/10 §2.2)。
  *  固定下來有兩個作用:讀者知道往下看會看到什麼;
  *  而「邊界」那一格強迫每一節都回答「這一層算不準的地方在哪」——
- *  講義涵蓋得了的東西會隨不確定性增加而變少,那件事要寫在講義裡面。 */
+ *  推導涵蓋得了的東西會隨不確定性增加而變少,那件事要寫在推導裡面。 */
 import { texBlock } from "../lib/math";
 
 export interface Step {
@@ -20,12 +20,12 @@ export interface Step {
 export function lectureHead(eyebrow: string, title: string, lede: string): string {
   return `
     <div class="page-head">
-      <p class="eyebrow">講義 · ${eyebrow}</p>
+      <p class="eyebrow">推導 · ${eyebrow}</p>
       <h1>${title}</h1>
       <p class="lede">${lede}</p>
     </div>
     <div class="note" style="margin-bottom:28px">
-      <b>這一頁不帶任何數字。</b>講義解的是<b>公式解</b> ——
+      <b>這一頁不帶任何數字。</b>這一區解的是<b>公式解</b> ——
       同一套 L1–L4 代進真實參數之後就是數值解,今天的讀數在<a href="#/board">儀表板</a>。兩邊是同一個結構,解兩次。
     </div>`;
 }

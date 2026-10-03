@@ -1,6 +1,6 @@
-/** 儀表板 · 配對 —— L3 的數值解。
+/** 儀表板 · 來源與用途 —— L3 的數值解。
  *
- *  講義講組合的代數;這一頁講「文件實際寫了哪幾筆配對、信心度多少」。
+ *  推導講組合的代數;這一頁講「文件實際寫了哪幾筆配對、信心度多少」。
  *  配對是**推論**不是事實,所以信心度與文件原句都要看得見。 */
 import { operations } from "../../data";
 import { byId, combos } from "../../formulas";
@@ -42,8 +42,8 @@ export const boardPairingPage: PageFn = (root) => {
 
   root.innerHTML = `
     <div class="wrap">
-      ${boardHead("三 · 配對", "哪幾筆錢的去向是文件說的",
-        `${"講義列出四個組合的代數。這一頁問的是另一件事:"
+      ${boardHead("三 · 來源與用途", "哪幾筆錢的去向是文件說的",
+        `${"推導列出四個組合的代數。這一頁問的是另一件事:"
         }<b>真實資料裡,哪幾筆配得起來?</b>
          證據分兩級:<b>文件明寫用途</b>最強,<b>金額</b>次之。`,
         "#/lecture/pairing", last)}
@@ -53,7 +53,7 @@ export const boardPairingPage: PageFn = (root) => {
           `共 ${operations.length} 個操作`, { tone: "var(--equity)" })}
         ${tile("合併成組合的", String(asCombo.length),
           "金額差 < 5% 才合併,否則兩邊維持獨立")}
-        ${tile("講義列的組合", String(combos.length),
+        ${tile("推導列的組合", String(combos.length),
           "代數上存在,不代表資料裡配得出來")}
       </div>
 
@@ -76,7 +76,7 @@ export const boardPairingPage: PageFn = (root) => {
         ? paired.slice().reverse().map(card).join("")
         : `<p class="note">目前沒有任何一筆有配對證據。</p>`}
 
-      <h2 style="margin:32px 0 10px">講義列的四個組合,各自在資料裡出現幾次</h2>
+      <h2 style="margin:32px 0 10px">推導列的四個組合,各自在資料裡出現幾次</h2>
       <div class="card flush"><div class="scroller"><table class="mini">
         <thead><tr><th>組合</th><th>路徑</th><th class="n">資料裡</th></tr></thead>
         <tbody>
@@ -96,7 +96,7 @@ export const boardPairingPage: PageFn = (root) => {
 
       <div class="note" style="margin-top:28px">
         <b>接下來:</b>把這些操作放到時間軸上,看它們對股價的貢獻。
-        <a href="#/board/time">儀表板 · 時間</a>
+        <a href="#/board/time">儀表板 · 績效歸因</a>
       </div>
     </div>`;
 };

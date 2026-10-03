@@ -72,7 +72,7 @@ export const overviewPage: PageFn = (root) => {
         全都在壓制同一個偏差。
         <div style="margin-top:10px">
           少了第一個,增厚沒有動力;少了第二個,正反饋沒有阻尼,遇到衝擊就發散。
-          機制與代數在 <a href="#/lecture/structure">講義 · 〇 · 結構</a> ——
+          機制與代數在 <a href="#/lecture/structure">推導 · 〇 · 資本架構</a> ——
           其中一條結果是:<b>每股含幣量的年度成長率,上界等於溢價倍數減一</b>。
         </div>
       </div>
@@ -94,17 +94,17 @@ export const overviewPage: PageFn = (root) => {
         <div>
           <h3 style="margin-bottom:8px">接下來看什麼</h3>
           <p style="font-size:.9rem;color:var(--ink-2);margin-bottom:10px">
-            <a href="#/lecture/structure">講義 · 結構</a> ——
+            <a href="#/lecture/structure">推導 · 資本架構</a> ——
             求償權階梯長什麼樣、為什麼<b>沒有一層以幣設質</b>(所以不存在強制平倉),
             以及增厚機制的上界在哪。</p>
           <p style="font-size:.9rem;color:var(--ink-2);margin-bottom:10px">
-            <a href="#/board/quantities">儀表板 · 量</a> ——
+            <a href="#/board/quantities">儀表板 · 每股計量</a> ——
             它到底買了多少幣、每一批是拿哪個 ATM 的錢買的,逐週原始資料。</p>
           <p style="font-size:.9rem;color:var(--ink-2);margin-bottom:10px">
             <a href="#/posts/chronicle">大事記</a> ——
             公司在不同階段用的是完全不同的資本工具,對股東的後果也完全相反。</p>
           <p style="font-size:.9rem;color:var(--ink-2);margin-bottom:10px">
-            <a href="#/lecture/quantities">講義 · 量</a> ——
+            <a href="#/lecture/quantities">推導 · 每股計量</a> ——
             求償權怎麼算、兩個每股指標差在哪裡,以及公司能動用哪些工具去改變它。</p>
           <p style="font-size:.9rem;color:var(--ink-2);margin:0">
             <a href="#/pricing">槓桿與定價</a> ——
