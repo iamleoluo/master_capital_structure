@@ -4,6 +4,7 @@
  *  這一層是整個模型最花力氣的地方:E 的式子裡有幣價,不拆開的話,
  *  幣價上漲會被誤讀成公司做得好。 */
 import { lectureHead, steps } from "../../components/lecture";
+import { symbolTable } from "../../components/symbols";
 import { eqCard, tex, texAlign, texBlock } from "../../lib/math";
 import type { PageFn } from "../../router";
 
@@ -11,9 +12,16 @@ export const lectureTimePage: PageFn = (root) => {
   root.innerHTML = `
     <div class="wrap">
       ${lectureHead("四 · 績效歸因", "這段漲幅,有多少是公司做出來的",
-        `<b>公司公布的是「比特幣收益率」</b> —— 每股含幣量在一段期間的相對增長率。
-         <b>那個數字不告訴你,那段變化裡有多少是幣價漲的、多少是公司做出來的。</b>
-         這一節補上那一段:把一段期間的總報酬拆成四層,<b>而且沒有殘差</b>。`)}
+        `回到最前面那個問題:<b>長期到底有沒有贏過比特幣?</b>
+         公司公布的「比特幣收益率」是一段期間的相對增長率,
+         <b>但它不告訴你那段變化裡有多少是幣價漲的、多少是公司做出來的。</b>
+         <br>這個分不開就什麼都說不清楚 ——
+         因為 <a href="#/lecture/structure">資本架構</a>那一節已經說過,
+         <b>幣價上漲讓求償權在幣計價下縮水,本來就是這個結構最主要的回報來源</b>。
+         它不是公司的功勞,但它確實發生在股東身上。
+         這一節把總報酬拆成四層,<b>而且沒有殘差</b>。`)}
+
+      ${symbolTable(["B", "E", "m", "P"])}
 
       ${steps([
         {

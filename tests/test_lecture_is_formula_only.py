@@ -93,3 +93,28 @@ def test_a_section_does_not_open_straight_into_a_formula(page: pathlib.Path):
         f"{page.name} 這幾節開場直接是公式,沒有框架:{bad} —— "
         f"見 reference/13-exposition.md §5"
     )
+
+
+def test_every_symbol_a_lecture_page_uses_is_defined_somewhere_on_it():
+    """一頁用到的符號,必須在那一頁的符號表裡 —— 或在它前面的頁定義過。
+
+    由來:2026-10-04 整頁重寫「資本架構」時,把符號表與位置對照一起刪掉了,
+    結果**第一頁就在用 C、p₀、m 卻沒有任何定義**。
+
+    整頁重寫會連同基礎定義一起掉,而那不會讓任何測試變紅 ——
+    頁面照樣渲染,只是讀者看不懂。所以要一支守門。
+    """
+    import json
+    order = ["structure", "quantities", "tools", "pairing", "time"]
+    # 這幾個在文字裡出現但屬於推導中途引入的,不要求進符號表
+    DERIVED = {"p_{0}", "A", "X", "y", "Q", "DL", "U", "t", "d"}
+    defined: set = set()
+    missing = []
+    for name in order:
+        src = (ROOT / "app" / "src" / "pages" / "lecture" / f"{name}.ts").read_text()
+        for m in re.finditer(r"symbolTable\(\[([^\]]*)\]", src):
+            defined |= {x.strip().strip('"') for x in m.group(1).split(",") if x.strip()}
+        used = {m for m in re.findall(r'tex\("([A-Za-z](?:_\{[^}]*\})?)"\)', src)}
+        for u in sorted(used - defined - DERIVED):
+            missing.append(f"{name}.ts 用了 {u} 但沒有任何一頁定義過它")
+    assert missing == [], "\n".join(missing)

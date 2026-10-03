@@ -5,6 +5,7 @@
  *  後者是數值解,在儀表板。 */
 import { combos, PLACE, type Formula } from "../../formulas";
 import { lectureHead, steps } from "../../components/lecture";
+import { symbolTable } from "../../components/symbols";
 import { eqCard, tex, texBlock } from "../../lib/math";
 import type { PageFn } from "../../router";
 
@@ -36,10 +37,14 @@ export const lecturePairingPage: PageFn = (root) => {
   root.innerHTML = `
     <div class="wrap">
       ${lectureHead("三 · 來源與用途", "把募資與動用連起來",
-        `<b>公司的說法</b>是「募得的資金直接轉化為比特幣儲備」。
-         <b>那是對的,但申報是逐項揭露的</b> —— 這週發了多少股、這週買了多少幣,
-         兩件事各自成立,文件不一定把它們連起來。
-         <b>這一節做那個連結</b>,並說清楚憑什麼說連得對。`)}
+        `單看一把工具,說不出淨效果 —— 募資與償還會讓求償權與現金同方向移動。
+         更重要的是:<b>單看一筆動作,也看不出它為了什麼。</b>
+         折價回購看起來是賺一點價差,但它真正的用途是<b>把閘門打開</b>,
+         好讓下一輪的發行與買幣做得下去。
+         <br><b>要看到意圖,就得把來源與用途連起來。</b>
+         這一節做那個連結,並說清楚憑什麼說連得對。`)}
+
+      ${symbolTable(["c", "F", "n", "x"])}
 
       ${steps([
         {
