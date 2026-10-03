@@ -13,7 +13,9 @@ export const lectureQuantitiesPage: PageFn = (root) => {
       ${lectureHead("一 · 量", "四個數字就決定了全部",
         `要回答「我這一股背後有多少顆幣是我的」,最少需要四個量。
          這一頁從那四個量出發,一路定義到股價的恆等式 ——
-         後面三頁的工具、配對、時間,全部建立在這裡的符號上。`)}
+         後面三頁的工具、配對、時間,全部建立在這裡的符號上。
+         <br>還沒讀<a href="#/lecture/structure">〇 · 結構</a>的話先讀那一節:
+         這四個量是一座刻意蓋出來的階梯留下的痕跡,不是任意挑的。`)}
 
       ${symbolTable(["H", "S", "C", "p"])}
 
@@ -34,6 +36,10 @@ export const lectureQuantitiesPage: PageFn = (root) => {
             <p>可轉債與優先股在清償順位上排在普通股前面,各自有一筆<b>固定美元面額</b>的
             請求權。公司手上的美元流動性可以直接抵掉其中一部分 ——
             那筆錢本來就是準備拿去付利息與股息的。</p>
+            <p>這條式子把<b>一整座階梯壓成一個數</b>。誰排在誰前面、哪些條款會改變
+            實質負擔(股息水壩、累積與非累積、沒有一層設質),在
+            <a href="#/lecture/structure">〇 · 結構</a> ——
+            讀過那一節,下面三個選擇才看得出它們各自偏在哪一邊。</p>
             ${eqCard(texBlock(String.raw`C = \underbrace{D}_{\text{可轉債}} + \underbrace{L}_{\text{優先股清算優先權}} - \underbrace{U}_{\text{美元流動性}}`))}
             <p>三個選擇值得記下來:</p>
             <ol class="lec-list">
@@ -91,7 +97,13 @@ export const lectureQuantitiesPage: PageFn = (root) => {
           body: `
             <p>先看曲線與橫軸的交點。${tex("E = 0")} 時:</p>
             ${eqCard(texBlock(String.raw`H = \frac{C}{p} \quad\Longrightarrow\quad p_{0} = \frac{C}{H}`),
-              "也就是平均每顆幣背了多少美元的求償權。幣價跌到這裡,普通股的殘值歸零。")}
+              `也就是平均每顆幣背了多少美元的求償權。幣價跌到這裡,普通股的<b>帳面</b>殘值歸零。`)}
+            <div class="note key" style="margin-bottom:14px">
+              <b>⚠️ 這不是清算觸發價。</b>沒有一層求償權以比特幣設質
+              (<a href="#/lecture/structure">〇 · 結構</a>),所以不存在強制平倉機制。
+              跌破 ${tex("p_{0}")} 只代表帳面殘值為負,公司照樣運作;
+              真正會致命的是付不出股息與利息。
+            </div>
             <p>再看放大倍數。每股殘值(美元)是 ${tex(String.raw`(Hp-C)/S`)},對幣價取彈性:</p>
             ${eqCard(texAlign([
               String.raw`A(p) &= \frac{\mathrm{d}\ln\left((Hp-C)/S\right)}{\mathrm{d}\ln p} = \frac{Hp}{Hp - C} = \frac{1}{1 - p_{0}/p}`,

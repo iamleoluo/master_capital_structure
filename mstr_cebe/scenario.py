@@ -105,6 +105,52 @@ def apply_atm_accretion(residual: float, shares: float,
     return (residual / shares) * factor * new_shares, new_shares
 
 
+# ---------------------------------------------------------------------------
+# 增厚飛輪的上限:把 apply_atm_accretion 反解
+# ---------------------------------------------------------------------------
+#
+# 增發比例 X、CEBE mNAV = m 時,每股含幣量的成長率是
+#
+#     y = (1 + X·m)/(1 + X) − 1 = X(m−1)/(1 + X)
+#
+# 這是 apply_atm_accretion 的 factor 減一,所以兩邊必然一致(有測試綁)。
+# 對 X 單調遞增,但有上界:X → ∞ 時 y → m − 1。
+#
+# 反解給定目標成長率需要的增發比例:
+#
+#     X = y / (m − 1 − y)
+#
+# 於是 **y < m − 1 是硬上限** —— 不是「很難」,是不可能。
+# 這就是 01-architecture.md §7.1 的規模陷阱:逼近上限時所需的稀釋會爆掉。
+# 注意 m 是 CEBE mNAV(分母是殘值),與一般講的 mNAV 不同。
+
+
+def accretion_yield(mnav: float, dilution: float) -> float:
+    """增發 `dilution` 比例的股數、全部買幣,每股含幣量的成長率。"""
+    if dilution <= 0:
+        return 0.0
+    return (1 + dilution * mnav) / (1 + dilution) - 1
+
+
+def max_accretion_yield(mnav: float) -> float:
+    """任何增發比例都達不到的上限。折價時為 0 —— 增發只會稀釋。"""
+    return max(0.0, mnav - 1.0)
+
+
+def dilution_for_yield(mnav: float, target: float) -> Optional[float]:
+    """要達到 `target` 成長率需要的增發比例;超過上限時回 None。
+
+    ⚠️ 回 None 不是「資料不足」,是**這個目標在數學上不可達**。
+    呼叫端不要把它當成 0 或無窮大處理 —— 那會把一個結構性的不可能
+    顯示成一個很大的數字。
+    """
+    if target <= 0:
+        return 0.0
+    if target >= max_accretion_yield(mnav):
+        return None
+    return target / (mnav - 1.0 - target)
+
+
 def run(s: State, px: float, p: Params) -> Result:
     """完整情境:給定目標幣價與三個參數,算出市場股價與每股數字。"""
     star = trigger_price(s, p.leverage_floor)

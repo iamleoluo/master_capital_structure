@@ -141,3 +141,58 @@ def test_golden_grid_covers_both_sides_of_the_trigger(s):
     triggered = [x for x in g if x["trigger_px"] and x["px"] > x["trigger_px"]]
     assert len(triggered) > 50
     assert all(x["per_share_usd"] >= 0 for x in g)
+
+
+# ---------------------------------------------------------------------------
+# 增厚飛輪的上限
+# ---------------------------------------------------------------------------
+
+def test_the_yield_formula_agrees_with_apply_atm_accretion() -> None:
+    """`accretion_yield` 必須與 `apply_atm_accretion` 是同一條式子。
+
+    兩個實作算同一件事就會各自漂移(CLAUDE.md 第一條規則的理由)。
+    這裡的處理是:公式單獨寫一份,但用 apply 的結果逐點釘住它。
+    """
+    for mnav in (0.8, 1.0, 1.05, 1.2, 1.5, 2.0):
+        for x in (0.01, 0.1, 0.5, 1.0, 5.0):
+            resid, shares = SC.apply_atm_accretion(1_000.0, 100.0, mnav, x)
+            by_apply = (resid / shares) / (1_000.0 / 100.0) - 1
+            assert by_apply == pytest.approx(SC.accretion_yield(mnav, x), abs=1e-12)
+
+
+def test_dilution_for_yield_round_trips() -> None:
+    """反解出來的增發比例,代回去必須得到原來的目標。"""
+    for mnav in (1.05, 1.2, 1.5, 2.0):
+        for target in (0.01, 0.03, 0.049):
+            x = SC.dilution_for_yield(mnav, target)
+            assert x is not None
+            assert SC.accretion_yield(mnav, x) == pytest.approx(target, rel=1e-12)
+
+
+def test_the_yield_ceiling_is_mnav_minus_one() -> None:
+    """y < m − 1 是硬上限:超過它的目標回 None,而不是一個很大的數字。
+
+    這是 01-architecture.md §7.1 的規模陷阱。寫成測試的理由是
+    **「不可達」與「需要很大的增發」在程式裡長得一樣**,很容易被
+    下游當成後者顯示出去。
+    """
+    for mnav in (1.1, 1.2, 1.5):
+        ceiling = SC.max_accretion_yield(mnav)
+        assert ceiling == pytest.approx(mnav - 1.0)
+        # 逼近上限:需要的稀釋單調爆增,但永遠有解
+        prev = 0.0
+        for frac in (0.5, 0.9, 0.99, 0.999):
+            x = SC.dilution_for_yield(mnav, ceiling * frac)
+            assert x is not None and x > prev
+            prev = x
+        # 等於或超過上限:不可達
+        assert SC.dilution_for_yield(mnav, ceiling) is None
+        assert SC.dilution_for_yield(mnav, ceiling * 1.01) is None
+
+
+def test_a_discount_makes_every_positive_yield_unreachable() -> None:
+    """m ≤ 1 時增發只會稀釋,任何正的目標都不可達。"""
+    for mnav in (0.8, 0.95, 1.0):
+        assert SC.max_accretion_yield(mnav) == 0.0
+        assert SC.dilution_for_yield(mnav, 0.01) is None
+        assert SC.accretion_yield(mnav, 0.5) <= 0.0

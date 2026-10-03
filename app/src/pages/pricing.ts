@@ -61,7 +61,8 @@ export const pricingPage: PageFn = (root) => {
           </div>
         </div>
         <p style="font-size:.78rem;color:var(--ink-3);margin:14px 0 0">
-          參考:普通股殘值歸零的 BTC 價格是 ${usd0(be)}(不含槓桿下限的再融資效果)。</p>
+          參考:普通股<b>帳面</b>殘值歸零的 BTC 價格是 ${usd0(be)}(不含槓桿下限的再融資效果)。
+          <b>那不是清算價</b> —— 沒有一層求償權以幣設質,詳見下方。</p>
       </div>
 
       <div class="card flush" style="padding:20px 22px 10px;margin-bottom:8px">
@@ -76,7 +77,7 @@ export const pricingPage: PageFn = (root) => {
       <figcaption style="margin-bottom:26px">
         灰虛線是「完全沒有求償權」的上限(${Math.round(gross).toLocaleString()} sats)。
         淺色虛線是「公司什麼都不做」的自然衰減曲線;橘線是套用上面三個參數後的情境曲線 ——
-        兩者只在你把槓桿下限或 ATM 增發打開時才會分岔。藍色豎線是槓桿下限觸發價,紅色是歸零價。
+        兩者只在你把槓桿下限或 ATM 增發打開時才會分岔。藍色豎線是槓桿下限觸發價,紅色是帳面歸零價。
       </figcaption>
 
       <div class="grid3" style="margin-bottom:12px" id="tiles"></div>
@@ -92,8 +93,19 @@ export const pricingPage: PageFn = (root) => {
       ${eqCard(
         texBlock("E(p_{0}) = 0 \\quad\\iff\\quad p_{0} = \\frac{C}{H}"),
         `也就是<b>平均每顆幣背了多少美元的求償權</b>。目前是 ${usd0(be)} ——
-         幣價跌到這裡,普通股在清算意義下就什麼都不剩。
-         紅色豎線畫的就是它。`)}
+         幣價跌到這裡,普通股的<b>帳面</b>殘值歸零。紅色豎線畫的就是它。`)}
+      <div class="note key" style="margin-bottom:16px">
+        <b>⚠️ 這不是清算觸發價。</b>
+        五檔優先股<b>都沒有以比特幣設定抵押權</b> —— 各級持有人只對公司的一般資產
+        享有優先受償權,底下那堆幣是信用背書,不是質押物。所以傳統加密抵押借貸裡
+        「幣價跌破清算線 → 自動斷頭強制平倉」的機制,<b>在這個結構裡不存在</b>:
+        沒有保證金追繳。
+        <div style="margin-top:10px">
+          跌破 ${tex("p_{0}")} 的意思只是「帳面上普通股殘值為負」,公司照樣在運作。
+          真正會致命的是<b>付不出股息與利息</b> —— 那是流動性問題,看的是美元儲備
+          能撐多久,跟 ${tex("p_{0}")} 是兩回事。
+        </div>
+      </div>
       <p class="lede" style="margin-bottom:16px">
         再看放大倍數。每股殘值(美元)是 ${tex("(Hp - C)/S")},對幣價取彈性:
       </p>
@@ -150,9 +162,9 @@ export const pricingPage: PageFn = (root) => {
             六列全部落在 1 個基點內。FWP 揭露的輸入只到 $1M 精度,無法逐分吻合是資料的極限,不是公式錯誤。</p>
         </div>
         <div>
-          <h3 style="margin-bottom:10px">歸零價有三個都對的答案</h3>
+          <h3 style="margin-bottom:10px">帳面歸零價有三個都對的答案</h3>
           <div class="card flush"><div class="scroller"><table class="mini">
-            <thead><tr><th>定義</th><th class="n">歸零 BTC 價</th><th class="n">緩衝</th></tr></thead>
+            <thead><tr><th>定義</th><th class="n">帳面歸零 BTC 價</th><th class="n">緩衝</th></tr></thead>
             <tbody>${meta.be.map((x) =>
               `<tr><td>${beLab[x.k] ?? x.k}</td><td class="n">${usd0(x.v)}</td>
                <td class="n">${(meta.fwp.btc / x.v).toFixed(2)}x</td></tr>`).join("")}</tbody>

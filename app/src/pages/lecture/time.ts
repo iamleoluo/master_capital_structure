@@ -90,6 +90,43 @@ export const lectureTimePage: PageFn = (root) => {
             不要併進「公司決策」,也不要併進「幣價」。</p>`,
         },
         {
+          q: "第四層是唯一沒有一手來源的那一層",
+          body: `
+            <p>前三層都有出處:幣價看市場、決策看申報、求償權縮放由前兩者算出來。
+            <b>只有 ${tex("m")} 沒有。</b>它是把恆等式配平的那一項 ——
+            而且在真實資料裡,它經常是<b>最大的一層</b>。</p>
+            <div class="note key">
+              <b>拆得開不等於解釋得了。</b>
+              恆等式保證四層加起來剛好等於總報酬,殘差是零;
+              但那不代表我們知道 ${tex("m")} 為什麼動。
+            </div>
+            <p style="margin-top:14px">結構上它由<a href="#/lecture/structure">〇 · 結構</a>
+            那個開環前饋控制器維持。這裡要補的是另一半:<b>什麼時候不該假設它還成立。</b></p>
+            <div class="lec-table"><table class="mini">
+              <thead><tr><th>失效機制</th><th>症狀</th><th>模型上的後果</th></tr></thead>
+              <tbody>
+                <tr><td><b>反身性螺旋</b></td>
+                  <td>幣價跌 → 普通股跌更兇(它承接放大的波動)→ ${tex("m")} 下滑</td>
+                  <td>股權管道在數學上關閉</td></tr>
+                <tr><td><b>規模陷阱</b></td>
+                  <td>持幣變大,維持同樣成長率需要的增發比例非線性上升</td>
+                  <td>增發本身侵蝕 ${tex("m")},<b>上限 ${tex("m-1")} 自己下降</b></td></tr>
+                <tr><td><b>受眾分流失敗</b></td>
+                  <td>同一套論述在不同群體反向作用</td>
+                  <td>${tex("m")} 的波動度本身上升</td></tr>
+                <tr><td><b>指標被看穿</b></td>
+                  <td>市場改用扣求償權的口徑評價</td>
+                  <td>${tex("m")} 的分母換了,水準重設</td></tr>
+              </tbody>
+            </table></div>
+            <p style="margin-top:14px">最後一列有點諷刺:
+            <b>這個工具做的事,如果足夠多人做,就會改變 ${tex("m")}。</b></p>`,
+          edge: `這一節<b>只給機制,不給預測</b>。
+            上面四條都說得出「會往哪個方向」,說不出「什麼時候、多少」——
+            所以它們是讀數字時的警告,不是模型的一部分。
+            ${tex("m")} 在歸因裡仍然是觀測量,不是被解釋的量。`,
+        },
+        {
           q: "佔比要用什麼當分母",
           body: `
             <div class="note key" style="margin-bottom:14px">
@@ -109,7 +146,8 @@ export const lectureTimePage: PageFn = (root) => {
       ])}
 
       <div class="note" style="margin-top:30px">
-        <b>講義到這裡結束。</b>四層的公式解已經完整:
+        <b>講義到這裡結束。</b>從形狀到四層,公式解已經完整:
+        <a href="#/lecture/structure">結構</a> →
         <a href="#/lecture/quantities">量</a> →
         <a href="#/lecture/tools">工具</a> →
         <a href="#/lecture/pairing">配對</a> → 時間。

@@ -8,7 +8,8 @@ import { startRouter, topRoutes, type Route } from "./router";
  *  同一個題目的兩半,但各自夠長,合成一頁會變成很難找東西的長捲軸。 */
 const routes: Route[] = [
   { path: "/", title: "總覽", page: async () => (await import("./pages/overview")).overviewPage },
-  { path: "/lecture", title: "講義", page: async () => (await import("./pages/lecture/quantities")).lectureQuantitiesPage },
+  { path: "/lecture", title: "講義", page: async () => (await import("./pages/lecture/structure")).lectureStructurePage },
+  { path: "/lecture/structure", parent: "/lecture", title: "〇 · 結構", page: async () => (await import("./pages/lecture/structure")).lectureStructurePage },
   { path: "/lecture/quantities", parent: "/lecture", title: "一 · 量", page: async () => (await import("./pages/lecture/quantities")).lectureQuantitiesPage },
   { path: "/lecture/tools", parent: "/lecture", title: "二 · 工具", page: async () => (await import("./pages/lecture/tools")).lectureToolsPage },
   { path: "/lecture/pairing", parent: "/lecture", title: "三 · 配對", page: async () => (await import("./pages/lecture/pairing")).lecturePairingPage },
