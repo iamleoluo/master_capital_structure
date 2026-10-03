@@ -426,9 +426,6 @@ def main(argv: Optional[List[str]] = None) -> int:
     return cmds[argv[0]](argv[1:])
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
-
 
 # ---------------------------------------------------------------------------
 # 讀申報表格:逐格抽文字
@@ -456,3 +453,7 @@ def row_cells(tr, drop=("$", "(", ")")) -> List[str]:
         if t and t not in drop:
             out.append(t)
     return out
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

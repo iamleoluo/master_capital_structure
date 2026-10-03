@@ -86,8 +86,8 @@ python3 reference/verify.py
 | `MSTR_CEBE_歷史分析_建置規格.md` | **2026-08 的建置規格**:要蓋什麼、資料來源、驗證錨點。先於這裡所有的建模工作 |
 | `reference/`(本資料夾) | **模型本身**:為什麼是這個形狀,怎麼推出來的 |
 | `diagrams/data-pipeline.html` | 資料管線的視覺化 |
-| `app/src/pages/structure.ts` | 給讀者看的定義(繁中 + KaTeX) |
-| `app/src/pages/operations.ts` | 給讀者看的操作代數 |
+| `app/src/pages/lecture/**` | 給讀者看的推導(繁中 + KaTeX)—— **公式解**,不得有數值 |
+| `app/src/pages/board/**` | 給讀者看的今天的數字 —— **數值解** |
 
 網站是**對外的說法**,這裡是**對內的推導**。兩邊講的必須是同一件事 ——
 不一致時以 `verify.py` 通過的那一版為準。
@@ -98,7 +98,7 @@ python3 reference/verify.py
 
 - 新的恆等式 → 在 01 或 02 寫推導,**同時**在 `verify.py` 加同號檢查
 - 換掉某個方法 → 在 04 記一條:症狀 / 原因 / 修正 / 教訓
-- 資料來源、粒度或口徑變動 → 03,並確認資料品質頁的 finding 也跟著改
+- 資料來源、粒度或口徑變動 → 03,並確認「出處」頁的 finding 也跟著改
 - 缺口變了 → 07(它是活的狀態,不要往裡面塞流水帳)
 - 做完一步 → 08,**不要**在 05/06/07 再寫一份現況
 - 改完跑 `python3 reference/build.py` 重新產生 HTML

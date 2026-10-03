@@ -464,9 +464,6 @@ def main(argv: Optional[List[str]] = None) -> int:
     return 0
 
 
-if __name__ == "__main__":
-    raise SystemExit(main())
-
 
 # ---------------------------------------------------------------------------
 # 操作 → toolbox 工具:把 L3 的 (qty, usd) 翻成代數的參數
@@ -544,3 +541,7 @@ def effect_of(op: Operation, state, conn=None) -> Optional[dict]:
         verdict = bool(tool.accretive(state, kw))
     return {"dB": eff["dB"], "dE": eff["dE"], "accretive": verdict,
             "tool": tool.id, "params": kw}
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
