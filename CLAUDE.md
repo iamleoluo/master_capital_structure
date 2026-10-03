@@ -53,7 +53,8 @@
 | [09](reference/09-data-gaps.md) 缺口 | 今天的資料夠不夠支撐今天的結論 |
 | [10](reference/10-status.md) 現況 | **唯一的進度來源** |
 | [11](reference/11-site.md) 網站設計 | 理論／觀測／詮釋三分 |
-| [12](reference/12-rebuild-plan.md) 施工計畫 | **下一步從這裡接** |
+| [12](reference/12-rebuild-plan.md) 施工計畫 | 版面重排(已完成) |
+| [13](reference/13-exposition.md) 論述結構 | **下一步從這裡接**:一頁之內怎麼講 |
 
 ---
 
@@ -99,4 +100,5 @@ cd app && npm run build          # 建置(含 tsc + vitest)
 ⚠️ **`mNAV` 不要裸用。** 本站的 $m$ 是 **CEBE mNAV**(分母是殘值),
 與一般講的 mNAV(分母是全部持幣)不同 —— 同一天可以一個溢價一個折價。
 
-網站結構正在依 [12](reference/12-rebuild-plan.md) 重排,現況見該文件 §1。
+版面已依 [12](reference/12-rebuild-plan.md) 重排完成;
+論述的重排計畫在 [13](reference/13-exposition.md),尚未施工。現況一律見 [10](reference/10-status.md)。
