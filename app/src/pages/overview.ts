@@ -31,6 +31,36 @@ export const overviewPage: PageFn = (root) => {
           對公司有一筆固定美元的請求權;普通股排在最後,拿剩下的。
           目前普通股分到的是全部持幣的 <b>${pct(commonShare)}</b>。
         </p>
+        <p class="lede">
+          市場談這家公司幾乎只談一個詞:<b>mNAV</b> —— 市值相對於持幣價值的倍數。
+          但 <b>mNAV 有兩種</b>,差別只有一個:<b>分母算不算優先股與可轉債先拿走的那一塊</b>。
+          同一個選擇,把分母從市值換成股數,就變成兩種「每股含幣量」——
+          <b>所以這其實是同一個選擇的兩種表達</b>:
+        </p>
+        <div class="grid2" style="gap:14px;margin:0 0 20px">
+          <div class="card" style="padding:14px 16px">
+            <div class="eyebrow" style="margin:0 0 6px">分母:全部持幣</div>
+            <div style="font-size:.9rem;color:var(--ink-2)">
+              basic mNAV · <b>帳面每股含幣量</b><br>
+              <span style="color:var(--ink-3)">問「幣堆相對股數有多大」。
+              <b>公司公布的 BTC Yield 用的是這一組。</b></span>
+            </div>
+          </div>
+          <div class="card" style="padding:14px 16px">
+            <div class="eyebrow" style="margin:0 0 6px">分母:扣求償權後</div>
+            <div style="font-size:.9rem;color:var(--ink-2)">
+              CEBE mNAV · <b>實得每股含幣量</b><br>
+              <span style="color:var(--ink-3)">問「我這一股實得多少」。
+              <b>這個網站整套算的是這一組。</b></span>
+            </div>
+          </div>
+        </div>
+        <p class="lede">
+          不是哪一組比較準 —— 是<b>它們回答不同的問題</b>,
+          而且同一天可以一個折價、一個溢價,因為分母差了一整個求償權。
+          下面第二張圖畫的就是這兩條線的間距。
+        </p>
+
         <div class="note key">
           <b>所以 MSTR 不是比特幣的代理品。</b>
           它的股價同時受四件事推動:<b>幣價</b>、<b>公司的資本操作</b>、

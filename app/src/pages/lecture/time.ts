@@ -11,13 +11,13 @@ export const lectureTimePage: PageFn = (root) => {
   root.innerHTML = `
     <div class="wrap">
       ${lectureHead("四 · 績效歸因", "這段漲幅,有多少是公司做出來的",
-        `前三頁都在講「做了這個動作會怎樣」。這一頁加入時間序,回答
-         <b>「觀察到的這段歷史裡,每一塊變化分別來自哪裡」</b> ——
-         而這件事比它看起來難,因為實得每股的式子裡本來就有幣價。`)}
+        `<b>公司公布的是「比特幣收益率」</b> —— 每股含幣量在一段期間的相對增長率。
+         <b>那個數字不告訴你,那段變化裡有多少是幣價漲的、多少是公司做出來的。</b>
+         這一節補上那一段:把一段期間的總報酬拆成四層,<b>而且沒有殘差</b>。`)}
 
       ${steps([
         {
-          q: "取對數,報酬就可加",
+          q: "為什麼拆得開:取對數,報酬就可加",
           body: `
             <p>股價是三個因子相乘(見<a href="#/lecture/quantities">推導 · 每股計量</a>),
             取對數之後變成相加:</p>
@@ -31,21 +31,20 @@ export const lectureTimePage: PageFn = (root) => {
             恆等式,驗不過就是真的錯了。`,
         },
         {
-          q: "但中間那一層不是「公司」",
+          q: "答案的形狀:四層",
           body: `
-            <div class="note key" style="margin-bottom:14px">
-              <b>把中間那層標成「公司」是錯的,而且錯得很重要。</b>
-            </div>
-            <p>回去看 ${tex("E")} 的式子:分子裡有 ${tex("C/p")}。
-            所以 ${tex("E")} 的變化混了兩件事 ——</p>
-            <ul class="lec-list">
-              <li>公司真的做了什麼(發股、回購、買賣幣、付息 → 動到
-                ${tex("H")}、${tex("C")}、${tex("S")})</li>
-              <li>幣價自己走了多少(只動到 ${tex("p")},卻一樣讓 ${tex("E")} 變)</li>
-            </ul>
-            <p>要拆開它,先把結構的三個量寫成一個向量,${tex("E")} 就是結構與幣價的函數:</p>
-            ${eqCard(texBlock(String.raw`E(x,\,p) = \frac{H - C/p}{S}\times 10^{8},
-              \qquad x = (H,\,C,\,S)`))}`,
+            <p>把中間那層一分為二,就得到四層:</p>
+            ${eqCard(texAlign([
+              String.raw`\ln\frac{P_{1}}{P_{0}} = &\;\ln\frac{p_{1}}{p_{0}}
+                &&\text{幣價}`,
+              String.raw`&+ \sum_t \Delta_{t}^{\text{決策}} &&\text{公司決策}`,
+              String.raw`&+ \sum_t \Delta_{t}^{\text{行情}} &&\text{求償權縮放}`,
+              String.raw`&+ \ln\frac{m_{1}}{m_{0}} &&\text{市場情緒}`,
+            ]))}
+            <p>第三層值得解釋:固定美元的求償權在幣價上漲時於幣計價下縮小,
+            所以<b>即使公司什麼都不做,實得每股也會隨幣價變動</b>。
+            那不是公司的功勞,但它確實發生在股東身上 —— 所以要獨立成一層,
+            不要併進「公司決策」,也不要併進「幣價」。</p>`,
         },
         {
           q: "逐日鏈結:一天拆成兩步",
@@ -74,20 +73,21 @@ export const lectureTimePage: PageFn = (root) => {
             <b>兩者不能互換</b> —— 混用會得到看起來合理但無意義的百分比。`,
         },
         {
-          q: "四層",
+          q: "但中間那一層不是「公司」",
           body: `
-            <p>把中間那層一分為二,就得到四層:</p>
-            ${eqCard(texAlign([
-              String.raw`\ln\frac{P_{1}}{P_{0}} = &\;\ln\frac{p_{1}}{p_{0}}
-                &&\text{幣價}`,
-              String.raw`&+ \sum_t \Delta_{t}^{\text{決策}} &&\text{公司決策}`,
-              String.raw`&+ \sum_t \Delta_{t}^{\text{行情}} &&\text{求償權縮放}`,
-              String.raw`&+ \ln\frac{m_{1}}{m_{0}} &&\text{市場情緒}`,
-            ]))}
-            <p>第三層值得解釋:固定美元的求償權在幣價上漲時於幣計價下縮小,
-            所以<b>即使公司什麼都不做,實得每股也會隨幣價變動</b>。
-            那不是公司的功勞,但它確實發生在股東身上 —— 所以要獨立成一層,
-            不要併進「公司決策」,也不要併進「幣價」。</p>`,
+            <div class="note key" style="margin-bottom:14px">
+              <b>把中間那層標成「公司」是錯的,而且錯得很重要。</b>
+            </div>
+            <p>回去看 ${tex("E")} 的式子:分子裡有 ${tex("C/p")}。
+            所以 ${tex("E")} 的變化混了兩件事 ——</p>
+            <ul class="lec-list">
+              <li>公司真的做了什麼(發股、回購、買賣幣、付息 → 動到
+                ${tex("H")}、${tex("C")}、${tex("S")})</li>
+              <li>幣價自己走了多少(只動到 ${tex("p")},卻一樣讓 ${tex("E")} 變)</li>
+            </ul>
+            <p>要拆開它,先把結構的三個量寫成一個向量,${tex("E")} 就是結構與幣價的函數:</p>
+            ${eqCard(texBlock(String.raw`E(x,\,p) = \frac{H - C/p}{S}\times 10^{8},
+              \qquad x = (H,\,C,\,S)`))}`,
         },
         {
           q: "第四層:唯一沒有一手來源的一層",

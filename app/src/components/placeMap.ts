@@ -4,11 +4,15 @@
  *  **動作就是可窮舉的** —— 這是「工具列得完」這個主張的根據,
  *  而不是「我們想到這幾個」。
  *
- *  U 畫在正中央,因為它是樞紐:除了可轉債轉股,每一條箭頭都經過它。
+ *  ⚠️ U 畫在正中央,但它**不是第四種資本**。除了可轉債轉股,每一條箭頭都
+ *  經過它 —— 而那正是它最不值得停留的理由:它是**管道**,不是目的地。
+ *  所以 U 用虛線畫,與其餘三個實線方塊區分開。
+ *  公司的三層定位(數位資本/股權/信貸)對應的是 H / S / DL,U 不在裡面。
+ *
  *  資料來自 formulas.json(公式解),沒有任何觀測值。 */
 import { F, PLACE, type Formula } from "../formulas";
 
-/** 位置在圖上的座標。U 在中心,其餘四個圍著它。 */
+/** 位置在圖上的座標。U 在中心 —— 因為它是管道,不是因為它重要。 */
 const POS: Record<string, [number, number]> = {
   H: [130, 76], S: [470, 76], U: [300, 190], OUT: [130, 304], DL: [470, 304],
 };
@@ -19,10 +23,14 @@ const short = (id: string) => (PLACE[id] ?? id).split("(")[0]!;
 
 const box = (id: string, accent: string) => {
   const [x, y] = POS[id]!;
+  // U 是管道,不是資本層 —— 用虛線與較低的筆畫權重,避免它看起來與其他三個同級
+  const conduit = id === "U";
   return `
     <g>
       <rect x="${x - BW / 2}" y="${y - BH / 2}" width="${BW}" height="${BH}" rx="8"
-            fill="var(--surface-2)" stroke="${accent}" stroke-width="1.5"/>
+            fill="var(--surface-2)" stroke="${accent}"
+            stroke-width="${conduit ? 1 : 1.5}"
+            ${conduit ? 'stroke-dasharray="5 4" opacity="0.75"' : ""}/>
       <text x="${x}" y="${y - 4}" text-anchor="middle"
             style="font:600 13px var(--sans);fill:var(--ink)">${short(id)}</text>
       <text x="${x}" y="${y + 13}" text-anchor="middle"
