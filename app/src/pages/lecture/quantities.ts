@@ -21,7 +21,7 @@ export const lectureQuantitiesPage: PageFn = (root) => {
 
       ${steps([
         {
-          q: "源頭:市場講的 mNAV,其實有兩個",
+          q: "口徑的源頭:兩種 mNAV",
           body: `
             <p>談這家公司幾乎只會談一個詞:<b>mNAV</b> —— 市值相對於持幣價值的倍數。
             但 mNAV 有兩種,而且<b>差別只有一個:分母算不算優先股與可轉債先拿走的那一塊</b>。</p>
@@ -58,7 +58,7 @@ export const lectureQuantitiesPage: PageFn = (root) => {
             但相對於比特幣部位的規模小到可以忽略 —— 這是一個刻意的簡化,不是疏漏。`,
         },
         {
-          q: "兩把尺:帳面與實得",
+          q: "兩個每股指標:帳面與實得",
           body: `
             <p>同一堆幣,兩種算法。差別只有一項:<b>要不要把求償權扣掉</b>。</p>
             ${eqCard(texAlign([
@@ -75,7 +75,7 @@ export const lectureQuantitiesPage: PageFn = (root) => {
           check: `${tex("(1.2)")} 普通股殘量 ${tex(String.raw`= H - C/p`)}`,
         },
         {
-          q: "扣掉的那一項:求償權怎麼算",
+          q: "求償權的計算與現金沖抵",
           body: `
             <p>可轉債與優先股在清償順位上排在普通股前面,各自有一筆<b>固定美元面額</b>的
             請求權。公司手上的美元流動性可以直接抵掉其中一部分 ——
@@ -104,7 +104,7 @@ export const lectureQuantitiesPage: PageFn = (root) => {
             也就是說,「面額口徑高估多少」這個估計是一個<b>下限</b>。`,
         },
         {
-          q: "分母要跟分子一致:三個股數",
+          q: "股數口徑:三個分母的取捨",
           body: `
             <p>分子是「屬於普通股的幣」,分母就必須是「普通股的股數」—— 聽起來是廢話,但這家公司<b>同時存在三個股數口徑</b>,而且差距不小。</p>
             <div class="lec-table"><table class="mini">
@@ -120,7 +120,7 @@ export const lectureQuantitiesPage: PageFn = (root) => {
             對不上就讓建置失敗 —— 那是確認分母沒有被悄悄換掉的方法。`,
         },
         {
-          q: "槓桿:一個除法推出兩個彈性",
+          q: "槓桿:兩個彈性與帳面歸零點",
           body: `
             <p>先看曲線與橫軸的交點。${tex("E = 0")} 時:</p>
             ${eqCard(texBlock(String.raw`H = \frac{C}{p} \quad\Longrightarrow\quad p_{0} = \frac{C}{H}`),
@@ -145,7 +145,7 @@ export const lectureQuantitiesPage: PageFn = (root) => {
             恆等式(下一節)沒有這個問題。`,
         },
         {
-          q: "把它接到股價:恆等式",
+          q: "股價恆等式",
           body: `
             <p>到這裡都還在講「公司有多少幣」。要連到股價,需要一座橋 —— 市場願意付幾倍:</p>
             ${eqCard(texBlock(String.raw`m = \frac{P}{\;E/10^{8} \times p\;}

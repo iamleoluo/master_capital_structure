@@ -64,7 +64,7 @@ export const provenancePage: PageFn = (root) => {
         混在一起會把「餘額變了」讀成「公司做了什麼」。
       </p>
 
-      <h2 style="margin:34px 0 12px">三種粒度,粗的只能補洞</h2>
+      <h2 style="margin:34px 0 12px">三種粒度:粗粒度只用於補洞</h2>
       <p style="font-size:.86rem;color:var(--ink-2);margin-bottom:14px">
         同一批動作會被三份文件各講一次 —— 8-K 的週表、10-Q 的季表、10-K 的年表。
         <strong>三者不得相加</strong>,否則同一筆錢會被算好幾次。規則是粗粒度只能
@@ -84,9 +84,9 @@ export const provenancePage: PageFn = (root) => {
       ${prov.conflicts.length ? `
         <p class="note" style="margin-bottom:30px">
           ${prov.conflicts.length} 筆跨文件對不上的粗粒度事件,全部列在下方
-          「建置期發現的問題」裡 —— 不會被悄悄抹平。</p>` : ""}
+          「建置期發現的資料問題」裡 —— 不會被悄悄抹平。</p>` : ""}
 
-      <h2 style="margin:34px 0 12px">買幣的錢對得上嗎</h2>
+      <h2 style="margin:34px 0 12px">資金流對帳</h2>
       <p style="font-size:.86rem;color:var(--ink-2);margin-bottom:14px">
         這是對整份分析最直接的檢查:<strong>買幣 + 股息 + 回購 + 儲備增加
         = 各種募資 + 賣幣</strong>。兩邊都是現金口徑,所以不受「優先股按面額
@@ -113,7 +113,7 @@ export const provenancePage: PageFn = (root) => {
           可用粒度比分析窗口還粗的時候,對帳不會錯,它只是不成立。` : ""}
       </p>
 
-      <h2 style="margin:30px 0 14px">建置期發現的問題</h2>
+      <h2 style="margin:30px 0 14px">建置期發現的資料問題</h2>
       <div class="grid2">
         ${meta.findings.map((f) => `
           <div class="card"><h3 style="font-size:1rem;margin-bottom:7px">${f.t}</h3>

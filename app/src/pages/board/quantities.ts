@@ -27,7 +27,7 @@ export const boardQuantitiesPage: PageFn = (root) => {
 
   root.innerHTML = `
     <div class="wrap">
-      ${boardHead("一 · 每股計量", "今天這四個數字", 
+      ${boardHead("一 · 每股計量", "四個量的當期讀數", 
         `${"推導說只需要四個量就能決定全部。這一頁是那四個量今天的值,"
         }以及每一個是<b>申報當日的硬資料</b>還是插值出來的。`,
         "#/lecture/quantities", daily.date[i]!)}
@@ -60,7 +60,7 @@ export const boardQuantitiesPage: PageFn = (root) => {
       </div>
       <div id="board-explorer"></div>
 
-      <h2 style="margin:34px 0 10px">這些數字能信到什麼程度</h2>
+      <h2 style="margin:34px 0 10px">資料可信度</h2>
       <p class="lede" style="margin-bottom:14px">
         四個量的血統不一樣。持幣與美元流動性是 8-K 逐週揭露的<b>實測值</b>;
         可轉債、現金、股數來自季度 XBRL,中間是<b>線性插值</b>。

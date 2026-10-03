@@ -42,7 +42,7 @@ export const boardPairingPage: PageFn = (root) => {
 
   root.innerHTML = `
     <div class="wrap">
-      ${boardHead("三 · 來源與用途", "哪幾筆錢的去向是文件說的",
+      ${boardHead("三 · 來源與用途", "已確認用途的資金流",
         `${"推導列出四個組合的代數。這一頁問的是另一件事:"
         }<b>真實資料裡,哪幾筆配得起來?</b>
          證據分兩級:<b>文件明寫用途</b>最強,<b>金額</b>次之。`,
@@ -71,12 +71,12 @@ export const boardPairingPage: PageFn = (root) => {
         對帳不會錯 —— 它只是不成立。
       </div>
 
-      <h2 style="margin-bottom:12px">配得起來的那些</h2>
+      <h2 style="margin-bottom:12px">已配對的操作</h2>
       ${paired.length
         ? paired.slice().reverse().map(card).join("")
         : `<p class="note">目前沒有任何一筆有配對證據。</p>`}
 
-      <h2 style="margin:32px 0 10px">推導列的四個組合,各自在資料裡出現幾次</h2>
+      <h2 style="margin:32px 0 10px">四個組合在資料中的出現次數</h2>
       <div class="card flush"><div class="scroller"><table class="mini">
         <thead><tr><th>組合</th><th>路徑</th><th class="n">資料裡</th></tr></thead>
         <tbody>

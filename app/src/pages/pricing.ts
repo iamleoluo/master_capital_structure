@@ -83,7 +83,7 @@ export const pricingPage: PageFn = (root) => {
       <div class="grid3" style="margin-bottom:12px" id="tiles"></div>
       <div class="note key" id="verdict" style="margin-bottom:36px"></div>
 
-      <h2 style="margin-bottom:8px">槓桿是怎麼跑出來的</h2>
+      <h2 style="margin-bottom:8px">槓桿的代數推導</h2>
       <p class="lede" style="margin-bottom:16px">
         上面那條曲線不是模型擬合,是代數推出來的。符號沿用
         <a href="#/lecture/quantities">資本結構</a>頁:${tex("H")} 總持幣、${tex("C")} 求償權、
@@ -149,7 +149,7 @@ export const pricingPage: PageFn = (root) => {
         是本專案唯一能拿來對答案的一手資料。</p>
       <div class="grid2">
         <div>
-          <h3 style="margin-bottom:10px">敏感度表(已完整重現)</h3>
+          <h3 style="margin-bottom:10px">敏感度表(完整重現)</h3>
           <div class="card flush"><div class="scroller"><table class="mini">
             <thead><tr><th>BTC 價格</th><th class="n">官方每股淨值</th><th class="n">本系統</th><th class="n">誤差</th></tr></thead>
             <tbody>${meta.sens.map((s) => {
@@ -162,7 +162,7 @@ export const pricingPage: PageFn = (root) => {
             六列全部落在 1 個基點內。FWP 揭露的輸入只到 $1M 精度,無法逐分吻合是資料的極限,不是公式錯誤。</p>
         </div>
         <div>
-          <h3 style="margin-bottom:10px">帳面歸零價有三個都對的答案</h3>
+          <h3 style="margin-bottom:10px">帳面歸零價:三種口徑並列</h3>
           <div class="card flush"><div class="scroller"><table class="mini">
             <thead><tr><th>定義</th><th class="n">帳面歸零 BTC 價</th><th class="n">緩衝</th></tr></thead>
             <tbody>${meta.be.map((x) =>

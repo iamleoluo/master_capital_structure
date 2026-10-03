@@ -43,7 +43,7 @@ export const lecturePairingPage: PageFn = (root) => {
 
       ${steps([
         {
-          q: "為什麼需要配對:單一工具說不出淨效果",
+          q: "配對的必要性:單一工具的淨效果不確定",
           body: `
             <p>上一節的九把工具裡,募資與償還會讓 ${tex("DL")} 與 ${tex("U")}
             <b>同方向</b>移動 —— 發優先股募到現金、同時掛上面額,
@@ -67,7 +67,7 @@ export const lecturePairingPage: PageFn = (root) => {
             兩者代數上都算進 ${tex("C")},但性質完全不同。`,
         },
         {
-          q: "組合的形狀:中間一定是美元流動性",
+          q: "組合的結構:中介必為美元流動性",
           body: `
             <p>四個組合的路徑:</p>
             <div class="lec-table"><table class="mini">
@@ -88,7 +88,7 @@ export const lecturePairingPage: PageFn = (root) => {
             前一步的終點必須是後一步的起點,否則那兩步根本不是同一筆錢。`,
         },
         {
-          q: "配對能不能成立,看兩件事",
+          q: "配對的成立條件:證據與量級",
           body: `
             <ol class="lec-list">
               <li><b>證據的強弱。</b>最強的是文件明寫用途 ——
@@ -115,7 +115,7 @@ export const lecturePairingPage: PageFn = (root) => {
             不配對不是失敗,猜錯才是。`,
         },
         {
-          q: "哪些看起來像組合、其實不是",
+          q: "常見誤判:形似組合而非組合",
           body: `
             <div class="note" style="margin-bottom:14px">
               <b>「賣幣 → 增加美元儲備」不是組合,是單一工具。</b>

@@ -107,7 +107,7 @@ export const boardTimePage: PageFn = (root) => {
 
       <div id="headline"></div>
 
-      <h2 style="margin:34px 0 6px">第一層:報酬來自哪裡</h2>
+      <h2 style="margin:34px 0 6px">第一層:報酬的來源</h2>
       <p class="lede" style="margin-bottom:16px">
         股價可以精確拆成三個相乘的因子 —— ${tex("P = m \\times E/10^{8} \\times p")}。
         取對數之後就變成相加,所以貢獻度沒有殘差、也不需要決定誰先算。
@@ -118,7 +118,7 @@ export const boardTimePage: PageFn = (root) => {
       </p>
       <div id="layers"></div>
 
-      <h2 style="margin:34px 0 6px">第二層:是哪一筆操作做的</h2>
+      <h2 style="margin:34px 0 6px">第二層:歸因到個別操作</h2>
       <p class="lede" style="margin-bottom:16px">
         這裡拆的是<b>公司的決策</b>,不是會計科目。差別很重要:一筆 ATM 增發同時動到
         「股數」與「求償權」(募到的現金抵減求償權),所以把「股數」單獨拿出來看,

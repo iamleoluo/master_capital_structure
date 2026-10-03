@@ -51,7 +51,7 @@ export const boardToolsPage: PageFn = (root) => {
 
   root.innerHTML = `
     <div class="wrap">
-      ${boardHead("二 · 資本操作", "它實際用過哪幾把",
+      ${boardHead("二 · 資本操作", "實際動用過的工具",
         `${"推導列出公司<b>能做</b>的九個動作。這一頁是它<b>做過</b>的每一筆 ——"
         }以及每一筆對帳面每股與實得每股的效果。
          效果由同一套代數算出來,不是另外估的。`,
@@ -70,7 +70,7 @@ export const boardToolsPage: PageFn = (root) => {
           "組合要有文件明寫用途才算得上")}
       </div>
 
-      <h2 style="margin-bottom:10px">各把工具用了多少</h2>
+      <h2 style="margin-bottom:10px">各工具的動用規模</h2>
       <div class="card flush" style="margin-bottom:28px"><div class="scroller"><table class="mini">
         <thead><tr><th>工具</th><th class="n">筆數</th><th class="n">累計金額</th>
           <th>判準</th></tr></thead>

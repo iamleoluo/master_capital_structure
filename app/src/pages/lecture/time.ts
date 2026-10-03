@@ -17,7 +17,7 @@ export const lectureTimePage: PageFn = (root) => {
 
       ${steps([
         {
-          q: "為什麼拆得開:取對數,報酬就可加",
+          q: "可加性的來源:對數報酬",
           body: `
             <p>股價是三個因子相乘(見<a href="#/lecture/quantities">推導 · 每股計量</a>),
             取對數之後變成相加:</p>
@@ -31,7 +31,7 @@ export const lectureTimePage: PageFn = (root) => {
             恆等式,驗不過就是真的錯了。`,
         },
         {
-          q: "答案的形狀:四層",
+          q: "四層歸因",
           body: `
             <p>把中間那層一分為二,就得到四層:</p>
             ${eqCard(texAlign([
@@ -47,7 +47,7 @@ export const lectureTimePage: PageFn = (root) => {
             不要併進「公司決策」,也不要併進「幣價」。</p>`,
         },
         {
-          q: "逐日鏈結:一天拆成兩步",
+          q: "逐日鏈結:為什麼沒有殘差",
           body: `
             <p>沿時間一天一天走,第 ${tex("t")} 天拆成兩步:</p>
             ${eqCard(texAlign([
@@ -73,7 +73,7 @@ export const lectureTimePage: PageFn = (root) => {
             <b>兩者不能互換</b> —— 混用會得到看起來合理但無意義的百分比。`,
         },
         {
-          q: "但中間那一層不是「公司」",
+          q: "中間層的誤標:它不是「公司決策」",
           body: `
             <div class="note key" style="margin-bottom:14px">
               <b>把中間那層標成「公司」是錯的,而且錯得很重要。</b>
@@ -90,7 +90,7 @@ export const lectureTimePage: PageFn = (root) => {
               \qquad x = (H,\,C,\,S)`))}`,
         },
         {
-          q: "第四層:唯一沒有一手來源的一層",
+          q: "市場溢價層:唯一沒有一手來源的一層",
           body: `
             <p>前三層都有出處:幣價看市場、決策看申報、求償權縮放由前兩者算出來。
             <b>只有 ${tex("m")} 沒有。</b>它是把恆等式配平的那一項 ——
@@ -127,7 +127,7 @@ export const lectureTimePage: PageFn = (root) => {
             ${tex("m")} 在歸因裡仍然是觀測量,不是被解釋的量。`,
         },
         {
-          q: "佔比要用什麼當分母",
+          q: "佔比的分母選擇",
           body: `
             <div class="note key" style="margin-bottom:14px">
               <b>不要用淨額當分母。</b>四層會互相抵銷 ——
