@@ -118,7 +118,7 @@ export const lectureToolsPage: PageFn = (root) => {
             它的用途是<b>窮舉動作</b>,不是計算效果。`,
         },
         {
-          q: "什麼東西看起來像工具,但不是",
+          q: "反饋律為什麼不列入工具",
           body: `
             <p>九把工具<b>全部是離散事件</b>:某一天發了多少股、買了多少幣、付了多少股息。
             動作有時間點、有大小。</p>
@@ -127,7 +127,7 @@ export const lectureToolsPage: PageFn = (root) => {
             (見<a href="#/lecture/structure">〇 · 結構</a>的閉環控制器)。
             它持續運轉、沒有「發生」的那一刻。</p>
             <div class="note key">
-              <b>它不是第十把工具。</b>它決定的是「股息與債息」那把工具<b>每一期的大小</b>,
+              <b>它不列入工具清單。</b>它決定的是「股息與債息」那把工具<b>每一期的大小</b>,
               本身不搬動任何位置。
               <div style="margin-top:12px">
                 ${tex("\\Delta B")} 與 ${tex("\\Delta E")} 都是零 ——

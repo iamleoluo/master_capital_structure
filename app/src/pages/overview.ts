@@ -13,11 +13,10 @@ export const overviewPage: PageFn = (root) => {
     <div class="wrap">
       <div class="page-head">
         <p class="eyebrow">總覽</p>
-        <h1>把波動剝下來賣掉</h1>
-        <p class="lede">比特幣的回撤幅度很大,而全球願意承擔那個回撤的資金,
-          遠少於要固定收益的資金。所以 MSTR 做的事是:
-          <b>拿一堆波動極高的資產,在它上面發行波動極低的求償權,
-          把被剝下來的波動全部塞給普通股。</b></p>
+        <h1>一家公司,兩層股東</h1>
+        <p class="lede">MSTR 做的是一件結構化的事:
+          <b>把高波動的底層資產,重組為波動特性迥異的多層求償權</b> ——
+          信貸層吸收固定收益需求,普通股承接全部剩餘波動。</p>
         <p class="lede">結果就是<b>一家公司、兩層股東</b>。
           它買了 ${fmtBtc(daily.held[i]!)} 顆比特幣,但這些幣不全是普通股的 ——
           優先股與可轉債排在前面,先切走固定金額的一塊,剩下的才輪到普通股,
@@ -48,7 +47,7 @@ export const overviewPage: PageFn = (root) => {
       <div id="explorer"></div>
 
       <div class="note" style="margin-top:30px">
-        <b>這套結構靠兩個迴路撐著,方向相反。</b>
+        <b>這套結構由兩個方向相反的控制迴路維持。</b>
         一個把溢價推上去 —— 只要市場願意付的倍數大於一,增發股票買幣就會讓
         <b>每股</b>含幣量上升,所以對外論述不是公關,是融資前提。
         另一個把信貸端拉回面額 —— 浮動股息、折價回購、美元儲備,
@@ -56,7 +55,7 @@ export const overviewPage: PageFn = (root) => {
         <div style="margin-top:10px">
           少了第一個,增厚沒有動力;少了第二個,正反饋沒有阻尼,遇到衝擊就發散。
           機制與代數在 <a href="#/lecture/structure">講義 · 〇 · 結構</a> ——
-          包含一條界:<b>每股含幣量的年度成長上限,就是溢價倍數減一</b>。
+          其中一條結果是:<b>每股含幣量的年度成長率,上界等於溢價倍數減一</b>。
         </div>
       </div>
 
@@ -79,7 +78,7 @@ export const overviewPage: PageFn = (root) => {
           <p style="font-size:.9rem;color:var(--ink-2);margin-bottom:10px">
             <a href="#/lecture/structure">講義 · 結構</a> ——
             求償權階梯長什麼樣、為什麼<b>沒有一層以幣設質</b>(所以不存在強制平倉),
-            以及增厚飛輪的天花板在哪。</p>
+            以及增厚機制的上界在哪。</p>
           <p style="font-size:.9rem;color:var(--ink-2);margin-bottom:10px">
             <a href="#/board/quantities">儀表板 · 量</a> ——
             它到底買了多少幣、每一批是拿哪個 ATM 的錢買的,逐週原始資料。</p>
