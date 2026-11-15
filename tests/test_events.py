@@ -184,6 +184,19 @@ def test_weekly_view_matches_the_committed_raw_file(view, filename):
     assert json.loads(json.dumps(got, ensure_ascii=False)) == want
 
 
+def test_events_export_to_jsonl(conn, tmp_path):
+    doc = _doc(conn)
+    ev = _ev(doc, kind="holdings_observation", instrument="BTC", qty=847666, unit="BTC")
+    E.insert(conn, [ev])
+    path = tmp_path / "events.jsonl"
+    n = E.export_jsonl(conn, str(path))
+    assert n == 1
+    row = json.loads(path.read_text().splitlines()[0])
+    assert row["event_id"] == ev.event_id
+    assert row["kind"] == "holdings_observation"
+    assert row["qty"] == 847666
+
+
 def test_the_real_archive_yields_both_families():
     conn = _real()
     try:

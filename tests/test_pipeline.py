@@ -65,25 +65,25 @@ def test_market_daily_upsert_keeps_btc_and_mstr_independent(conn):
     assert rows["2026-08-14"]["mstr_close_usd"] == pytest.approx(93.04)
 
 
-def test_mnav_readings_keep_variant_and_break_key(conn):
-    """§8.1 / §8.5:同一天的不同 variant 必須各自成列,公司 mNAV 分兩段。"""
+def test_mnav_readings_keep_variant_and_break_key(conn, tmp_path):
+    """§8.1 / §8.5:同一天的不同 variant 各自成列。寫進 JSONL，不進 sqlite。"""
+    import json
     cs = next(c for c in DB.load_capital_structures(conn)
               if c.as_of == dt.date(2026, 8, 13))
     readings = C.all_mnavs(cs, D.FWP_BTC_PRICE, D.FWP_MSTR_PRICE)
-    DB.store_mnav_readings(conn, readings.values())
+    path = tmp_path / "mnav.jsonl"
+    DB.write_mnav_jsonl(str(path), readings.values())
 
-    rows = conn.execute("SELECT variant, comparable_key FROM mnav_readings "
-                        "WHERE as_of = '2026-08-13'").fetchall()
+    rows = [json.loads(line) for line in path.read_text().splitlines()]
     assert len(rows) == len(C.MNavVariant)
     keys = {r["variant"]: r["comparable_key"] for r in rows}
     assert keys["company"] == "company::post"      # 2026-08-13 在斷點之後
     assert keys["basic"] == "basic"
 
-    # 同一天同 variant 重複寫入不應產生第二列
-    DB.store_mnav_readings(conn, readings.values())
-    again = conn.execute("SELECT COUNT(*) n FROM mnav_readings "
-                         "WHERE as_of = '2026-08-13'").fetchone()
-    assert again["n"] == len(C.MNavVariant)
+    DB.write_mnav_jsonl(str(path), readings.values())
+    again = [json.loads(line) for line in path.read_text().splitlines()]
+    assert len(again) == len(C.MNavVariant)
+    assert conn.execute("SELECT COUNT(*) n FROM mnav_readings").fetchone()["n"] == 0
 
 
 def test_findings_are_persisted(conn):

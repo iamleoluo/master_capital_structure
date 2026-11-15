@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import json
+import os
 import sys
 
 from mstr_cebe import core as C
@@ -75,32 +77,33 @@ def main() -> int:
     print(f"  讀回 {len(structures)} 筆,申報日:"
           + ", ".join(c.as_of.isoformat() for c in structures))
 
-    # ---- 算日頻 mNAV 序列 ----
+    # ---- 算日頻 mNAV，寫進投影，不進 sqlite ----
     print("\n→ 計算日頻 mNAV(forward-fill 資本結構)")
     market = DB.load_market_daily(conn)
     first_structure = min(c.as_of for c in structures)
-    stored = 0
-    for row in market:
-        day = dt.date.fromisoformat(row["date"])
-        if day < first_structure or row["btc_close_usd"] is None \
-                or row["mstr_close_usd"] is None:
-            continue
-        base = C.as_of_structure(structures, day)
-        readings = C.all_mnavs(base, row["btc_close_usd"], row["mstr_close_usd"])
-        # as_of_structure 會把 as_of 改成查詢日,readings 因此帶正確日期
-        stored += DB.store_mnav_readings(
-            conn, readings.values(),
-            structure_as_of=day,
-            claims_basis=C.ClaimsBasis.CEBETRACKER.value,
-            cash_source=C.CashSource.BALANCE_SHEET.value,
-            is_forward_fill="forward-filled" in base.note)
-    print(f"  寫入 {stored} 筆 mNAV 讀數")
-
-    counts = conn.execute(
-        "SELECT variant, COUNT(*) n, MIN(as_of) a, MAX(as_of) b "
-        "FROM mnav_readings GROUP BY variant ORDER BY variant").fetchall()
-    for c in counts:
-        print(f"    {c['variant']:<11} {c['n']:>5} 筆  {c['a']} .. {c['b']}")
+    out = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                       "data", "derived", "mnav_readings.jsonl")
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    with open(out, "w", encoding="utf-8") as f:
+        for row in market:
+            day = dt.date.fromisoformat(row["date"])
+            if day < first_structure or row["btc_close_usd"] is None \
+                    or row["mstr_close_usd"] is None:
+                continue
+            base = C.as_of_structure(structures, day)
+            readings = C.all_mnavs(base, row["btc_close_usd"], row["mstr_close_usd"])
+            for r in readings.values():
+                f.write(json.dumps({
+                    "as_of": r.as_of.isoformat(),
+                    "variant": r.variant.value,
+                    "comparable_key": r.comparable_key,
+                    "value": r.value,
+                    "btc_price": r.btc_price,
+                    "mstr_price": r.mstr_price,
+                    "is_forward_fill": "forward-filled" in base.note,
+                    "note": r.note,
+                }, ensure_ascii=False) + "\n")
+    print(f"  寫入 {out}（不進 sqlite）")
 
     if failures:
         print(f"\n⚠️  驗證未通過:{failures}")

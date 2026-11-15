@@ -3,8 +3,8 @@
 與規格書 §3 的差異(全部是刻意的):
   * market_daily 加了 OHLC 而非只有 close —— §8.9 的 split 檢查需要 high。
   * capital_structure 加了 shares_class_a / class_b 與 debt 的 tier 標記。
-  * 新增 mnav_readings 表:§8.1 要求每個 mNAV 值都攜帶 variant + date,
-    所以 (as_of, variant) 是複合主鍵,並存 comparable_key 讓查詢端能正確分段。
+  * mnav_readings 表還在 schema 裡,但算出來的 mNAV 改寫 data/derived/mnav_readings.jsonl,
+    不再 INSERT 進這張表。
   * 新增 data_findings 表:記錄來源資料的內部矛盾(data.FINDING_*),
     讓下游查詢知道哪些數字有已知問題。
 """
@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import os
 import sqlite3
 from dataclasses import asdict
 from typing import Dict, Iterable, List, Optional, Sequence
@@ -203,21 +204,32 @@ def seed_capital_structure(conn: sqlite3.Connection) -> int:
     return rows
 
 
-def store_mnav_readings(conn: sqlite3.Connection,
-                        readings: Iterable[C.MNavReading],
-                        structure_as_of: Optional[dt.date] = None,
-                        claims_basis: str = "", cash_source: str = "",
-                        is_forward_fill: bool = False) -> int:
+def write_mnav_jsonl(path: str,
+                     readings: Iterable[C.MNavReading],
+                     structure_as_of: Optional[dt.date] = None,
+                     claims_basis: str = "", cash_source: str = "",
+                     is_forward_fill: bool = False) -> int:
+    """算出來的 mNAV 寫進投影檔。不進 mstr_cebe.sqlite。"""
     n = 0
-    for r in readings:
-        conn.execute("""
-            INSERT OR REPLACE INTO mnav_readings VALUES (?,?,?,?,?,?,?,?,?,?,?)
-        """, (r.as_of.isoformat(), r.variant.value, r.comparable_key, r.value,
-              r.btc_price, r.mstr_price, claims_basis, cash_source,
-              structure_as_of.isoformat() if structure_as_of else None,
-              int(is_forward_fill), r.note))
-        n += 1
-    conn.commit()
+    parent = os.path.dirname(path)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        for r in readings:
+            f.write(json.dumps({
+                "as_of": r.as_of.isoformat(),
+                "variant": r.variant.value,
+                "comparable_key": r.comparable_key,
+                "value": r.value,
+                "btc_price": r.btc_price,
+                "mstr_price": r.mstr_price,
+                "claims_basis": claims_basis,
+                "cash_source": cash_source,
+                "structure_as_of": structure_as_of.isoformat() if structure_as_of else None,
+                "is_forward_fill": is_forward_fill,
+                "note": r.note,
+            }, ensure_ascii=False) + "\n")
+            n += 1
     return n
 
 
