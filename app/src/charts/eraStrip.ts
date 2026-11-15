@@ -14,8 +14,8 @@ const BAND_H = 26;
 const LINE_TOP = BAND_TOP + BAND_H + 6;
 const LINE_H = 30;
 
-/** 四段用不同色相,語意上對應「對普通股是好是壞」。 */
-const ERA_FILL = ["var(--c3)", "var(--c1)", "var(--bad)", "var(--good)"];
+/** 階段用中性色。色相留給證券，不讓某一段看起來像 STRK 或虧損。 */
+const ERA_FILL = ["var(--ink-3)", "var(--ink-2)", "var(--line-2)", "var(--surface-2)"];
 
 export function eraColor(i: number): string {
   return ERA_FILL[i % ERA_FILL.length]!;

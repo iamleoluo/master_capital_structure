@@ -65,9 +65,9 @@ export function drawMnav(el: HTMLElement, h = 190, range?: [number, number]): Ge
     text(49, y(1) + 3.5, "1.0x", { size: 9, anchor: "end", opacity: 0.55, mono: true }),
     axisX(f),
     breakLines(f, meta.breaks),
-    `<path d="${path(pts(daily.mnav_basic))}" fill="none" stroke="var(--c3)" stroke-width="1.5" opacity=".85"/>`,
+    `<path d="${path(pts(daily.mnav_basic))}" fill="none" stroke="var(--ink-2)" stroke-width="1.5" opacity=".85"/>`,
     `<path d="${path(pts(daily.mnav_cebe))}" fill="none" stroke="var(--equity)" stroke-width="1.8"/>`,
-    text(CW - PAD_R, y(daily.mnav_basic[hi]!) + 13, "basic", { size: 10, anchor: "end", fill: "var(--c3)", weight: 600 }),
+    text(CW - PAD_R, y(daily.mnav_basic[hi]!) + 13, "basic", { size: 10, anchor: "end", fill: "var(--ink-2)", weight: 600 }),
     text(CW - PAD_R, y(daily.mnav_cebe[hi]!) - 6, "CEBE", { size: 10, anchor: "end", fill: "var(--equity)", weight: 600 }),
   ];
   el.innerHTML = svg(CW, h, parts.join(""), "basic mNAV 與 CEBE mNAV,對數座標,1.0x 為參考線");
@@ -77,7 +77,7 @@ export function drawMnav(el: HTMLElement, h = 190, range?: [number, number]): Ge
 export function mnavLabels(g: Geo, i: number): SeriesLabel[] {
   return [
     { label: "CEBE mNAV", value: mult(daily.mnav_cebe[i]!), color: "var(--equity)", y: g.y(daily.mnav_cebe[i]!) },
-    { label: "basic mNAV", value: mult(daily.mnav_basic[i]!), color: "var(--c3)", y: g.y(daily.mnav_basic[i]!) },
+    { label: "basic mNAV", value: mult(daily.mnav_basic[i]!), color: "var(--ink-2)", y: g.y(daily.mnav_basic[i]!) },
   ];
 }
 
@@ -113,11 +113,11 @@ export function drawPerShare(el: HTMLElement, h = 190, range?: [number, number])
     breakLines(f, meta.breaks),
     `<path d="${path(pts(daily.btc, yBtc))}" fill="none" stroke="var(--btc)" stroke-width="1.2" stroke-dasharray="3,3" opacity=".4"/>`,
     `<path d="${path(pts(daily.mstr, yMstr))}" fill="none" stroke="var(--senti)" stroke-width="1.2" stroke-dasharray="3,3" opacity=".4"/>`,
-    `<path d="${path(pts(daily.bps, y))}" fill="none" stroke="var(--c3)" stroke-width="1.5" opacity=".85"/>`,
+    `<path d="${path(pts(daily.bps, y))}" fill="none" stroke="var(--ink-2)" stroke-width="1.5" opacity=".85"/>`,
     `<path d="${path(pts(cebe, y))}" fill="none" stroke="var(--equity)" stroke-width="1.8"/>`,
     text(f.x(lo) + 4, yBtc(daily.btc[lo]!) - 5, "BTC 價格(參考)", { size: 9, anchor: "start", fill: "var(--btc)", opacity: 0.7 }),
     text(f.x(lo) + 4, yMstr(daily.mstr[lo]!) + 12, "MSTR 股價(參考)", { size: 9, anchor: "start", fill: "var(--senti)", opacity: 0.7 }),
-    text(CW - PAD_R, y(daily.bps[hi]!) + 13, "帳面每股", { size: 10, anchor: "end", fill: "var(--c3)", weight: 600 }),
+    text(CW - PAD_R, y(daily.bps[hi]!) + 13, "帳面每股", { size: 10, anchor: "end", fill: "var(--ink-2)", weight: 600 }),
     text(CW - PAD_R, y(cebe[hi]!) - 6, "實得每股", { size: 10, anchor: "end", fill: "var(--equity)", weight: 600 }),
   ];
 
@@ -141,7 +141,7 @@ export function perShareLabels(g: PerShareGeo, i: number): SeriesLabel[] {
   const cebe = cebePerShare(i);
   return [
     { label: "實得每股", value: sats(cebe), color: "var(--equity)", y: g.y(cebe) },
-    { label: "帳面每股", value: sats(daily.bps[i]!), color: "var(--c3)", y: g.y(daily.bps[i]!) },
+    { label: "帳面每股", value: sats(daily.bps[i]!), color: "var(--ink-2)", y: g.y(daily.bps[i]!) },
     { label: "BTC 價格", value: usd0(daily.btc[i]!), color: "var(--btc)", y: g.yBtc(daily.btc[i]!) },
     { label: "MSTR 股價", value: usd(daily.mstr[i]!), color: "var(--senti)", y: g.yMstr(daily.mstr[i]!) },
   ];

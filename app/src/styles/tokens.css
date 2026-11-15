@@ -16,13 +16,15 @@
   --equity:#C97A22; --equity-soft:#F6E4CD;
   --senti:#B23E58; --senti-soft:#F7DCE2;
   --btc:#26333A;
-  --good:#2C7A55; --warn:#A8720F; --bad:#B23E58;
+  --good:#2C7A55; --warn:#A8720F; --bad:#8E2F3A;
 
   --serif:"Iowan Old Style",Georgia,"Songti TC","Noto Serif CJK TC",serif;
   --sans:system-ui,-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;
   --mono:ui-monospace,"SF Mono",Menlo,"Cascadia Mono",Consolas,monospace;
 }
 
+/* 下面兩段是同一套暗色：一段跟系統，一段跟手動切換。
+   --bad 與 --senti 分開。--c3 只給 STRK，比較線用 --ink-2。 */
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --paper:#0C1216; --surface:#141C21; --surface-2:#1C262C;
   --ink:#EBECE7; --ink-2:#A3B3BA; --ink-3:#71808A;
@@ -35,7 +37,7 @@
   --equity:#E9A755; --equity-soft:#3D2E19;
   --senti:#DE8296; --senti-soft:#3D242B;
   --btc:#C7D1D6;
-  --good:#5FAA82; --warn:#D9A93F; --bad:#DE8296;
+  --good:#5FAA82; --warn:#D9A93F; --bad:#E07A78;
 }}
 
 :root[data-theme="dark"]{
@@ -50,5 +52,5 @@
   --equity:#E9A755; --equity-soft:#3D2E19;
   --senti:#DE8296; --senti-soft:#3D242B;
   --btc:#C7D1D6;
-  --good:#5FAA82; --warn:#D9A93F; --bad:#DE8296;
+  --good:#5FAA82; --warn:#D9A93F; --bad:#E07A78;
 }
