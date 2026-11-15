@@ -10,6 +10,7 @@
  * 曲線與漸近線的落差就是求償權當下吃掉的部分 —— 那個落差會隨 BTC 上漲而收斂。
  */
 import { daily, N } from "../data";
+import { claimsNetB } from "../metrics/read";
 import { linear } from "../lib/scale";
 import { line, path, svg, text } from "../lib/svg";
 import { usd0 } from "../lib/format";
@@ -25,7 +26,7 @@ export function latestBasis(): Basis {
   const i = N - 1;
   return {
     held: daily.held[i]!,
-    claims: (daily.debt[i]! + daily.pref_total[i]! - daily.cash[i]!) * 1e9,
+    claims: claimsNetB(i) * 1e9,
     shares: daily.shares[i]! * 1e6,
     px0: daily.btc[i]!,
     date: daily.date[i]!,

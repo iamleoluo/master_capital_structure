@@ -8,12 +8,24 @@ import { boardHead, staleness, tile } from "../../components/board";
 import { explorer } from "../../components/explorer";
 import { zoomable } from "../../lib/zoomable";
 import { bn, btc as fmtBtc, pct, usd0 } from "../../lib/format";
+import { metricAt } from "../../metrics/read";
 import type { PageFn } from "../../router";
+import { setIndex } from "../../state";
 
 export const boardQuantitiesPage: PageFn = (root) => {
+  setIndex(N - 1);
   const i = N - 1;
-  const claims = daily.debt[i]! + daily.pref_total[i]! - daily.cash[i]!;
-  const perShare = (daily.common_btc[i]! / (daily.shares[i]! * 1e6)) * 1e8;
+  const claims = metricAt("claims.cebe", i);
+  const debt = metricAt("claims.debt", i);
+  const pref = metricAt("claims.pref", i);
+  const cash = metricAt("claims.cash", i);
+  const held = metricAt("btc.held", i);
+  const shares = metricAt("shares.basic", i);
+  const px = metricAt("price.btc", i);
+  const book = metricAt("btc.perShare.basic", i);
+  const perShare = metricAt("btc.perShare.cebe", i).value!;
+  const mnavCebe = metricAt("mnav.cebe", i);
+  const mnavBasic = metricAt("mnav.basic", i);
   const prov = meta.prov;
   const st = accumulationStats();
 
@@ -33,23 +45,22 @@ export const boardQuantitiesPage: PageFn = (root) => {
         "#/lecture/quantities", daily.date[i]!)}
 
       <div class="grid3" style="margin-bottom:12px">
-        ${tile("總持幣 H", fmtBtc(daily.held[i]!), "顆 BTC",
+        ${tile("總持幣 H", fmtBtc(held.value), "顆 BTC",
           { src: staleness(daily.stale[i]!) })}
-        ${tile("求償權 C", bn(claims), 
-          `可轉債 ${bn(daily.debt[i]!)} + 優先股 ${bn(daily.pref_total[i]!)}
-           − 美元流動性 ${bn(daily.cash[i]!)}`)}
-        ${tile("在外股數 S", (daily.shares[i]!).toFixed(1) + "M", "basic 股數,不含假設轉股")}
-        ${tile("比特幣價格 p", usd0(daily.btc[i]!), "Binance 日線收盤")}
+        ${tile("淨求償權 C", bn(claims.value),
+          `可轉債 ${bn(debt.value)} + 優先股 ${bn(pref.value)} − 現金 ${bn(cash.value)}`)}
+        ${tile("在外股數 S", shares.value!.toFixed(1) + "M", "basic 股數,不含假設轉股")}
+        ${tile("比特幣價格 p", usd0(px.value!), "Binance 日線收盤")}
       </div>
 
       <div class="grid3" style="margin-bottom:26px">
-        ${tile("帳面每股 B", Math.round(daily.bps[i]!).toLocaleString(),
+        ${tile("帳面每股 B", Math.round(book.value!).toLocaleString(),
           "sats。總持幣 ÷ 股數,看不到求償權")}
         ${tile("實得每股 E", Math.round(perShare).toLocaleString(),
-          `sats。扣掉求償權之後,求償權吃掉 ${pct(1 - perShare / daily.bps[i]!)}`,
+          `sats。扣掉求償權之後,求償權吃掉 ${pct(1 - perShare / book.value!)}`,
           { tone: "var(--equity)" })}
-        ${tile("市場溢價 m", daily.mnav_cebe[i]!.toFixed(3) + "x",
-          `CEBE mNAV。一般口徑的 mNAV 是 ${daily.mnav_basic[i]!.toFixed(3)}x`,
+        ${tile("市場溢價 m", mnavCebe.value!.toFixed(3) + "x",
+          `CEBE mNAV。basic mNAV 是 ${mnavBasic.value!.toFixed(3)}x`,
           { tone: "var(--senti)" })}
         ${tile("槓桿 A", daily.amp[i]!.toFixed(2) + "x",
           "幣價變動 1% 時每股殘值變動幾 %")}

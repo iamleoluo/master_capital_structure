@@ -1,6 +1,7 @@
 /** 三張共用同一時間索引的日頻圖:價格、mNAV、USD 河流。
  *  都吃 state.idx,游標標籤由 lib/crosshair 統一渲染。 */
 import { daily, meta, N } from "../data";
+import { claimsStackB } from "../metrics/read";
 import { state } from "../state";
 import { crosshair, type SeriesLabel } from "../lib/crosshair";
 import { axisX, breakLines, CW, frame, gridY, PAD_R } from "../lib/frame";
@@ -163,11 +164,12 @@ export function drawRiverUsd(el: HTMLElement, h = 210, range?: [number, number])
   const layerTops: number[][] = [];
 
   for (let i = 0; i < N; i++) {
-    let acc = daily.debt[i]!;
+    const stack = claimsStackB(i);
+    let acc = stack.debt;
     const tops: number[] = [];
-    for (const l of USD_LAYERS) { acc += (daily[l.key] as number[])[i]!; tops.push(acc); }
+    for (const pref of stack.prefs) { acc += pref; tops.push(acc); }
     layerTops.push(tops);
-    claimsTop.push(acc);
+    claimsTop.push(stack.top);
     stackTop.push(acc + (daily.mstr[i]! * daily.shares[i]!) / 1000);
     nav.push((daily.held[i]! * daily.btc[i]!) / 1e9);
   }
@@ -180,7 +182,7 @@ export function drawRiverUsd(el: HTMLElement, h = 210, range?: [number, number])
   const zero: Array<[number, number]> = [];
   for (let i = lo; i <= hi; i++) zero.push([px(i), y(0)]);
   const debtTop: Array<[number, number]> = [];
-  for (let i = lo; i <= hi; i++) debtTop.push([px(i), y(daily.debt[i]!)]);
+  for (let i = lo; i <= hi; i++) debtTop.push([px(i), y(claimsStackB(i).debt)]);
   parts.push(`<path d="${band(debtTop, zero)}" fill="var(--convert)" opacity=".9"/>`);
 
   let prev = debtTop;
@@ -226,7 +228,7 @@ export function riverUsdLabels(g: RiverUsdGeo, i: number): SeriesLabel[] {
     { label: "BTC 總市值", value: bn(g.nav[i]!), color: "var(--btc)", y: g.y(g.nav[i]!) },
     { label: "股+求償權", value: bn(g.stackTop[i]!), color: "var(--equity)", y: g.y(g.stackTop[i]!) },
     { label: "MSTR 市值", value: bn(mcap), color: "var(--senti)", y: g.y(g.claimsTop[i]! + mcap / 2) },
-    { label: "求償權", value: bn(g.claimsTop[i]!), color: "var(--c2)", y: g.y(g.claimsTop[i]! / 2) },
+    { label: "淨求償權", value: bn(g.claimsTop[i]!), color: "var(--c2)", y: g.y(g.claimsTop[i]! / 2) },
   ];
 }
 

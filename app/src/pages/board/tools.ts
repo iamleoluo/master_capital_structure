@@ -6,6 +6,7 @@ import { meta, operations } from "../../data";
 import { byId } from "../../formulas";
 import { boardHead, tile } from "../../components/board";
 import { edgarUrl } from "../../lib/format";
+import { runwayNow } from "../../metrics/read";
 import type { Operation } from "../../types";
 import type { PageFn } from "../../router";
 
@@ -48,6 +49,7 @@ export const boardToolsPage: PageFn = (root) => {
     byTool.set(o.tool, [...(byTool.get(o.tool) ?? []), o]);
   }
   const span = [operations[0]?.hi, operations[operations.length - 1]?.hi];
+  const runway = runwayNow();
 
   root.innerHTML = `
     <div class="wrap">
@@ -127,15 +129,13 @@ export const boardToolsPage: PageFn = (root) => {
         </div>
         <div class="card" style="padding:16px 18px">
           <div class="eyebrow" style="margin:0 0 8px">現金跑道</div>
-          <div style="font-size:1.6rem;font-weight:600">${meta.limits.runwayYears.toFixed(1)} 年</div>
+          <div style="font-size:1.6rem;font-weight:600">${runway.years.toFixed(1)} 年</div>
           <p style="font-size:.84rem;color:var(--ink-2);margin:8px 0 0">
-            美元儲備 <b>\$${meta.limits.reserveB.toFixed(2)}B</b> ÷
-            年化股息與利息 <b>\$${meta.limits.annualObligationsB.toFixed(2)}B</b>。
+            ${runway.numerator} ÷ ${runway.denominator}。
             董事會的硬性底線是<b>不得低於 12 個月</b>。
           </p>
           <p style="font-size:.78rem;color:var(--ink-3);margin:8px 0 0">
-            ⚠️ 年化承諾目前是<b>單一常數</b>,不隨發行事件變動 ——
-            所以這個數字會隨新發行而偏高。已知缺口。
+            分母是 2026-08-24 起算的常數，新發行之後它不會自己變大，年數會顯得偏長。
           </p>
         </div>
       </div>

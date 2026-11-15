@@ -3,7 +3,8 @@
 import { daily, N } from "../data";
 import { onIndexChange, setIndex, state } from "../state";
 import { attachScrub, frame } from "../lib/frame";
-import { bn, btc as fmtBtc, mult, sats, usd, usd0 } from "../lib/format";
+import { bn, btc as fmtBtc, mult, usd, usd0 } from "../lib/format";
+import { claimsPartsB, formatIdentity, metricAt } from "../metrics/read";
 import { RANGE_LABEL, rangeIndices, type RangeKey } from "../lib/range";
 import {
   drawMnav, drawPerShare, drawPrice, drawRiverUsd,
@@ -58,7 +59,8 @@ export function explorer(root: HTMLElement, opts: ExplorerOpts = {}): () => void
           <div class="reading"><div class="k">BTC 價格</div><div class="v" id="r-btc">—</div></div>
           <div class="reading"><div class="k">basic mNAV</div><div class="v" id="r-basic">—</div></div>
           <div class="reading"><div class="k">CEBE mNAV</div><div class="v accent" id="r-cebe">—</div></div>
-          <div class="reading"><div class="k">求償權合計</div><div class="v" id="r-claims">—</div></div>
+          <div class="reading"><div class="k">淨求償權</div><div class="v" id="r-claims">—</div>
+            <div class="k" id="r-claims-parts"></div></div>
           <div class="reading"><div class="k">槓桿倍數</div><div class="v" id="r-amp">—</div></div>
         </div>
       </div>
@@ -69,17 +71,14 @@ export function explorer(root: HTMLElement, opts: ExplorerOpts = {}): () => void
           <div class="eq">
             <div class="eq-term result"><div class="eq-lab">MSTR 股價</div><div class="eq-val" id="id-price">—</div></div>
             <div class="eq-op">=</div>
-            <div class="eq-term"><div class="eq-lab"><i class="swatch" style="background:var(--senti)"></i>情緒溢價</div>
-              <div class="eq-val" id="id-mnav">—</div><div class="eq-sub">CEBE mNAV</div></div>
+            <div class="eq-term"><div class="eq-lab"><i class="swatch" style="background:var(--senti)"></i>CEBE mNAV</div>
+              <div class="eq-val" id="id-mnav">—</div><div class="eq-sub">扣求償權後的溢價</div></div>
             <div class="eq-op">×</div>
-            <div class="eq-term"><div class="eq-lab"><i class="swatch" style="background:var(--equity)"></i>每股 BTC</div>
-              <div class="eq-val" id="id-bps">—</div><div class="eq-sub">sats／股</div></div>
+            <div class="eq-term"><div class="eq-lab"><i class="swatch" style="background:var(--equity)"></i>實得每股</div>
+              <div class="eq-val" id="id-btc-ps">—</div><div class="eq-sub" id="id-sats">BTC／股</div></div>
             <div class="eq-op">×</div>
             <div class="eq-term"><div class="eq-lab"><i class="swatch" style="background:var(--btc)"></i>BTC 價格</div>
-              <div class="eq-val" id="id-btc">—</div></div>
-            <div class="eq-op">×</div>
-            <div class="eq-term"><div class="eq-lab"><i class="swatch" style="background:var(--c3)"></i>普通股殘值率</div>
-              <div class="eq-val" id="id-lev">—</div><div class="eq-sub">1 − 求償權佔比</div></div>
+              <div class="eq-val" id="id-btc">—</div><div class="eq-sub">這三個顯示值相乘</div></div>
           </div>
         </div>
       </div>` : ""}
@@ -149,19 +148,23 @@ export function explorer(root: HTMLElement, opts: ExplorerOpts = {}): () => void
     el("ex-badge").className = "badge " + b.cls;
     el("ex-badge-txt").textContent = b.txt;
 
-    el("r-mstr").textContent = usd(daily.mstr[i]!);
-    el("r-btc").textContent = usd0(daily.btc[i]!);
-    el("r-basic").textContent = mult(daily.mnav_basic[i]!);
-    el("r-cebe").textContent = mult(daily.mnav_cebe[i]!);
-    el("r-claims").textContent = bn(daily.debt[i]! + daily.pref_total[i]!);
-    el("r-amp").textContent = mult(daily.amp[i]);
+    const parts = claimsPartsB(i);
+    el("r-mstr").textContent = usd(metricAt("price.mstr", i).value!);
+    el("r-btc").textContent = usd0(metricAt("price.btc", i).value!);
+    el("r-basic").textContent = mult(metricAt("mnav.basic", i).value);
+    el("r-cebe").textContent = mult(metricAt("mnav.cebe", i).value);
+    el("r-claims").textContent = bn(metricAt("claims.cebe", i).value);
+    el("r-claims-parts").textContent =
+      `可轉債 ${bn(parts.debt)} + 優先股 ${bn(parts.pref)} − 現金 ${bn(parts.cash)}`;
+    el("r-amp").textContent = mult(metricAt("amp.residual", i).value);
 
     if (showIdentity) {
-      el("id-price").textContent = usd(daily.mstr[i]!);
-      el("id-mnav").textContent = mult(daily.mnav_cebe[i]!);
-      el("id-bps").textContent = sats(daily.bps[i]!);
-      el("id-btc").textContent = usd0(daily.btc[i]!);
-      el("id-lev").textContent = (1 - daily.claims_pct[i]!).toFixed(3);
+      const idn = formatIdentity(i);
+      el("id-price").textContent = "$" + idn.price;
+      el("id-mnav").textContent = idn.mnav + "×";
+      el("id-btc-ps").textContent = idn.btcPerShare + " BTC";
+      el("id-sats").textContent = idn.sats + " sats = " + idn.btcPerShare + " BTC";
+      el("id-btc").textContent = "$" + idn.btcPrice;
     }
     scrub.value = String(i);
 

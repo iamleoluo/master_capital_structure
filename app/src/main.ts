@@ -48,7 +48,8 @@ app.innerHTML = `
   <div class="subnav" id="subnav" hidden></div>
   <main id="main"></main>
   <footer><div class="wrap">
-    <p>市場資料:BTC = Binance 日線;MSTR 與四檔優先股 = Yahoo 日線。
+    <p>市場資料:BTC = Binance 日線;MSTR 與五檔優先股（STRF、STRC、STRK、STRD、STRE）= Yahoo 日線。
+       STRE 沒有公開報價，表上留空。
        BTC 持有量與逐週買賣、融資來源:SEC 8-K(兩種版型皆解析)。
        其餘資本結構:SEC XBRL 季頻 + 申報文件人工整理,錨點之間線性插值。</p>
     <p>恆等式的求償權採 cebetracker 定義(可轉債面額 + 優先股清算優先權 − 資產負債表現金),

@@ -1,4 +1,4 @@
-/** 跨頁共用的游標狀態。換頁不重置,回到同一天繼續看。 */
+/** 跨頁共用的游標。儀表板的「今天」頁進來時會拉回最後一天。 */
 import { N, indexOfDate } from "./data";
 
 type Listener = (idx: number) => void;
