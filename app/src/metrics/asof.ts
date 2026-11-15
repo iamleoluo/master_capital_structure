@@ -114,7 +114,6 @@ function heldAt(i: number): Freshness {
 
 const BALANCE: Partial<Record<MetricId, number[]>> = {
   "claims.debt": daily.debt,
-  "claims.cash": daily.cash,
   "claims.pref": daily.pref_total,
   "shares.basic": daily.shares,
 };
@@ -134,6 +133,14 @@ const cache: Freshness[][] = [];
 
 function at(id: MetricId, i: number): Freshness {
   if (id === "btc.held") return heldAt(i);
+  if (id === "claims.cash") {
+    const base = fromSeries(daily.cash, i, false);
+    return {
+      ...base,
+      method: "spliced",
+      note: "2026-08-30 起的週點是 Reserve + Cash；更早的週點只有 Reserve，底層仍有資產負債表現金。這條線的數字沒有因拆開而改寫。",
+    };
+  }
   const bal = BALANCE[id];
   if (bal) return fromSeries(bal, i, false);
   if (MARKET.includes(id)) return fromSeries(daily[id === "price.mstr" ? "mstr" : "btc"], i, true);
@@ -173,7 +180,7 @@ export const FIELD_LABEL: Record<string, string> = {
   "btc.held": "持幣",
   "claims.debt": "可轉債",
   "claims.pref": "優先股面額",
-  "claims.cash": "現金欄",
+  "claims.cash": "美元資產",
   "shares.basic": "股數",
   "price.mstr": "MSTR",
   "price.btc": "BTC",

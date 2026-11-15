@@ -145,7 +145,7 @@ export function runwayNow(): RunwayView {
     assetsB,
     obligationsB,
     assetsAsOf,
-    numerator: `美元資產（Reserve + Cash）$${assetsB.toFixed(2)}B，截至 ${assetsAsOf}`,
+    numerator: `美元資產（Reserve + Cash）$${assetsB.toFixed(2)}B，截至 ${assetsAsOf}。2026-08-30 起這條線是兩者相加`,
     denominator: `年化股息與利息 $${obligationsB.toFixed(2)}B，仍是 2026-08-24 的常數，不隨發行更新`,
   };
 }

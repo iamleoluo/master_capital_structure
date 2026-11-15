@@ -154,7 +154,13 @@ def _reserve_weekly_cache() -> List[Tuple[date, float]]:
 
 
 def cash_anchors() -> List[Tuple[date, float]]:
-    """XBRL 季頻打底,8-K 的每週揭露覆蓋上去(較新、較密、是公司自己的口徑)。"""
+    """拼接過的美元資產。數字維持原樣。
+
+    拆開的兩條在 data/obs/usd_reserve.csv 與 data/obs/usd_cash.csv。
+    2026-08-30 起的週點是 Reserve + Cash；更早的週點只有 Reserve，
+    並與 XBRL 的資產負債表現金取較大值。這裡仍回傳拼好的那一條，
+    呼叫端還沒改傳分開的來源。
+    """
     return _merge(D.XBRL_CASH, _reserve_weekly_cache())
 
 

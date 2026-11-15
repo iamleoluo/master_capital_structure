@@ -16,7 +16,7 @@ describe("截至日", () => {
 
   it("股數與現金欄停在自己的最後變動日", () => {
     expect(freshness("shares.basic", last)).toMatchObject({ method: "carry", asOf: "2026-08-21" });
-    expect(freshness("claims.cash", last)).toMatchObject({ method: "carry", asOf: "2026-09-28" });
+    expect(freshness("claims.cash", last)).toMatchObject({ method: "spliced", asOf: "2026-09-28" });
   });
 
   it("股價與幣價是當日", () => {
