@@ -4,6 +4,7 @@ import { daily, N } from "../data";
 import { onIndexChange, setIndex, state } from "../state";
 import { attachScrub, frame } from "../lib/frame";
 import { bn, btc as fmtBtc, mult, usd, usd0 } from "../lib/format";
+import { BADGE_ORDER, FIELD_LABEL, freshness, METHOD_LABEL, todayIso } from "../metrics/asof";
 import { claimsPartsB, formatIdentity, metricAt } from "../metrics/read";
 import { RANGE_LABEL, rangeIndices, type RangeKey } from "../lib/range";
 import {
@@ -28,12 +29,6 @@ const H_ZOOM: Record<ChartKey, number> = {
   price: 520, mnav: 520, perShare: 520, riverUsd: 560, riverBtc: 600,
 };
 
-function staleBadge(d: number): { cls: string; txt: string } {
-  if (d <= 15) return { cls: "live", txt: `真實觀測 ±${d} 天內` };
-  if (d <= 90) return { cls: "near", txt: `中距離插值 ±${d} 天` };
-  return { cls: "far", txt: `長距離插值 ±${d} 天` };
-}
-
 export interface ExplorerOpts {
   charts?: ChartKey[];
   showIdentity?: boolean;
@@ -50,7 +45,7 @@ export function explorer(root: HTMLElement, opts: ExplorerOpts = {}): () => void
           <div style="font-family:var(--serif);font-size:1.5rem;font-weight:600" id="ex-date">—</div>
           <div style="font-size:.8rem;color:var(--ink-3);margin-top:2px" id="ex-sub">—</div>
         </div>
-        <div class="badge" id="ex-badge"><i class="dot"></i><span id="ex-badge-txt">—</span></div>
+        <div class="method-row" id="ex-methods"></div>
       </div>
 
       <div style="padding:16px 24px 0">
@@ -142,11 +137,13 @@ export function explorer(root: HTMLElement, opts: ExplorerOpts = {}): () => void
 
   function paint(i: number): void {
     el("ex-date").textContent = daily.date[i]!;
+    const held = metricAt("btc.held", i);
     el("ex-sub").textContent =
-      `BTC 持有 ${fmtBtc(daily.held[i]!)} 顆 · basic 股數 ${daily.shares[i]!.toFixed(1)}M`;
-    const b = staleBadge(daily.stale[i]!);
-    el("ex-badge").className = "badge " + b.cls;
-    el("ex-badge-txt").textContent = b.txt;
+      `今天 ${todayIso()} · BTC 持有 ${fmtBtc(held.value)} 顆（${METHOD_LABEL[held.method]}，截至 ${held.asOf}）· basic 股數 ${daily.shares[i]!.toFixed(1)}M`;
+    el("ex-methods").innerHTML = BADGE_ORDER.map((id) => {
+      const f = freshness(id, i);
+      return `<span class="badge" data-method="${f.method}">${FIELD_LABEL[id]} · ${METHOD_LABEL[f.method]} · ${f.asOf}</span>`;
+    }).join("");
 
     const parts = claimsPartsB(i);
     el("r-mstr").textContent = usd(metricAt("price.mstr", i).value!);

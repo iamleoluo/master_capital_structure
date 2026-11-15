@@ -12,6 +12,7 @@
  * 也讓堆疊剛好收斂到 held(否則會多算或少算一塊)。
  */
 import { daily, meta, N } from "../data";
+import { freshness } from "../metrics/asof";
 import { claimsStackB } from "../metrics/read";
 import type { SeriesLabel } from "../lib/crosshair";
 import { axisX, breakLines, CW, frame, gridY, PAD_R } from "../lib/frame";
@@ -45,8 +46,6 @@ export function computeRiverBtc(perShare = false): RiverBtcGeo {
   const netDebt: number[] = [];
   const claimsTop: number[] = [];
   const layerTops: number[][] = [];
-  const held = daily.held;
-
   const scaledHeld: number[] = [];
   for (let i = 0; i < N; i++) {
     const px = daily.btc[i]!;
@@ -63,7 +62,7 @@ export function computeRiverBtc(perShare = false): RiverBtcGeo {
     netDebt.push(nd);
     layerTops.push(tops);
     claimsTop.push(toBtc(stack.top));
-    scaledHeld.push(held[i]! * k);
+    scaledHeld.push((freshness("btc.held", i).value ?? daily.held[i]!) * k);
   }
   return { netDebt, layerTops, claimsTop, held: scaledHeld,
            y: linear([0, 1], [0, 1]), yBtc: linear([0, 1], [0, 1]), perShare };

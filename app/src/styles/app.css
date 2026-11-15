@@ -94,6 +94,8 @@ tr:last-child td{border-bottom:none}
 .badge{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:.7rem;
   padding:4px 9px;border-radius:20px;white-space:nowrap}
 .badge .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.method-row{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;max-width:36rem}
+.badge[data-method]{background:var(--surface-2);color:var(--ink-2)}
 .badge.live{background:var(--equity-soft);color:var(--equity)}
 .badge.near{background:var(--good);color:var(--surface);opacity:.9}
 .badge.far{background:var(--senti-soft);color:var(--senti)}

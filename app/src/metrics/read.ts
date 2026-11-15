@@ -3,10 +3,10 @@
  *  金額沿用投影的單位（十億美元）。格式化時再標 B。
  */
 import { daily, meta, N } from "../data";
+import { freshness } from "./asof";
 import { METRICS, type MetricId } from "./registry";
 
 export type Method =
-  | "published"
   | "observed"
   | "step"
   | "carry"
@@ -29,12 +29,13 @@ export interface Value {
 
 function row(metric: MetricId, i: number, value: number | null): Value {
   const def = METRICS[metric];
+  const fresh = freshness(metric, i);
   return {
     metric,
-    value,
+    value: fresh.value ?? value,
     unit: def.unit,
-    asOf: daily.date[i]!,
-    method: "published",
+    asOf: fresh.asOf,
+    method: fresh.method,
     basis: def.basis ?? {},
     sources: [],
     label: def.label,

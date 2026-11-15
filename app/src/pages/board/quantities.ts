@@ -4,7 +4,8 @@
 import { daily, meta, N } from "../../data";
 import { accumulationStats, accumulationTable, drawAccumulation }
   from "../../charts/accumulation";
-import { boardHead, staleness, tile } from "../../components/board";
+import { boardHead, tile } from "../../components/board";
+import { BADGE_ORDER, FIELD_LABEL, freshness, METHOD_LABEL } from "../../metrics/asof";
 import { explorer } from "../../components/explorer";
 import { zoomable } from "../../lib/zoomable";
 import { bn, btc as fmtBtc, pct, usd0 } from "../../lib/format";
@@ -28,25 +29,18 @@ export const boardQuantitiesPage: PageFn = (root) => {
   const mnavBasic = metricAt("mnav.basic", i);
   const prov = meta.prov;
   const st = accumulationStats();
-
-  // 插值距離 —— 這個數字是申報當日的硬資料,還是插出來的猜測
-  const buckets = { live: 0, near: 0, far: 0 };
-  for (const d of daily.stale) {
-    if (d <= 15) buckets.live++;
-    else if (d <= 90) buckets.near++;
-    else buckets.far++;
-  }
+  const fields = BADGE_ORDER.map((id) => freshness(id, i));
 
   root.innerHTML = `
     <div class="wrap">
       ${boardHead("一 · 每股計量", "當期的兩種每股含幣量", 
         `${"推導說只需要四個量就能決定全部。這一頁是那四個量今天的值,"
-        }以及每一個是<b>申報當日的硬資料</b>還是插值出來的。`,
+        }每一個標了自己的方法與截至日。`,
         "#/lecture/quantities", daily.date[i]!)}
 
       <div class="grid3" style="margin-bottom:12px">
         ${tile("總持幣 H", fmtBtc(held.value), "顆 BTC",
-          { src: staleness(daily.stale[i]!) })}
+          { src: `${METHOD_LABEL[held.method]} · 截至 ${held.asOf}` })}
         ${tile("淨求償權 C", bn(claims.value),
           `可轉債 ${bn(debt.value)} + 優先股 ${bn(pref.value)} − 現金 ${bn(cash.value)}`)}
         ${tile("在外股數 S", shares.value!.toFixed(1) + "M", "basic 股數,不含假設轉股")}
@@ -71,12 +65,20 @@ export const boardQuantitiesPage: PageFn = (root) => {
       </div>
       <div id="board-explorer"></div>
 
-      <h2 style="margin:34px 0 10px">資料可信度</h2>
+      <h2 style="margin:34px 0 10px">各欄截至日</h2>
       <p class="lede" style="margin-bottom:14px">
-        四個量的血統不一樣。持幣與美元流動性是 8-K 逐週揭露的<b>實測值</b>;
-        可轉債、現金、股數來自季度 XBRL,中間是<b>線性插值</b>。
-        所以求償權 C 的日內變化有一部分是插出來的 —— 錨點附近最可信,錨點中間最弱。
+        持幣只在 8-K 揭露日跳動。可轉債、現金欄、股數在兩次申報之間若斜率不變，
+        就是依日數比例補上；數值停住時沿用上一筆，中間沒有補點。
       </p>
+      <div class="card flush" style="margin-bottom:12px"><div class="scroller"><table class="mini">
+        <thead><tr><th>欄位</th><th>方法</th><th>截至</th><th>說明</th></tr></thead>
+        <tbody>
+          ${BADGE_ORDER.map((id, k) => `<tr>
+            <td>${FIELD_LABEL[id]}</td>
+            <td><span class="badge" data-method="${fields[k]!.method}">${METHOD_LABEL[fields[k]!.method]}</span></td>
+            <td>${fields[k]!.asOf}</td>
+            <td>${freshness(id, i).note}</td></tr>`).join("")}
+        </tbody></table></div></div>
       <div class="card flush" style="margin-bottom:12px"><div class="scroller"><table class="mini">
         <thead><tr><th>來源</th><th>份數</th><th>期間</th></tr></thead>
         <tbody>
@@ -90,18 +92,7 @@ export const boardQuantitiesPage: PageFn = (root) => {
         <a href="#/provenance">出處</a>。
       </p>
 
-      <h2 style="margin:34px 0 10px">插值距離</h2>
-      <p class="lede" style="margin-bottom:12px">
-        持幣與美元流動性是 8-K 逐週揭露的<b>實測值</b>;可轉債、現金、股數
-        來自季度 XBRL,中間是<b>線性插值</b>。所以求償權 ${tex0("C")} 的日內變化
-        有一部分是插出來的 —— 錨點附近最可信,錨點中間最弱。
-      </p>
       <div class="grid3" style="margin-bottom:10px">
-        ${tile("±15 天內有真實申報", String(buckets.live),
-          `天(${pct(buckets.live / N)})`, { tone: "var(--good)" })}
-        ${tile("16–90 天", String(buckets.near), `天(${pct(buckets.near / N)})`)}
-        ${tile("90 天以上", String(buckets.far), `天(${pct(buckets.far / N)})`,
-          { tone: buckets.far ? "var(--warn)" : undefined })}
         ${tile("融資來源涵蓋率", pct(st.coveredPct),
           `${st.statedWeeks + st.derivedWeeks}/${st.activeWeeks} 個有買賣的週次<br>
            ${st.statedWeeks} 明示 + ${st.derivedWeeks} 推得`)}
@@ -119,7 +110,7 @@ export const boardQuantitiesPage: PageFn = (root) => {
 
       <h2 style="margin:34px 0 10px">逐週原始資料</h2>
       <p class="lede" style="margin-bottom:14px">
-        沒有插值的那一份 —— 累計持有量畫成階梯線,只在公司實際揭露的那天跳動。
+        累計持有量畫成階梯線,只在公司實際揭露的那天跳動。
         <b>週次可以點</b>,連回 EDGAR 上那一份 8-K。
       </p>
       <div class="card flush" style="padding:18px 22px 8px;margin-bottom:14px">
@@ -145,6 +136,3 @@ export const boardQuantitiesPage: PageFn = (root) => {
     { inlineHeight: 320, zoomHeight: 600 });
   return () => { teardownExplorer(); z.destroy(); };
 };
-
-/** 行內符號。推導那邊用 KaTeX,這裡只是要一個等寬的 C,不值得載整個 KaTeX。 */
-const tex0 = (s: string) => `<i style="font-family:var(--serif)">${s}</i>`;

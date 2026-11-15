@@ -1,6 +1,7 @@
 /** 三張共用同一時間索引的日頻圖:價格、mNAV、USD 河流。
  *  都吃 state.idx,游標標籤由 lib/crosshair 統一渲染。 */
 import { daily, meta, N } from "../data";
+import { freshness } from "../metrics/asof";
 import { claimsStackB } from "../metrics/read";
 import { state } from "../state";
 import { crosshair, type SeriesLabel } from "../lib/crosshair";
@@ -171,7 +172,7 @@ export function drawRiverUsd(el: HTMLElement, h = 210, range?: [number, number])
     layerTops.push(tops);
     claimsTop.push(stack.top);
     stackTop.push(acc + (daily.mstr[i]! * daily.shares[i]!) / 1000);
-    nav.push((daily.held[i]! * daily.btc[i]!) / 1e9);
+    nav.push(((freshness("btc.held", i).value ?? daily.held[i]!) * daily.btc[i]!) / 1e9);
   }
 
   const maxV = Math.max(...stackTop.slice(lo, hi + 1), ...nav.slice(lo, hi + 1)) * 1.07;
