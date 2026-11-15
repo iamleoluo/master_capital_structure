@@ -9,6 +9,7 @@
 > - [ARCHITECTURE.md](ARCHITECTURE.md) — 七層邊界、一個數從申報到像素、公式只實作一次、一條管線一個部署目標
 > - [DATA_MODEL.md](DATA_MODEL.md) — 實體、鍵、單位、as-of、step 與插值、審查用的 diff、儲存選擇與遷移
 > - [SITE_RULES.md](SITE_RULES.md) — 換頁也要守住的規則，以及每一條怎麼讓建置失敗
+> - [DESIGN_GUIDE.md](DESIGN_GUIDE.md) — 站的語氣、顏色、圖與文章怎麼留。頁面順序仍可改，這份用來讓改完還是同一個站
 >
 > 建議的施工順序在 ARCHITECTURE 第 7 節，取代下面第 5 節把改頁放在資料模型前面的排法。
 

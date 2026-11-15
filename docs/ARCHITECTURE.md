@@ -45,7 +45,7 @@ flowchart TD
 | 6 指標介面 | 具名指標、單位、截至日、口徑、出處 | 衍生表與指標登錄 | **還沒有。** 頁面直接 `import` `app/src/data.ts` 的寬陣列 |
 | 7 頁面 | 路由、句子、圖的幾何、文章 | 指標介面與頁面登錄。不做金融四則運算 | `app/src/main.ts` 的路由表、`app/src/pages/`、`app/src/charts/` |
 
-第 7 層是唯一允許經常改的層。規則在 [SITE_RULES.md](SITE_RULES.md)。表結構在 [DATA_MODEL.md](DATA_MODEL.md)。
+第 7 層是唯一允許經常改的層。規則在 [SITE_RULES.md](SITE_RULES.md)。表結構在 [DATA_MODEL.md](DATA_MODEL.md)。這一層換頁、換文章時仍要認得是同一個站，那份說明在 [DESIGN_GUIDE.md](DESIGN_GUIDE.md)（顏色、圖、模板、文章怎麼留）。
 
 ---
 

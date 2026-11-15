@@ -277,4 +277,15 @@ export interface MetricDef {
 | 推導頁混進今天的數字 | 已有的講義測試，R10 把它綁到 `type=method` |
 | 兩個 Cloudflare 專案名 | R16 |
 
-頁面因此可以整份重寫，只要新頁仍向同一組 id 要數。
+頁面因此可以整份重寫，只要新頁仍向同一組 id 要數。重寫時語氣、顏色、圖的筆畫與文章的釘怎麼留，寫在 [DESIGN_GUIDE.md](DESIGN_GUIDE.md)。那份是意圖；上面這些編號是會讓建置失敗的部分。
+
+---
+
+## 5. 外觀守門（尚未強制）
+
+設計指南第 4 節建議四條還沒寫進上面編號的檢查。落地時加進與講義測試同一種的原始碼掃描，不改指標定義：
+
+1. `app/src` 除了 `styles/tokens.css`，不出現證券用的十六進位色。圖的顏色只從一張證券對照表來，`--c3` 不得同時表示 STRK 與 basic mNAV。
+2. `pages/` 不組 SVG path，圖只呼叫 `app/src/charts/`。
+3. 頁面不對金額、股數、sats 呼叫 `toFixed`，格式只走 `lib/format.ts`。
+4. 新鮮度徽章的 `data-method` 只能是設計指南列出的那七個 method。現在的 `live` / `near` / `far` 在這條生效時退役。
