@@ -10,6 +10,7 @@
  * 曲線與漸近線的落差就是求償權當下吃掉的部分 —— 那個落差會隨 BTC 上漲而收斂。
  */
 import { daily, N } from "../data";
+import { claimsNetB } from "../metrics/read";
 import { linear } from "../lib/scale";
 import { line, path, svg, text } from "../lib/svg";
 import { usd0 } from "../lib/format";
@@ -25,7 +26,7 @@ export function latestBasis(): Basis {
   const i = N - 1;
   return {
     held: daily.held[i]!,
-    claims: (daily.debt[i]! + daily.pref_total[i]! - daily.cash[i]!) * 1e9,
+    claims: claimsNetB(i) * 1e9,
     shares: daily.shares[i]! * 1e6,
     px0: daily.btc[i]!,
     date: daily.date[i]!,
@@ -189,9 +190,9 @@ export function drawLeverage(el: HTMLElement, b: Basis, o: LeverageOpts,
   // 觸發槓桿下限的價格
   const pxStar = triggerPrice(b, p.leverageFloor);
   if (Number.isFinite(pxStar) && pxStar >= lo && pxStar <= hi) {
-    parts.push(line(x(pxStar), PT, x(pxStar), H - PB, { stroke: "var(--c3)", dash: "2,3", width: 1.2 }));
+    parts.push(line(x(pxStar), PT, x(pxStar), H - PB, { stroke: "var(--ink-2)", dash: "2,3", width: 1.2 }));
     parts.push(text(x(pxStar) - 5, PT + 11, `${p.leverageFloor.toFixed(2)}x 觸發 ${usd0(pxStar)}`,
-      { size: 9.5, anchor: "end", fill: "var(--c3)", weight: 600 }));
+      { size: 9.5, anchor: "end", fill: "var(--ink-2)", weight: 600 }));
   }
 
   const be = breakEven(b);

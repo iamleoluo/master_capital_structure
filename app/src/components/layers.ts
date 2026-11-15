@@ -29,7 +29,7 @@ const NOTE: Record<LayerKey, string> = {
 };
 const COLOR: Record<LayerKey, string> = {
   btc: "var(--btc)", decision: "var(--equity)",
-  claims: "var(--c3)", mnav: "var(--senti)",
+  claims: "var(--convert)", mnav: "var(--senti)",
 };
 
 const pct1 = (v: number) => (v >= 0 ? "+" : "") + v.toFixed(1) + "%";

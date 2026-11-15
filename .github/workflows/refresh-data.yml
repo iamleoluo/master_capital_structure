@@ -1,0 +1,63 @@
+name: refresh-data
+
+# 只在 master 上的排程會真的跑。這支工作不部署、不呼叫 wrangler。
+# 它開出來的 PR 用的是 GITHUB_TOKEN，GitHub 不會再為那張 PR 觸發其他 workflow。
+on:
+  schedule:
+    # 週二 15:00 UTC。週一的 8-K 通常已經送出，星期五的收盤也已經在檔案裡。
+    - cron: "0 15 * * 2"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Refresh filings, prices, and app/data
+        run: python3 web/refresh.py
+      - name: Refuse a stale daily file
+        run: |
+          python3 - << 'PY'
+          import datetime as dt, json, sys
+          last = dt.date.fromisoformat(json.load(open("app/data/daily.json"))["date"][-1])
+          lag = (dt.date.today() - last).days
+          print(f"daily.json ends {last}, lag {lag} days")
+          if lag > 5:
+              sys.exit(f"daily.json is {lag} days behind; not opening a PR")
+          PY
+      - name: Open a pull request with the diff
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git reset -- data/derived web/archive.sqlite >/dev/null 2>&1 || true
+          if git diff --cached --quiet; then
+            echo "No data change."
+            exit 0
+          fi
+          branch="data-refresh/${GITHUB_RUN_ID}"
+          git checkout -b "$branch"
+          git commit -m "Refresh data through $(python3 -c 'import json; print(json.load(open("app/data/daily.json"))["date"][-1])')"
+          git push origin "$branch"
+          stat=$(git diff --stat master...HEAD)
+          gh pr create --base master --head "$branch" \
+            --title "Data refresh ${GITHUB_RUN_ID}" \
+            --body "$(printf '%s\n' \
+              'Scheduled refresh. This does not deploy.' \
+              '' \
+              '```' \
+              "$stat" \
+              '```' \
+              '' \
+              'Companyfacts are archived, but data/obs XBRL rows are still appended by hand. Review debt, cash, and share anchors before merging.')"

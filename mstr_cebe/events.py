@@ -980,6 +980,27 @@ RAW_VIEWS = {
 }
 
 
+def export_jsonl(conn: sqlite3.Connection, path: Optional[str] = None) -> int:
+    """事件表寫成 JSONL。一筆一行，欄位就是表上的欄位。
+
+    檔案庫是空的就不覆寫既有檔，避免一次空跑把審查用的匯出清掉。
+    """
+    if path is None:
+        path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "data", "events.jsonl")
+    conn.row_factory = sqlite3.Row
+    rows = [dict(r) for r in conn.execute(
+        "SELECT * FROM events ORDER BY effective_at, locator, event_id")]
+    if not rows and os.path.exists(path):
+        return 0
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        for row in rows:
+            f.write(json.dumps(row, ensure_ascii=False) + "\n")
+    return len(rows)
+
+
 def export_raw(conn: sqlite3.Connection, root: Optional[str] = None) -> Dict[str, int]:
     """把週視圖寫回 web/raw。
 
@@ -1007,6 +1028,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     if argv and argv[0] in ("export", "rebuild"):
         for name, n in export_raw(conn).items():
             print(f"  寫出 web/raw/{name}  {n} 列")
+        n_jsonl = export_jsonl(conn)
+        print(f"  寫出 data/events.jsonl  {n_jsonl} 列")
     rows = conn.execute(
         "SELECT granularity, family, kind, COUNT(*), MIN(effective_at),"
         " MAX(effective_at) FROM events GROUP BY granularity, family, kind"

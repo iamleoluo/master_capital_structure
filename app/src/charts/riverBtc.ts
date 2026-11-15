@@ -12,6 +12,8 @@
  * 也讓堆疊剛好收斂到 held(否則會多算或少算一塊)。
  */
 import { daily, meta, N } from "../data";
+import { freshness } from "../metrics/asof";
+import { claimsStackB } from "../metrics/read";
 import type { SeriesLabel } from "../lib/crosshair";
 import { axisX, breakLines, CW, frame, gridY, PAD_R } from "../lib/frame";
 import { btc as fmtBtc, usd0 } from "../lib/format";
@@ -44,23 +46,23 @@ export function computeRiverBtc(perShare = false): RiverBtcGeo {
   const netDebt: number[] = [];
   const claimsTop: number[] = [];
   const layerTops: number[][] = [];
-  const held = daily.held;
-
   const scaledHeld: number[] = [];
   for (let i = 0; i < N; i++) {
     const px = daily.btc[i]!;
     const k = scaleOf(i, perShare);
-    const nd = Math.max(0, ((daily.debt[i]! - daily.cash[i]!) * 1e9) / px) * k;
+    const stack = claimsStackB(i);
+    const toBtc = (b: number) => ((b * 1e9) / px) * k;
+    const nd = toBtc(stack.debt);
     let acc = nd;
     const tops: number[] = [];
-    for (const l of LAYERS) {
-      acc += (((daily[l.key] as number[])[i]! * 1e9) / px) * k;
+    for (const pref of stack.prefs) {
+      acc += toBtc(pref);
       tops.push(acc);
     }
     netDebt.push(nd);
     layerTops.push(tops);
-    claimsTop.push(acc);
-    scaledHeld.push(held[i]! * k);
+    claimsTop.push(toBtc(stack.top));
+    scaledHeld.push((freshness("btc.held", i).value ?? daily.held[i]!) * k);
   }
   return { netDebt, layerTops, claimsTop, held: scaledHeld,
            y: linear([0, 1], [0, 1]), yBtc: linear([0, 1], [0, 1]), perShare };
@@ -143,7 +145,7 @@ export function riverBtcLabels(g: RiverBtcGeo, i: number): SeriesLabel[] {
       color: "var(--ink)", y: g.y(g.held[i]!) },
     { label: g.perShare ? "實得每股" : "普通股", value: fmt(common),
       color: "var(--equity)", y: g.y((g.claimsTop[i]! + g.held[i]!) / 2) },
-    { label: "求償權", value: fmt(g.claimsTop[i]!),
+    { label: "淨求償權", value: fmt(g.claimsTop[i]!),
       color: "var(--c2)", y: g.y(g.claimsTop[i]! / 2) },
     { label: "BTC 價格", value: usd0(daily.btc[i]!),
       color: "var(--btc)", y: g.yBtc(daily.btc[i]!) },

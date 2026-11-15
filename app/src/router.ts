@@ -3,9 +3,14 @@
 export type Teardown = () => void;
 export type PageFn = (root: HTMLElement) => Teardown | void;
 
+export type PageType = "reading" | "method" | "note" | "source";
+
 export interface Route {
   path: string;
   title: string;
+  type: PageType;
+  /** 舊網址。命中時改寫到 path，目前的 path 仍是正式路由。 */
+  redirectFrom?: string[];
   page: () => Promise<PageFn>;
   /** 上層分頁的 path。有值 = 這是子分頁,不出現在主導覽,
    *  而是出現在「所屬上層分頁被選中時」的第二排導覽裡。 */
@@ -31,8 +36,18 @@ function current(): string {
   return h || "/";
 }
 
+export function resolvePath(path: string, defs: Pick<Route, "path" | "redirectFrom">[]): string {
+  const hit = defs.find((r) => r.redirectFrom?.includes(path));
+  return hit?.path ?? path;
+}
+
 async function render(): Promise<void> {
-  const path = current();
+  const raw = current();
+  const path = resolvePath(raw, routes);
+  if (path !== raw) {
+    location.replace("#" + path);
+    return;
+  }
   let route = routes.find((r) => r.path === path);
   let dynamicRest: string | null = null;
 

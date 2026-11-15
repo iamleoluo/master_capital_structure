@@ -1,0 +1,6 @@
+ticker,name,pricing_date,ipo_shares,offer_price,stated_amount,currency,ipo_liquidation_pref,net_proceeds,dividend_rate_pct,rank,convertible,note
+STRK,Strike,2025-01-30,7300000.0,80.0,100.0,USD,730000000.0,563400000.0,8.0,3,1,可轉換 0.1 MSTR/股
+STRF,Strife,2025-03-20,8500000.0,85.0,100.0,USD,850000000.0,711200000.0,10.0,1,0,"累積型,最優先"
+STRD,Stride,2025-06-05,11764700.0,85.0,100.0,USD,1176000000.0,979700000.0,10.0,4,0,"非累積、非強制,最劣後"
+STRC,Stretch,2025-07-24,28011111.0,90.0,100.0,USD,2801000000.0,2474000000.0,,2,0,變動利率;2025 年全美最大 IPO
+STRE,Stream,2025-11-06,7750000.0,80.0,100.0,EUR,775000000.0,608800000.0,10.0,5,0,"歐元計價,LuxSE;此列金額為 EUR"

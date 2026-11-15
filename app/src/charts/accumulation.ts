@@ -102,13 +102,13 @@ export function drawAccumulation(el: HTMLElement, h = 340): AccumGeo {
   const area = steps.map((p, i) => (i === 0 ? "M" : "L") + p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ")
     + ` L ${xOf(daily.date[daily.date.length - 1]!).toFixed(1)},${yHold(0).toFixed(1)}`
     + ` L ${xOf(data[0]!.week_end).toFixed(1)},${yHold(0).toFixed(1)} Z`;
-  parts.push(`<path d="${area}" fill="var(--c3)" opacity=".14"/>`);
-  parts.push(`<path d="${path(steps)}" fill="none" stroke="var(--c3)" stroke-width="1.8"/>`);
+  parts.push(`<path d="${area}" fill="var(--btc)" opacity=".14"/>`);
+  parts.push(`<path d="${path(steps)}" fill="none" stroke="var(--btc)" stroke-width="1.8"/>`);
 
   // 真實觀測點
   for (const w of data) {
     parts.push(`<circle cx="${xOf(w.week_end).toFixed(1)}" cy="${yHold(w.holdings!).toFixed(1)}" `
-      + `r="1.9" fill="var(--c3)" opacity=".8"/>`);
+      + `r="1.9" fill="var(--btc)" opacity=".8"/>`);
   }
 
   parts.push(text(PAD_L, padT - 4, "累計持有量(90 個 8-K 真實觀測點,階梯線)",

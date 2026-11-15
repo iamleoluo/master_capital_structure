@@ -8,6 +8,7 @@
 import { chronicle, daily, meta, N } from "../data";
 import { explorer } from "../components/explorer";
 import { btc as fmtBtc, pct } from "../lib/format";
+import { metricAt } from "../metrics/read";
 import type { PageFn } from "../router";
 
 export const overviewPage: PageFn = (root) => {
@@ -25,7 +26,7 @@ export const overviewPage: PageFn = (root) => {
         <h1>Strategy(MSTR):用資本市場的錢,贏過比特幣</h1>
         <p class="lede">
           Strategy 原名 MicroStrategy,本業是企業軟體。2020 年起把比特幣訂為主要儲備資產,
-          目前持有 <b>${fmtBtc(daily.held[i]!)} 顆</b>,是全球持幣最多的上市公司。
+          目前持有 <b>${fmtBtc(metricAt("btc.held", i).value)} 顆</b>,是全球持幣最多的上市公司。
         </p>
         <p class="lede">
           但它的目標比「持有比特幣」高一階。<b>如果只是要比特幣的曝險,買幣或買 ETF 就好</b> ——

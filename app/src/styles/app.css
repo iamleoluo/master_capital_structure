@@ -25,6 +25,14 @@ p{margin:0 0 1em}
   border-radius:4px;white-space:nowrap;transition:background .12s,color .12s}
 .nav a:hover{background:var(--surface-2);color:var(--ink)}
 .nav a.active{background:var(--ink);color:var(--paper)}
+.nav-toggle{display:none;background:transparent;border:1px solid var(--line-2);border-radius:4px;
+  color:var(--ink-2);cursor:pointer;font-size:.8rem;padding:4px 10px}
+@media (max-width:720px){
+  .nav-toggle{display:inline-flex}
+  .nav{display:none;position:absolute;top:56px;left:0;right:0;flex-direction:column;
+    background:var(--paper);border-bottom:1px solid var(--line);padding:8px 16px 12px;overflow:visible}
+  .nav.open{display:flex}
+}
 .theme-btn{background:transparent;border:1px solid var(--line-2);border-radius:4px;
   color:var(--ink-2);cursor:pointer;font-size:.9rem;padding:4px 9px;line-height:1}
 .theme-btn:hover{border-color:var(--equity);color:var(--equity)}
@@ -94,6 +102,8 @@ tr:last-child td{border-bottom:none}
 .badge{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:.7rem;
   padding:4px 9px;border-radius:20px;white-space:nowrap}
 .badge .dot{width:6px;height:6px;border-radius:50%;background:currentColor}
+.method-row{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;max-width:36rem}
+.badge[data-method]{background:var(--surface-2);color:var(--ink-2)}
 .badge.live{background:var(--equity-soft);color:var(--equity)}
 .badge.near{background:var(--good);color:var(--surface);opacity:.9}
 .badge.far{background:var(--senti-soft);color:var(--senti)}

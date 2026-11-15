@@ -370,15 +370,92 @@ def backfill(conn: sqlite3.Connection, *, since: dt.date,
 
 # --------------------------------------------------------------- CLI
 
+_EXHIBIT_HREF = re.compile(r'href="([^"]+\.htm)"', re.I)
+
+
+def attach_btc_exhibits(conn: sqlite3.Connection, *,
+                        progress: bool = True) -> int:
+    """歸檔 8-K 正文沒有買幣表、但 Exhibit 99 裡有的那一週。
+
+    2026-10-12 的 8-K（accession 0001193125-26-419726）把 BTC Update、
+    ATM、回購與 USD Reserve 全部放在 mstr-ex99_1.htm。正文沒有表格，
+    只抓 primary document 會讓那一週（持幣 848,250、STRC 回購 1,932,145 股）
+    從事件層消失。已經含「Aggregate BTC Holdings」或「本週沒有買賣」
+    的正文不再跟進去，避免同一週被算兩次。
+    """
+    from urllib.parse import urljoin
+
+    added = 0
+    parents = [m for m in find(conn, source="sec_8k")
+               if m.accession and "#" not in (m.accession or "")]
+    for m in parents:
+        html = text(conn, m.doc_id)
+        low = html.lower()
+        if ("aggregate btc holdings" in low
+                or "did not purchase or sell any bitcoin" in low):
+            continue
+        seen = set()
+        for href in _EXHIBIT_HREF.findall(html):
+            url = urljoin(m.url, href)
+            name = url.split("/")[-1].split("?")[0]
+            if name.lower() == m.url.split("/")[-1].lower() or url in seen:
+                continue
+            seen.add(url)
+            acc = f"{m.accession}#{name}"
+            if has(conn, accession=acc):
+                continue
+            try:
+                r = _get(url)
+            except requests.HTTPError as exc:
+                if progress:
+                    print(f"  ! {m.filed_at} {url} 取不到:{exc}", file=sys.stderr)
+                continue
+            body = r.content.decode("utf-8", "replace")
+            if ("Aggregate BTC Holdings" not in body
+                    and "USD Reserve" not in body):
+                continue
+            doc_id = store(
+                conn, source="sec_8k", url=url, content=r.content,
+                media_type=r.headers.get("Content-Type", "text/html")
+                .split(";")[0].strip(),
+                accession=acc, filed_at=m.filed_at, items=m.items or "8.01")
+            added += 1
+            if progress:
+                print(f"  + exhibit {m.filed_at} {acc} {doc_id}")
+    return added
+
+
 def _cmd_backfill(argv: List[str]) -> int:
-    since = dt.date.fromisoformat(argv[0]) if argv else dt.date(2024, 7, 1)
+    since = dt.date(2024, 7, 1)
+    forms: tuple = ("8-K",)
+    rest = list(argv)
+    if rest and len(rest[0]) == 10 and rest[0][4] == "-":
+        since = dt.date.fromisoformat(rest.pop(0))
+    if rest:
+        forms = tuple(rest)
     conn = connect()
-    print(f"補抓 {since} 之後的 8-K 到 {DEFAULT_PATH}")
-    added = sum(1 for _ in backfill(conn, since=since))
+    print(f"補抓 {since} 之後的 {', '.join(forms)} 到 {DEFAULT_PATH}")
+    added = sum(1 for _ in backfill(conn, since=since, forms=forms))
+    renamed = conn.execute(
+        "UPDATE documents SET source = replace(source, '/a', '') "
+        "WHERE source LIKE 'sec_8k/%' OR source LIKE 'sec_10q/%' "
+        "OR source LIKE 'sec_10k/%'"
+    ).rowcount
+    conn.commit()
+    if renamed:
+        print(f"修正後名稱 {renamed} 份（8-K/A 這類併回解析器認得的來源）")
     print(f"\n新增 {added} 份")
     n = export_manifest(conn)
     print(f"稽核軌跡 web/archive/manifest.json({n} 列)")
     _cmd_stats([])
+    return 0
+
+
+def _cmd_exhibits(_argv: List[str]) -> int:
+    conn = connect()
+    n = attach_btc_exhibits(conn)
+    export_manifest(conn)
+    print(f"新增 {n} 份 exhibit")
     return 0
 
 
@@ -419,7 +496,8 @@ def _cmd_stats(_argv: List[str]) -> int:
 def main(argv: Optional[List[str]] = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     cmds = {"backfill": _cmd_backfill, "stats": _cmd_stats,
-            "manifest": _cmd_manifest, "facts": _cmd_facts}
+            "manifest": _cmd_manifest, "facts": _cmd_facts,
+            "exhibits": _cmd_exhibits}
     if not argv or argv[0] not in cmds:
         print(f"用法:python3 -m mstr_cebe.archive {{{'|'.join(cmds)}}}")
         return 1

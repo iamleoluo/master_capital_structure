@@ -85,6 +85,10 @@ def report(title: str) -> None:
     print(f"\n{title}")
     stale = []
     for k, v in coverage().items():
+        if not v:
+            print(f"  ⚠️ {k:<12}（空的）")
+            stale.append(k)
+            continue
         lag = (today - dt.date.fromisoformat(v)).days
         ok = lag <= LAG_OK[k]
         print(f"  {'  ' if ok else '⚠️'} {k:<12}{v}   落後 {lag} 天"
@@ -132,7 +136,14 @@ def main() -> int:
         return 0
 
     if not a.offline:
-        _run("1. L1 — 補抓 SEC 文件", ["-m", "mstr_cebe.archive", "backfill"])
+        # 8-K 以外的表格（10-Q、增發說明書、FWP）與 Exhibit 99 的買幣新聞稿
+        # 不在預設 backfill 裡。漏掉的話季報與 2026-10-11 那一週不會進檔案庫。
+        _run("1. L1 — 補抓 SEC 文件", [
+            "-m", "mstr_cebe.archive", "backfill", "2024-07-01",
+            "8-K", "8-K/A", "10-Q", "10-Q/A", "10-K", "424B5", "FWP",
+        ])
+        _run("1b. 正文沒有買幣表的 Exhibit 99", ["-m", "mstr_cebe.archive", "exhibits"])
+        _run("1c. XBRL companyfacts", ["-m", "mstr_cebe.archive", "facts"])
     _run("2. L2 — 由文件重算事件,並寫出 web/raw 視圖",
          ["-m", "mstr_cebe.events", "rebuild"])
     if not a.offline:

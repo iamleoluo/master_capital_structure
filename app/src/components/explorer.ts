@@ -3,7 +3,9 @@
 import { daily, N } from "../data";
 import { onIndexChange, setIndex, state } from "../state";
 import { attachScrub, frame } from "../lib/frame";
-import { bn, btc as fmtBtc, mult, sats, usd, usd0 } from "../lib/format";
+import { bn, btc as fmtBtc, mult, usd, usd0 } from "../lib/format";
+import { BADGE_ORDER, FIELD_LABEL, freshness, METHOD_LABEL, todayIso } from "../metrics/asof";
+import { claimsPartsB, formatIdentity, metricAt } from "../metrics/read";
 import { RANGE_LABEL, rangeIndices, type RangeKey } from "../lib/range";
 import {
   drawMnav, drawPerShare, drawPrice, drawRiverUsd,
@@ -27,12 +29,6 @@ const H_ZOOM: Record<ChartKey, number> = {
   price: 520, mnav: 520, perShare: 520, riverUsd: 560, riverBtc: 600,
 };
 
-function staleBadge(d: number): { cls: string; txt: string } {
-  if (d <= 15) return { cls: "live", txt: `真實觀測 ±${d} 天內` };
-  if (d <= 90) return { cls: "near", txt: `中距離插值 ±${d} 天` };
-  return { cls: "far", txt: `長距離插值 ±${d} 天` };
-}
-
 export interface ExplorerOpts {
   charts?: ChartKey[];
   showIdentity?: boolean;
@@ -49,7 +45,7 @@ export function explorer(root: HTMLElement, opts: ExplorerOpts = {}): () => void
           <div style="font-family:var(--serif);font-size:1.5rem;font-weight:600" id="ex-date">—</div>
           <div style="font-size:.8rem;color:var(--ink-3);margin-top:2px" id="ex-sub">—</div>
         </div>
-        <div class="badge" id="ex-badge"><i class="dot"></i><span id="ex-badge-txt">—</span></div>
+        <div class="method-row" id="ex-methods"></div>
       </div>
 
       <div style="padding:16px 24px 0">
@@ -58,7 +54,8 @@ export function explorer(root: HTMLElement, opts: ExplorerOpts = {}): () => void
           <div class="reading"><div class="k">BTC 價格</div><div class="v" id="r-btc">—</div></div>
           <div class="reading"><div class="k">basic mNAV</div><div class="v" id="r-basic">—</div></div>
           <div class="reading"><div class="k">CEBE mNAV</div><div class="v accent" id="r-cebe">—</div></div>
-          <div class="reading"><div class="k">求償權合計</div><div class="v" id="r-claims">—</div></div>
+          <div class="reading"><div class="k">淨求償權</div><div class="v" id="r-claims">—</div>
+            <div class="k" id="r-claims-parts"></div></div>
           <div class="reading"><div class="k">槓桿倍數</div><div class="v" id="r-amp">—</div></div>
         </div>
       </div>
@@ -69,17 +66,14 @@ export function explorer(root: HTMLElement, opts: ExplorerOpts = {}): () => void
           <div class="eq">
             <div class="eq-term result"><div class="eq-lab">MSTR 股價</div><div class="eq-val" id="id-price">—</div></div>
             <div class="eq-op">=</div>
-            <div class="eq-term"><div class="eq-lab"><i class="swatch" style="background:var(--senti)"></i>情緒溢價</div>
-              <div class="eq-val" id="id-mnav">—</div><div class="eq-sub">CEBE mNAV</div></div>
+            <div class="eq-term"><div class="eq-lab"><i class="swatch" style="background:var(--senti)"></i>CEBE mNAV</div>
+              <div class="eq-val" id="id-mnav">—</div><div class="eq-sub">扣求償權後的溢價</div></div>
             <div class="eq-op">×</div>
-            <div class="eq-term"><div class="eq-lab"><i class="swatch" style="background:var(--equity)"></i>每股 BTC</div>
-              <div class="eq-val" id="id-bps">—</div><div class="eq-sub">sats／股</div></div>
+            <div class="eq-term"><div class="eq-lab"><i class="swatch" style="background:var(--equity)"></i>實得每股</div>
+              <div class="eq-val" id="id-btc-ps">—</div><div class="eq-sub" id="id-sats">BTC／股</div></div>
             <div class="eq-op">×</div>
             <div class="eq-term"><div class="eq-lab"><i class="swatch" style="background:var(--btc)"></i>BTC 價格</div>
-              <div class="eq-val" id="id-btc">—</div></div>
-            <div class="eq-op">×</div>
-            <div class="eq-term"><div class="eq-lab"><i class="swatch" style="background:var(--c3)"></i>普通股殘值率</div>
-              <div class="eq-val" id="id-lev">—</div><div class="eq-sub">1 − 求償權佔比</div></div>
+              <div class="eq-val" id="id-btc">—</div><div class="eq-sub">這三個顯示值相乘</div></div>
           </div>
         </div>
       </div>` : ""}
@@ -143,25 +137,31 @@ export function explorer(root: HTMLElement, opts: ExplorerOpts = {}): () => void
 
   function paint(i: number): void {
     el("ex-date").textContent = daily.date[i]!;
+    const held = metricAt("btc.held", i);
     el("ex-sub").textContent =
-      `BTC 持有 ${fmtBtc(daily.held[i]!)} 顆 · basic 股數 ${daily.shares[i]!.toFixed(1)}M`;
-    const b = staleBadge(daily.stale[i]!);
-    el("ex-badge").className = "badge " + b.cls;
-    el("ex-badge-txt").textContent = b.txt;
+      `今天 ${todayIso()} · BTC 持有 ${fmtBtc(held.value)} 顆（${METHOD_LABEL[held.method]}，截至 ${held.asOf}）· basic 股數 ${daily.shares[i]!.toFixed(1)}M`;
+    el("ex-methods").innerHTML = BADGE_ORDER.map((id) => {
+      const f = freshness(id, i);
+      return `<span class="badge" data-method="${f.method}">${FIELD_LABEL[id]} · ${METHOD_LABEL[f.method]} · ${f.asOf}</span>`;
+    }).join("");
 
-    el("r-mstr").textContent = usd(daily.mstr[i]!);
-    el("r-btc").textContent = usd0(daily.btc[i]!);
-    el("r-basic").textContent = mult(daily.mnav_basic[i]!);
-    el("r-cebe").textContent = mult(daily.mnav_cebe[i]!);
-    el("r-claims").textContent = bn(daily.debt[i]! + daily.pref_total[i]!);
-    el("r-amp").textContent = mult(daily.amp[i]);
+    const parts = claimsPartsB(i);
+    el("r-mstr").textContent = usd(metricAt("price.mstr", i).value!);
+    el("r-btc").textContent = usd0(metricAt("price.btc", i).value!);
+    el("r-basic").textContent = mult(metricAt("mnav.basic", i).value);
+    el("r-cebe").textContent = mult(metricAt("mnav.cebe", i).value);
+    el("r-claims").textContent = bn(metricAt("claims.cebe", i).value);
+    el("r-claims-parts").textContent =
+      `可轉債 ${bn(parts.debt)} + 優先股 ${bn(parts.pref)} − 現金 ${bn(parts.cash)}`;
+    el("r-amp").textContent = mult(metricAt("amp.residual", i).value);
 
     if (showIdentity) {
-      el("id-price").textContent = usd(daily.mstr[i]!);
-      el("id-mnav").textContent = mult(daily.mnav_cebe[i]!);
-      el("id-bps").textContent = sats(daily.bps[i]!);
-      el("id-btc").textContent = usd0(daily.btc[i]!);
-      el("id-lev").textContent = (1 - daily.claims_pct[i]!).toFixed(3);
+      const idn = formatIdentity(i);
+      el("id-price").textContent = "$" + idn.price;
+      el("id-mnav").textContent = idn.mnav + "×";
+      el("id-btc-ps").textContent = idn.btcPerShare + " BTC";
+      el("id-sats").textContent = idn.sats + " sats = " + idn.btcPerShare + " BTC";
+      el("id-btc").textContent = "$" + idn.btcPrice;
     }
     scrub.value = String(i);
 

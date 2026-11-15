@@ -1,6 +1,8 @@
 /** 三張共用同一時間索引的日頻圖:價格、mNAV、USD 河流。
  *  都吃 state.idx,游標標籤由 lib/crosshair 統一渲染。 */
 import { daily, meta, N } from "../data";
+import { freshness } from "../metrics/asof";
+import { claimsStackB } from "../metrics/read";
 import { state } from "../state";
 import { crosshair, type SeriesLabel } from "../lib/crosshair";
 import { axisX, breakLines, CW, frame, gridY, PAD_R } from "../lib/frame";
@@ -63,9 +65,9 @@ export function drawMnav(el: HTMLElement, h = 190, range?: [number, number]): Ge
     text(49, y(1) + 3.5, "1.0x", { size: 9, anchor: "end", opacity: 0.55, mono: true }),
     axisX(f),
     breakLines(f, meta.breaks),
-    `<path d="${path(pts(daily.mnav_basic))}" fill="none" stroke="var(--c3)" stroke-width="1.5" opacity=".85"/>`,
+    `<path d="${path(pts(daily.mnav_basic))}" fill="none" stroke="var(--ink-2)" stroke-width="1.5" opacity=".85"/>`,
     `<path d="${path(pts(daily.mnav_cebe))}" fill="none" stroke="var(--equity)" stroke-width="1.8"/>`,
-    text(CW - PAD_R, y(daily.mnav_basic[hi]!) + 13, "basic", { size: 10, anchor: "end", fill: "var(--c3)", weight: 600 }),
+    text(CW - PAD_R, y(daily.mnav_basic[hi]!) + 13, "basic", { size: 10, anchor: "end", fill: "var(--ink-2)", weight: 600 }),
     text(CW - PAD_R, y(daily.mnav_cebe[hi]!) - 6, "CEBE", { size: 10, anchor: "end", fill: "var(--equity)", weight: 600 }),
   ];
   el.innerHTML = svg(CW, h, parts.join(""), "basic mNAV 與 CEBE mNAV,對數座標,1.0x 為參考線");
@@ -75,7 +77,7 @@ export function drawMnav(el: HTMLElement, h = 190, range?: [number, number]): Ge
 export function mnavLabels(g: Geo, i: number): SeriesLabel[] {
   return [
     { label: "CEBE mNAV", value: mult(daily.mnav_cebe[i]!), color: "var(--equity)", y: g.y(daily.mnav_cebe[i]!) },
-    { label: "basic mNAV", value: mult(daily.mnav_basic[i]!), color: "var(--c3)", y: g.y(daily.mnav_basic[i]!) },
+    { label: "basic mNAV", value: mult(daily.mnav_basic[i]!), color: "var(--ink-2)", y: g.y(daily.mnav_basic[i]!) },
   ];
 }
 
@@ -111,11 +113,11 @@ export function drawPerShare(el: HTMLElement, h = 190, range?: [number, number])
     breakLines(f, meta.breaks),
     `<path d="${path(pts(daily.btc, yBtc))}" fill="none" stroke="var(--btc)" stroke-width="1.2" stroke-dasharray="3,3" opacity=".4"/>`,
     `<path d="${path(pts(daily.mstr, yMstr))}" fill="none" stroke="var(--senti)" stroke-width="1.2" stroke-dasharray="3,3" opacity=".4"/>`,
-    `<path d="${path(pts(daily.bps, y))}" fill="none" stroke="var(--c3)" stroke-width="1.5" opacity=".85"/>`,
+    `<path d="${path(pts(daily.bps, y))}" fill="none" stroke="var(--ink-2)" stroke-width="1.5" opacity=".85"/>`,
     `<path d="${path(pts(cebe, y))}" fill="none" stroke="var(--equity)" stroke-width="1.8"/>`,
     text(f.x(lo) + 4, yBtc(daily.btc[lo]!) - 5, "BTC 價格(參考)", { size: 9, anchor: "start", fill: "var(--btc)", opacity: 0.7 }),
     text(f.x(lo) + 4, yMstr(daily.mstr[lo]!) + 12, "MSTR 股價(參考)", { size: 9, anchor: "start", fill: "var(--senti)", opacity: 0.7 }),
-    text(CW - PAD_R, y(daily.bps[hi]!) + 13, "帳面每股", { size: 10, anchor: "end", fill: "var(--c3)", weight: 600 }),
+    text(CW - PAD_R, y(daily.bps[hi]!) + 13, "帳面每股", { size: 10, anchor: "end", fill: "var(--ink-2)", weight: 600 }),
     text(CW - PAD_R, y(cebe[hi]!) - 6, "實得每股", { size: 10, anchor: "end", fill: "var(--equity)", weight: 600 }),
   ];
 
@@ -139,7 +141,7 @@ export function perShareLabels(g: PerShareGeo, i: number): SeriesLabel[] {
   const cebe = cebePerShare(i);
   return [
     { label: "實得每股", value: sats(cebe), color: "var(--equity)", y: g.y(cebe) },
-    { label: "帳面每股", value: sats(daily.bps[i]!), color: "var(--c3)", y: g.y(daily.bps[i]!) },
+    { label: "帳面每股", value: sats(daily.bps[i]!), color: "var(--ink-2)", y: g.y(daily.bps[i]!) },
     { label: "BTC 價格", value: usd0(daily.btc[i]!), color: "var(--btc)", y: g.yBtc(daily.btc[i]!) },
     { label: "MSTR 股價", value: usd(daily.mstr[i]!), color: "var(--senti)", y: g.yMstr(daily.mstr[i]!) },
   ];
@@ -163,13 +165,14 @@ export function drawRiverUsd(el: HTMLElement, h = 210, range?: [number, number])
   const layerTops: number[][] = [];
 
   for (let i = 0; i < N; i++) {
-    let acc = daily.debt[i]!;
+    const stack = claimsStackB(i);
+    let acc = stack.debt;
     const tops: number[] = [];
-    for (const l of USD_LAYERS) { acc += (daily[l.key] as number[])[i]!; tops.push(acc); }
+    for (const pref of stack.prefs) { acc += pref; tops.push(acc); }
     layerTops.push(tops);
-    claimsTop.push(acc);
+    claimsTop.push(stack.top);
     stackTop.push(acc + (daily.mstr[i]! * daily.shares[i]!) / 1000);
-    nav.push((daily.held[i]! * daily.btc[i]!) / 1e9);
+    nav.push(((freshness("btc.held", i).value ?? daily.held[i]!) * daily.btc[i]!) / 1e9);
   }
 
   const maxV = Math.max(...stackTop.slice(lo, hi + 1), ...nav.slice(lo, hi + 1)) * 1.07;
@@ -180,7 +183,7 @@ export function drawRiverUsd(el: HTMLElement, h = 210, range?: [number, number])
   const zero: Array<[number, number]> = [];
   for (let i = lo; i <= hi; i++) zero.push([px(i), y(0)]);
   const debtTop: Array<[number, number]> = [];
-  for (let i = lo; i <= hi; i++) debtTop.push([px(i), y(daily.debt[i]!)]);
+  for (let i = lo; i <= hi; i++) debtTop.push([px(i), y(claimsStackB(i).debt)]);
   parts.push(`<path d="${band(debtTop, zero)}" fill="var(--convert)" opacity=".9"/>`);
 
   let prev = debtTop;
@@ -226,7 +229,7 @@ export function riverUsdLabels(g: RiverUsdGeo, i: number): SeriesLabel[] {
     { label: "BTC 總市值", value: bn(g.nav[i]!), color: "var(--btc)", y: g.y(g.nav[i]!) },
     { label: "股+求償權", value: bn(g.stackTop[i]!), color: "var(--equity)", y: g.y(g.stackTop[i]!) },
     { label: "MSTR 市值", value: bn(mcap), color: "var(--senti)", y: g.y(g.claimsTop[i]! + mcap / 2) },
-    { label: "求償權", value: bn(g.claimsTop[i]!), color: "var(--c2)", y: g.y(g.claimsTop[i]! / 2) },
+    { label: "淨求償權", value: bn(g.claimsTop[i]!), color: "var(--c2)", y: g.y(g.claimsTop[i]! / 2) },
   ];
 }
 

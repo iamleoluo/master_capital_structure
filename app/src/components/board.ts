@@ -35,9 +35,3 @@ export function tile(k: string, v: string, d: string, opt: {
     </div>`;
 }
 
-/** 這個數字離最近一次真實申報幾天 —— 插值距離。 */
-export function staleness(days: number): string {
-  if (days <= 3) return `<span class="fresh">申報當日</span>`;
-  if (days <= 15) return `<span class="fresh">距申報 ${days} 天</span>`;
-  return `<span class="stale">距申報 ${days} 天,插值</span>`;
-}
