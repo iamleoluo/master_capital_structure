@@ -1,34 +1,10 @@
 import "./styles/tokens.css";
 import "katex/dist/katex.min.css";
 import "./styles/app.css";
-import { startRouter, topRoutes, type Route } from "./router";
+import { startRouter, topRoutes } from "./router";
+import { PAGES } from "./pages/registry";
 
-/** 有 parent 的是子分頁:不進主導覽,只在上層被選中時出現在第二排。
- *  「資本結構」底下分成「持幣與融資」與「求償權與殘值」——
- *  同一個題目的兩半,但各自夠長,合成一頁會變成很難找東西的長捲軸。 */
-const routes: Route[] = [
-  { path: "/", title: "總覽", page: async () => (await import("./pages/overview")).overviewPage },
-  { path: "/lecture", title: "推導", page: async () => (await import("./pages/lecture/structure")).lectureStructurePage },
-  { path: "/lecture/structure", parent: "/lecture", title: "〇 · 資本架構", page: async () => (await import("./pages/lecture/structure")).lectureStructurePage },
-  { path: "/lecture/quantities", parent: "/lecture", title: "一 · 每股計量", page: async () => (await import("./pages/lecture/quantities")).lectureQuantitiesPage },
-  { path: "/lecture/tools", parent: "/lecture", title: "二 · 資本操作", page: async () => (await import("./pages/lecture/tools")).lectureToolsPage },
-  { path: "/lecture/pairing", parent: "/lecture", title: "三 · 來源與用途", page: async () => (await import("./pages/lecture/pairing")).lecturePairingPage },
-  { path: "/lecture/time", parent: "/lecture", title: "四 · 績效歸因", page: async () => (await import("./pages/lecture/time")).lectureTimePage },
-  { path: "/board", title: "儀表板", page: async () => (await import("./pages/board/quantities")).boardQuantitiesPage },
-  { path: "/board/quantities", parent: "/board", title: "一 · 每股計量", page: async () => (await import("./pages/board/quantities")).boardQuantitiesPage },
-  { path: "/board/tools", parent: "/board", title: "二 · 資本操作", page: async () => (await import("./pages/board/tools")).boardToolsPage },
-  { path: "/board/pairing", parent: "/board", title: "三 · 來源與用途", page: async () => (await import("./pages/board/pairing")).boardPairingPage },
-  { path: "/board/time", parent: "/board", title: "四 · 績效歸因", page: async () => (await import("./pages/board/time")).boardTimePage },
-  { path: "/pricing", title: "槓桿與定價", page: async () => (await import("./pages/pricing")).pricingPage },
-  { path: "/posts", title: "觀點", page: async () => (await import("./pages/posts/list")).postsChroniclePage },
-  { path: "/posts/chronicle", parent: "/posts", title: "大事記",
-    page: async () => (await import("./pages/posts/list")).postsChroniclePage,
-    dynamic: async (slug) => (await import("./pages/posts/detail")).postDetail(slug) },
-  { path: "/posts/structure", parent: "/posts", title: "機制解讀",
-    page: async () => (await import("./pages/posts/list")).postsStructurePage,
-    dynamic: async (slug) => (await import("./pages/posts/detail")).postDetail(slug) },
-  { path: "/provenance", title: "出處", page: async () => (await import("./pages/provenance")).provenancePage },
-];
+const routes = PAGES;
 
 const THEME_KEY = "mstr-theme";
 function applyTheme(t: string | null): void {
@@ -41,7 +17,8 @@ const app = document.querySelector<HTMLElement>("#app")!;
 app.innerHTML = `
   <div class="topbar"><div class="topbar-inner">
     <span class="brand">MSTR 資本結構</span>
-    <nav class="nav">${topRoutes(routes).map((r) =>
+    <button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="nav">選單</button>
+    <nav class="nav" id="nav">${topRoutes(routes).map((r) =>
       `<a href="#${r.path}">${r.title}</a>`).join("")}</nav>
     <button class="theme-btn" id="theme" title="切換明暗主題">◐</button>
   </div></div>
@@ -56,6 +33,19 @@ app.innerHTML = `
        股數用 basic shares。定價頁的官方錨點另採公司定義(扣 USD Reserve、除以 FDSO),兩者刻意不混用。</p>
     <p style="margin:0">本頁為資料分析,不構成投資建議。</p>
   </div></footer>`;
+
+const nav = document.querySelector<HTMLElement>("#nav")!;
+const navToggle = document.querySelector<HTMLButtonElement>("#nav-toggle")!;
+navToggle.addEventListener("click", () => {
+  const open = nav.classList.toggle("open");
+  navToggle.setAttribute("aria-expanded", String(open));
+});
+nav.addEventListener("click", (ev) => {
+  if ((ev.target as HTMLElement).closest("a")) {
+    nav.classList.remove("open");
+    navToggle.setAttribute("aria-expanded", "false");
+  }
+});
 
 document.querySelector<HTMLButtonElement>("#theme")!.addEventListener("click", () => {
   const cur = document.documentElement.getAttribute("data-theme");
