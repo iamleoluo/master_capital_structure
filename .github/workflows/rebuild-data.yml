@@ -1,0 +1,20 @@
+name: rebuild-data
+
+on:
+  pull_request:
+  push:
+
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Rebuild committed inputs and diff app/data
+        run: python3 web/rebuild_check.py
+      - name: Show the deploy target constant
+        run: python3 -c "from deploy_target import DEPLOY_PROJECT; print(repr(DEPLOY_PROJECT))"
