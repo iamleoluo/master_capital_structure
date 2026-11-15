@@ -30,7 +30,7 @@ python3 -m pytest tests/ -q
 cd app && npm test && npm run build
 ```
 
-`deploy_target.DEPLOY_PROJECT` 仍是空字串。這條更新路徑不部署。
+上線是另一條指令，不在 `refresh.py` 裡：`cd app && npm run build && npx wrangler pages deploy dist --project-name mstr-capital-structure --branch master`。專案名是 `deploy_target.DEPLOY_PROJECT`。排程 workflow 只開資料 PR，不部署。
 
 ## 機器不會自己改的數字
 

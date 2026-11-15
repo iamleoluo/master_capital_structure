@@ -30,4 +30,5 @@ $P = m \times E/10^{8} \times p$,誤差 0.000%。
 python3 -m pytest tests/ -q && python3 reference/verify.py && python3 web/build_data.py
 cd app && npm run build && npx wrangler pages deploy dist --project-name mstr-capital-structure --branch master
 ```
-⚠️ Pages 沒接 git,push 不會部署 —— 一定要手動下最後那行。
+
+專案名在 `deploy_target.DEPLOY_PROJECT`。Pages 沒接 git，push 不會部署，所以上面最後那行要自己下。Workers 專案 `master-capital-structure` 不是部署目標；它的 Git 整合要在 Cloudflare 後台關掉，倉庫改不了那個設定。

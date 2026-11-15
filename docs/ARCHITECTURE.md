@@ -147,14 +147,14 @@ sequenceDiagram
 
 網站不在執行期讀資料庫。`app/src/data.ts` 把 JSON 靜態打進 bundle。所以「指標介面」是建置產物上的一層型別，不是另一台伺服器。
 
-部署寫了兩個名字：
+部署只有 Cloudflare Pages。專案名是 `deploy_target.DEPLOY_PROJECT`（`mstr-capital-structure`）。指令：
 
-| 名字 | 怎麼觸發 | 證據 |
-|---|---|---|
-| `mstr-capital-structure` | `CLAUDE.md` 的手動 `wrangler pages deploy`。倉庫沒有 `wrangler.toml` | 文件如此寫 |
-| `master-capital-structure` | GitHub 上的 Cloudflare Workers 建置，push 就跑 | `master` 的 `ddd7b8e`（2026-10-03）成功且有 Version ID。本分支兩次失敗，檢查沒有錯誤本文 |
+```bash
+cd app && npm run build && npx wrangler pages deploy dist \
+  --project-name mstr-capital-structure --branch master
+```
 
-一條管線的意思是：同一份環境變數指出唯一的專案名；本機最後那行與 git 觸發的建置都讀它；失敗時日誌要能在檢查裡看到。現在兩個名字都算「有部署」，結果寫在不同的地方。選哪一個是之後的決定，這一頁只定「只能有一個」。
+Pages 沒接 git，push 不會上線。Workers 專案 `master-capital-structure` 不是目標；GitHub 上那個空日誌的建置檢查要在 Cloudflare 後台把 Git 整合關掉，倉庫本身改不了後台。
 
 `web/archive.sqlite` 不在 git 裡。新的工作區不能只靠版控重放第 1 層。在檔案庫進得了建置之前，CI 做不到「刪掉衍生表再算一次必須逐位元組相同」。做得到的是：已進版控的 `web/raw`、`manifest.json` 與（遷完之後的）觀測 CSV，重算第 5 層之後與 `app/data` 的 diff 必須為空。這條是 [DATA_MODEL.md](DATA_MODEL.md) 的驗收，不是頁面的驗收。
 

@@ -1,7 +1,10 @@
-"""部署目標的專案名。CI 與文件只讀這個常數。
+"""部署目標。唯一的上線路徑是 Cloudflare Pages。
 
-兩個 Cloudflare 專案都維持原狀。這裡不呼叫 wrangler，也不改任何設定。
-主人選定之後只改 DEPLOY_PROJECT。空字串代表還沒選。
+    cd app && npm run build && npx wrangler pages deploy dist \
+        --project-name mstr-capital-structure --branch master
+
+專案名就是下面這個常數。Workers 專案 master-capital-structure 不是部署目標。
+它的 Git 整合要在 Cloudflare 後台關掉；這個倉庫改不了後台設定。
 """
 
-DEPLOY_PROJECT = ""
+DEPLOY_PROJECT = "mstr-capital-structure"

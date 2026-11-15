@@ -95,7 +95,9 @@ cd app && npm run build && npx wrangler pages deploy dist \
 
 倉庫裡沒有 `wrangler.toml`。另外，GitHub 上掛著一個**不同名字**的 Cloudflare Workers 建置：`master-capital-structure`。`master` 在 2026-10-03 那次提交（`ddd7b8e`）的這個檢查是成功的，而且回傳了 Version ID。所以「Pages 沒接 git」沒有涵蓋全部：至少有一條 Workers 的 git 建置會在 push 時跑。
 
-這份審查的分支推上去之後，同一個檢查失敗（Build ID `8a2d4b85-befd-42a9-8f8c-868117cd2de2`）。GitHub 上的檢查沒有錯誤本文，也沒有 Version ID；日誌只在 Cloudflare 後台。本機對同一份樹跑 `cd app && npm run build`（`tsc`、4 個 Vitest、Vite）是通過的，所以這顆紅燈不是這次新增的 markdown 讓網站編譯失敗。兩條部署（手動的 Pages、git 觸發的 Workers）名字不同、結果也不寫在同一處。
+這份審查的分支推上去之後，同一個檢查失敗（Build ID `8a2d4b85-befd-42a9-8f8c-868117cd2de2`）。GitHub 上的檢查沒有錯誤本文，也沒有 Version ID；日誌只在 Cloudflare 後台。本機對同一份樹跑 `cd app && npm run build`（`tsc`、4 個 Vitest、Vite）是通過的，所以這顆紅燈不是這次新增的 markdown 讓網站編譯失敗。
+
+之後的決定：上線只走 Pages 專案 `mstr-capital-structure`（`deploy_target.DEPLOY_PROJECT`）。Workers 專案 `master-capital-structure` 不是部署目標，Git 整合要在 Cloudflare 後台關掉。
 
 ---
 
@@ -206,7 +208,7 @@ runway = (D.PARAMS_2026_08_24["usd_reserve"]
 
 審查當日是 11 月 15 日。日線止於 10 月 1 日，週活動止於 9 月 27 日，約六週。頁首沒有「這份資料截至哪一天、今天是哪一天」。讀者看到的是一個完整的儀表板。
 
-`refresh.py` 會報告落後，但沒有人排程去跑。資料更新和上線也不是同一條路：Pages 專案要手動 `wrangler pages deploy`，Workers 專案 `master-capital-structure` 會在 push 時自己建置，而且這次在非 `master` 分支上失敗、GitHub 看不到原因（見 §1.4）。線上站因此可以停在舊資料上，同時 CI 是紅的。這和 2026-10-02 那次「資料停在 09-22」是同一種失敗：步驟存在，沒有最後一哩。
+`refresh.py` 會報告落後，但沒有人排程去跑。資料更新和上線也不是同一條路：Pages 要手動 `wrangler pages deploy`。審查時 GitHub 上還掛著 Workers 的 git 建置，非 `master` 分支失敗且沒有錯誤本文（見 §1.4）。那個整合要在後台關掉，不再當上線路徑。線上站因此可以停在舊資料上。這和 2026-10-02 那次「資料停在 09-22」是同一種失敗：步驟存在，沒有最後一哩。
 
 這次工作區沒有 `web/archive.sqlite`。出處頁仍顯示「200 份、可重放」，因為那些計數烤在 `meta.json` 裡。換一台機器、沒有那顆庫，`refresh.py` 的離線重建做不到。manifest 還在，重抓做得到，只是這件事沒有寫成開箱就能跑的一步。
 
@@ -497,7 +499,7 @@ cd app && npm test && npm run build
 
 - `refresh.py` 寫 obs CSV，價格原文歸檔。
 - 建置加上 §4.3 的拒絕條件。
-- 部署收成一支指令，資料過期就停。先確認線上站到底是 Pages 專案 `mstr-capital-structure` 還是 Workers 專案 `master-capital-structure`（§1.4），不要兩條路各走各的。
+- 部署收成一支指令：`cd app && npm run build && npx wrangler pages deploy dist --project-name mstr-capital-structure --branch master`。資料過期就停。Workers 的 Git 整合在後台關掉，不作為第二條路。
 - README 改成描述這個站，並寫清沒有 archive 時怎麼建庫。根目錄五張 PNG 標成 CLI 的輸出，或改由指令產生、不當站的內容。
 - `reference/10-status.md` 的分支描述改成與 master 一致。那是文件漂移，順手即可，不必單開一輪。
 

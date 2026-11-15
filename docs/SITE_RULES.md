@@ -183,7 +183,7 @@ basic mNAV 與 CEBE mNAV 是 `mnav.basic` 與 `mnav.cebe`。文案可以解釋�
 
 ### R16. 一個部署目標
 
-專案名只有一處，例如建置設定裡的一個常數。`CLAUDE.md` 的 Pages 專案 `mstr-capital-structure` 與 GitHub 上的 Workers 專案 `master-capital-structure` 今天是兩個。規則不代替那個選擇，它禁止選擇之後還留著第二個名字。
+專案名只有一處：`deploy_target.DEPLOY_PROJECT`，值是 Pages 專案 `mstr-capital-structure`。上線指令是 `cd app && npm run build && npx wrangler pages deploy dist --project-name mstr-capital-structure --branch master`。Workers 專案不是目標。
 
 **強制。** 倉庫裡搜尋部署專案名，必須只命中那一個常數與其說明。CI 的部署步驟讀同一個常數。在選擇完成前，這條測試可以是待辦，但它是規則的一部分，不是文件腳註。
 
