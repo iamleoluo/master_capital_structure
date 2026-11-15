@@ -1,8 +1,8 @@
 """規格書 §5 的人工整理資料 + §6 的驗證錨點。
 
-**這個模組是整個專案的事實來源(source of truth)。**
-每一筆都帶 tier 與 source_ref;推估值一律 is_estimated=True。
-不要在這裡放推論或分析結論,只放可追溯到申報文件/新聞稿的數字。
+觀測表與 FWP 參數的正本在 data/obs 與 data/ref。這裡把它們讀回來，
+名字與以前的常數相同。推估值的 is_estimated 留在 CSV。
+不要在這裡放推論或分析結論。
 
 金額單位一律 USD(絕對值,不是千元)。
 """
@@ -17,6 +17,13 @@ from .core import (
     ConvertibleSeries,
     PreferredSeries,
 )
+from .records import PolicyBreak, PreferredBalance, PreferredIPO, ShareCount
+from .table_csv import (
+    fwp_params, load_convertible_totals, load_policy_breaks,
+    load_preferred_balances, load_preferred_ipos, load_share_counts,
+    load_strc_dividend_schedule, load_weekly_btc_held, load_xbrl_btc_held,
+    load_xbrl_cash, load_xbrl_debt, load_xbrl_wavg_shares, load_fwp_row,
+)
 
 K = 1_000.0
 M = 1_000_000.0
@@ -28,40 +35,7 @@ B = 1_000_000_000.0
 # 關鍵區分:IPO 發行價 ≠ 清算優先權(stated amount,一律 100/股)
 # ===========================================================================
 
-@dataclass(frozen=True)
-class PreferredIPO:
-    ticker: str
-    name: str
-    pricing_date: date
-    ipo_shares: float
-    offer_price: float          # 發行價 —— **不要拿來建模**
-    stated_amount: float        # 清算優先權 —— 建模用這個
-    currency: str
-    ipo_liquidation_pref: float
-    net_proceeds: float
-    dividend_rate_pct: Optional[float]   # None = 變動利率
-    rank: int                            # 1 = 最優先
-    convertible: bool
-    note: str = ""
-
-
-PREFERRED_IPOS: Tuple[PreferredIPO, ...] = (
-    PreferredIPO("STRK", "Strike", date(2025, 1, 30), 7_300_000, 80.0, 100.0, "USD",
-                 730 * M, 563.4 * M, 8.00, rank=3, convertible=True,
-                 note="可轉換 0.1 MSTR/股"),
-    PreferredIPO("STRF", "Strife", date(2025, 3, 20), 8_500_000, 85.0, 100.0, "USD",
-                 850 * M, 711.2 * M, 10.00, rank=1, convertible=False,
-                 note="累積型,最優先"),
-    PreferredIPO("STRD", "Stride", date(2025, 6, 5), 11_764_700, 85.0, 100.0, "USD",
-                 1_176 * M, 979.7 * M, 10.00, rank=4, convertible=False,
-                 note="非累積、非強制,最劣後"),
-    PreferredIPO("STRC", "Stretch", date(2025, 7, 24), 28_011_111, 90.0, 100.0, "USD",
-                 2_801 * M, 2_474 * M, None, rank=2, convertible=False,
-                 note="變動利率;2025 年全美最大 IPO"),
-    PreferredIPO("STRE", "Stream", date(2025, 11, 6), 7_750_000, 80.0, 100.0, "EUR",
-                 775 * M, 608.8 * M, 10.00, rank=5, convertible=False,
-                 note="歐元計價,LuxSE;此列金額為 EUR"),
-)
+PREFERRED_IPOS = load_preferred_ipos()
 
 # 清償順位:STRF(最優先)→ STRC → STRK → STRD(最劣後)→ 普通股
 # 可轉債在所有優先股之上(rank 0)
@@ -72,11 +46,7 @@ SENIORITY_RANK: Dict[str, int] = {
 SENIORITY_CONFIDENCE = {"STRE": "low — 規格書未明列 STRE 順位,暫置最劣後"}
 
 # §5.1 / §8.7 STRC 是變動利率,建模不能寫死
-STRC_DIVIDEND_SCHEDULE: Tuple[Tuple[date, float], ...] = (
-    (date(2025, 7, 24), 9.00),
-    (date(2026, 6, 1), 11.50),
-    (date(2026, 8, 1), 12.00),   # 「2026-08 起的記錄日」
-)
+STRC_DIVIDEND_SCHEDULE = load_strc_dividend_schedule()
 STRC_PAYMENT_FREQUENCY_CHANGE = (date(2026, 6, 8), "monthly → semi-monthly")
 
 
@@ -93,57 +63,7 @@ def strc_dividend_rate(on: date) -> float:
 # §5.2 季末優先股餘額(清算優先權,USD)
 # ===========================================================================
 
-@dataclass(frozen=True)
-class PreferredBalance:
-    as_of: date
-    strk: Optional[float]
-    strf: Optional[float]
-    strd: Optional[float]
-    strc: Optional[float]
-    stre_usd: Optional[float]
-    total: Optional[float]
-    total_shares: Optional[float]
-    source: str
-    is_estimated: bool
-    stre_eur: Optional[float] = None
-    fx_eur_usd: Optional[float] = None
-    shares_by_ticker: Optional[Dict[str, float]] = None
-
-
-PREFERRED_BALANCES: Tuple[PreferredBalance, ...] = (
-    PreferredBalance(date(2024, 12, 31), 0, 0, 0, 0, 0, 0, 0,
-                     source="—(優先股時代之前)", is_estimated=False),
-    PreferredBalance(date(2025, 3, 31), 730_000 * K, 850_000 * K, 0, 0, 0,
-                     1_580_000 * K, 15_800 * K,
-                     source="IPO 加總推估", is_estimated=True),
-    PreferredBalance(date(2025, 6, 30), 900_000 * K, 950_000 * K, 1_176_000 * K, 0, 0,
-                     3_026_000 * K, 30_300 * K,
-                     source="含 ATM 推估(STRD 為 IPO 實數)", is_estimated=True),
-    PreferredBalance(date(2025, 9, 30), 1_100_000 * K, 1_150_000 * K, 1_250_000 * K,
-                     2_900_000 * K, 0, 6_400_000 * K, 64_000 * K,
-                     source="含 ATM 推估", is_estimated=True),
-    PreferredBalance(date(2025, 12, 31), 1_364_000 * K, 1_184_000 * K, 1_266_000 * K,
-                     3_400_000 * K, 818_000 * K,
-                     8_032_324 * K, 78_183 * K,
-                     source="10-K / 8-K(總計與總股數為申報實數,分系列為推估)",
-                     is_estimated=True),
-    PreferredBalance(date(2026, 3, 31), None, None, None, 5_024_700 * K, None,
-                     10_005_000 * K, None,
-                     source="Q1 10-Q(總計約 $10.005B,分系列僅 STRC 已知)",
-                     is_estimated=False),
-    PreferredBalance(date(2026, 6, 30),
-                     1_402_074 * K, 1_283_969 * K, 1_402_422 * K, 10_489_471 * K,
-                     884_120 * K,          # 反解使總計吻合申報值 15,462,056
-                     15_462_056 * K, 153_529 * K,
-                     source="Q2 10-Q(全部為申報實數)", is_estimated=False,
-                     stre_eur=775_000 * K, fx_eur_usd=884_120 / 775_000,
-                     shares_by_ticker={"STRK": 14_020_744, "STRF": 12_839_689,
-                                       "STRD": 14_024_221, "STRC": 104_894_705,
-                                       "STRE": 7_750_000}),
-    PreferredBalance(date(2026, 7, 24), None, None, None, 10_460_000 * K, None,
-                     None, None,
-                     source="8-K(STRC 回購後)", is_estimated=True),
-)
+PREFERRED_BALANCES = load_preferred_balances()
 
 # §5.2 10-Q 原文(2026-06-30),保留以便追溯
 TENQ_QUOTE_2026Q2 = (
@@ -169,11 +89,7 @@ STRC_BELOW_PAR_EVENT = (date(2026, 6, 17), 89.0, "跌到 $89,低於面額 11%")
 #    各系列轉換價 / 到期日需從某一期 10-Q 債務附註人工抄一次。
 # ===========================================================================
 
-CONVERTIBLE_TOTALS: Tuple[Tuple[date, float, str], ...] = (
-    (date(2025, 12, 31), 8.21 * B, "2025 年底"),
-    (date(2026, 5, 31), 6.71 * B, "回購 $1.50B 的 2029 年零息可轉債"),
-    (date(2026, 8, 13), 6.754 * B, "FWP notional"),
-)
+CONVERTIBLE_TOTALS = load_convertible_totals()
 
 CONVERTIBLES_2026: Tuple[ConvertibleSeries, ...] = (
     ConvertibleSeries("0.625% due 2028", 1.01 * B, 0.625, 2028,
@@ -212,28 +128,7 @@ CONVERT_2027_SCENARIO = {
 # §5.4 股數(已反映 2024-08-07 的 10-for-1 分割)
 # ===========================================================================
 
-@dataclass(frozen=True)
-class ShareCount:
-    as_of: date
-    class_a: Optional[float]
-    class_b: Optional[float]
-    basic: Optional[float]
-    fdso: Optional[float]
-    source: str
-    is_estimated: bool
-
-
-SHARE_COUNTS: Tuple[ShareCount, ...] = (
-    ShareCount(date(2024, 12, 31), 248 * M, None, 248 * M, None, "推估", True),
-    ShareCount(date(2025, 12, 31), 292.4 * M, None, 292.4 * M, None, "10-K", False),
-    ShareCount(date(2026, 6, 30), 351.96 * M, 19.64 * M, 371.6 * M, None, "10-Q", False),
-    ShareCount(date(2026, 7, 24), 364.6 * M, 19.64 * M, 384.2 * M, None, "8-K", False),
-    ShareCount(date(2026, 8, 10), None, None, 394_204_253, 398_220_309,
-               "FWP 反解(basic 由市值 $38.368B ÷ $97.33 反解)", True),
-    ShareCount(date(2026, 8, 21), None, None, 415_932_914, 419_900_000,
-               "2026-08-24 FWP 反解(basic 由市值 $49.600B ÷ $119.25;"
-               "FDSO 文件寫 ~419.9M,由 Net BPS 反推)", True),
-)
+SHARE_COUNTS = load_share_counts()
 
 WEIGHTED_AVG_DILUTED: Tuple[Tuple[str, float], ...] = (
     ("FY2024", 192.5 * M), ("FY2025", 277.7 * M), ("Q1 2026", 333.9 * M),
@@ -349,98 +244,7 @@ def annual_obligations_as_of(on: date) -> Tuple[float, int]:
 #
 # 這組資料是持幣量的主力來源(手工的 BTC_HELD 表已於 2026-09-27 移除,見上)。
 # ---------------------------------------------------------------------------
-WEEKLY_BTC_HELD: Tuple[Tuple[date, int], ...] = (
-    (date(2024, 9, 12), 244800),
-    (date(2024, 9, 19), 252220),
-    (date(2024, 11, 10), 279420),
-    (date(2024, 11, 17), 331200),
-    (date(2024, 11, 24), 386700),
-    (date(2024, 12, 1), 402100),
-    (date(2024, 12, 8), 423650),
-    (date(2024, 12, 15), 439000),
-    (date(2024, 12, 22), 444262),
-    (date(2024, 12, 29), 446400),
-    (date(2025, 1, 5), 447470),
-    (date(2025, 1, 12), 450000),
-    (date(2025, 1, 20), 461000),
-    (date(2025, 1, 26), 471107),
-    (date(2025, 2, 2), 471107),
-    (date(2025, 2, 9), 478740),
-    (date(2025, 2, 17), 478740),
-    (date(2025, 2, 23), 499096),
-    (date(2025, 3, 2), 499096),
-    (date(2025, 3, 9), 499096),
-    (date(2025, 3, 16), 499226),
-    (date(2025, 3, 23), 506137),
-    (date(2025, 3, 30), 528185),
-    (date(2025, 4, 13), 531644),
-    (date(2025, 4, 20), 538200),
-    (date(2025, 4, 27), 553555),
-    (date(2025, 5, 4), 555450),
-    (date(2025, 5, 11), 568840),
-    (date(2025, 5, 18), 576230),
-    (date(2025, 6, 1), 580955),
-    (date(2025, 6, 8), 582000),
-    (date(2025, 6, 15), 592100),
-    (date(2025, 6, 22), 592345),
-    (date(2025, 6, 29), 597325),
-    (date(2025, 6, 30), 597325),
-    (date(2025, 7, 6), 597325),
-    (date(2025, 7, 13), 601550),
-    (date(2025, 7, 20), 607770),
-    (date(2025, 7, 27), 607770),
-    (date(2025, 8, 3), 628791),
-    (date(2025, 8, 10), 628946),
-    (date(2025, 8, 17), 629376),
-    (date(2025, 8, 24), 632457),
-    (date(2025, 9, 1), 636505),
-    (date(2025, 9, 7), 638460),
-    (date(2025, 9, 14), 638985),
-    (date(2025, 9, 21), 639835),
-    (date(2025, 9, 28), 640031),
-    (date(2025, 10, 19), 640418),
-    (date(2025, 10, 26), 640808),
-    (date(2025, 11, 2), 641205),
-    (date(2025, 11, 9), 641692),
-    (date(2025, 11, 16), 649870),
-    (date(2025, 12, 7), 660624),
-    (date(2025, 12, 14), 671268),
-    (date(2025, 12, 21), 671268),
-    (date(2025, 12, 28), 672497),
-    (date(2025, 12, 31), 672500),
-    (date(2026, 1, 4), 673783),
-    (date(2026, 1, 11), 687410),
-    (date(2026, 1, 19), 709715),
-    (date(2026, 1, 25), 712647),
-    (date(2026, 2, 1), 713502),
-    (date(2026, 2, 8), 714644),
-    (date(2026, 2, 16), 717131),
-    (date(2026, 2, 22), 717722),
-    (date(2026, 3, 1), 720737),
-    (date(2026, 3, 15), 761068),
-    (date(2026, 3, 22), 762099),
-    (date(2026, 3, 31), 762099),
-    (date(2026, 4, 5), 766970),
-    (date(2026, 4, 12), 780897),
-    (date(2026, 4, 19), 815061),
-    (date(2026, 4, 26), 818334),
-    (date(2026, 5, 3), 818334),
-    (date(2026, 5, 10), 818869),
-    (date(2026, 5, 17), 843738),
-    (date(2026, 5, 31), 843706),
-    (date(2026, 6, 7), 845256),
-    (date(2026, 6, 14), 846842),
-    (date(2026, 6, 21), 847363),
-    (date(2026, 6, 28), 847363),
-    (date(2026, 6, 30), 846000),
-    (date(2026, 7, 5), 843775),
-    (date(2026, 7, 12), 843775),
-    (date(2026, 7, 19), 843775),
-    (date(2026, 7, 26), 843775),
-    (date(2026, 8, 2), 842138),
-    (date(2026, 8, 9), 840447),
-    (date(2026, 8, 16), 840447),
-)
+WEEKLY_BTC_HELD = load_weekly_btc_held()
 
 # ---------------------------------------------------------------------------
 # §5.7c — SEC XBRL 季度錨點(debt / cash / 股數;BTC 持有量已被上面的週資料取代)
@@ -451,40 +255,17 @@ WEEKLY_BTC_HELD: Tuple[Tuple[date, int], ...] = (
 # us-gaap:CryptoAssetNumberOfUnits — 期末 BTC 持有量(ASU 2023-08 公允價值法)
 # 2024-12-31 = 447,470,來自 FY2025 10-K 的比較期重編數字。
 # (已移除的手工表在同一天寫 446,400,是 8-K 初次揭露值,差 1,070 顆／0.24%。)
-XBRL_BTC_HELD: Tuple[Tuple[date, float], ...] = (
-    (date(2024, 12, 31), 447_470),
-    (date(2025, 12, 31), 672_500),
-    (date(2026, 3, 31), 762_099),
-    (date(2026, 6, 30), 846_000),    # 注意:高於 7/5 的 843,775 —— 5 月底至 8 月的賣幣是真的
-)
+XBRL_BTC_HELD = load_xbrl_btc_held()
 
 # us-gaap:LongTermDebtNoncurrent — 每季,取代原本只有 3 個點的 CONVERTIBLE_TOTALS
-XBRL_DEBT: Tuple[Tuple[date, float], ...] = (
-    (date(2024, 3, 31), 3.559e9), (date(2024, 6, 30), 3.703e9),
-    (date(2024, 9, 30), 4.212e9), (date(2024, 12, 31), 7.191e9),
-    (date(2025, 3, 31), 8.140e9), (date(2025, 6, 30), 8.162e9),
-    (date(2025, 9, 30), 8.174e9), (date(2025, 12, 31), 8.159e9),
-    (date(2026, 3, 31), 8.165e9), (date(2026, 6, 30), 6.670e9),
-)
+XBRL_DEBT = load_xbrl_debt()
 
 # us-gaap:CashAndCashEquivalentsAtCarryingValue — 每季,資產負債表現金(非 USD Reserve)
-XBRL_CASH: Tuple[Tuple[date, float], ...] = (
-    (date(2024, 3, 31), 0.081e9), (date(2024, 6, 30), 0.067e9),
-    (date(2024, 9, 30), 0.046e9), (date(2024, 12, 31), 0.038e9),
-    (date(2025, 3, 31), 0.060e9), (date(2025, 6, 30), 0.050e9),
-    (date(2025, 9, 30), 0.054e9), (date(2025, 12, 31), 2.301e9),
-    (date(2026, 3, 31), 2.207e9), (date(2026, 6, 30), 1.712e9),
-)
+XBRL_CASH = load_xbrl_cash()
 
 # us-gaap:WeightedAverageNumberOfSharesOutstandingBasic — 單季(非 YTD)加權平均。
 # 拿來補期末在外股數(SHARE_COUNTS)之間的中繼點,精度略遜於期末數但覆蓋密得多。
-XBRL_WAVG_SHARES: Tuple[Tuple[date, float], ...] = (
-    (date(2024, 3, 31), 171_942_000), (date(2024, 6, 30), 178_607_000),
-    (date(2024, 9, 30), 197_273_000),
-    (date(2025, 3, 31), 256_473_000), (date(2025, 6, 30), 275_244_000),
-    (date(2025, 9, 30), 284_376_000),
-    (date(2026, 3, 31), 333_913_000), (date(2026, 6, 30), 352_534_000),
-)
+XBRL_WAVG_SHARES = load_xbrl_wavg_shares()
 
 BTC_EVENTS: Tuple[Tuple[date, str], ...] = (
     (date(2026, 4, 20), "買進 34,164 BTC(史上第三大)"),
@@ -511,24 +292,7 @@ def btc_held_as_of(on: date) -> float:
 # §5.8 政策與定義變更(建模斷點)
 # ===========================================================================
 
-@dataclass(frozen=True)
-class PolicyBreak:
-    as_of: date
-    title: str
-    detail: str
-    breaks_timeseries: bool
-
-
-POLICY_BREAKS: Tuple[PolicyBreak, ...] = (
-    PolicyBreak(date(2025, 8, 18), "mNAV 政策帶",
-                ">4x 積極增發 / 2.5–4x 機會性 / <2.5x 戰術性付息 / <1x 考慮發債回購 MSTR"
-                "(隱含股價 $210 / $600 / $1,000)", False),
-    PolicyBreak(date(2026, 6, 29), "Digital Credit Capital Framework",
-                "取代舊政策帶。USD Reserve 下限 $1.25B;$1.0B 優先股回購授權;"
-                "$1.0B MSTR 回購授權;$1.25B BTC 變現授權", False),
-    PolicyBreak(date(2026, 7, 23), "Strategy 重新定義自家 mNAV 為 price ÷ Net BPS",
-                "⚠️ 時間序列必須在此斷開,公司明言前後 not comparable", True),
-)
+POLICY_BREAKS = load_policy_breaks()
 
 
 # ===========================================================================
@@ -787,18 +551,13 @@ OTHER_KNOWN_PRICES = {
 # §6 驗證錨點
 # ===========================================================================
 
-# §4.2 / §6.1 —— 2026-08-13 FWP 的確切參數(已反解驗證)
-PARAMS_2026_08_13 = {
-    "btc_held": 840_447,
-    "usd_reserve": 4.650 * B,
-    "debt_otm_notional": 6.754 * B,
-    "pref_otm_notional": 15.239 * B,
-    "fdso": 398_220_309,          # FWP 只寫 "~398.2M",此值為反解
-}
-FWP_2026_08_13_ACCESSION = "d169243dfwp"
-FWP_SHARES_ASSUMED_DILUTED = 423.838 * M     # §8.2 Gross BPS 的分母,與 FDSO 不同
-FWP_MSTR_PRICE = 97.33
-FWP_BTC_PRICE = 64_279.0
+# §4.2 / §6.1 —— 2026-08-13 FWP 的確切參數(已反解驗證)。數字在 data/ref/fwp_params.csv。
+_fwp13 = load_fwp_row("2026-08-13")
+PARAMS_2026_08_13 = fwp_params("2026-08-13")
+FWP_2026_08_13_ACCESSION = _fwp13["accession"]
+FWP_SHARES_ASSUMED_DILUTED = float(_fwp13["shares_assumed_diluted"])
+FWP_MSTR_PRICE = float(_fwp13["mstr_price"])
+FWP_BTC_PRICE = float(_fwp13["btc_price"])
 
 # ---------------------------------------------------------------------------
 # 2026-08-24 FWP(較新的一份,市場資料為 8/21 收盤、持幣為 8/23)
@@ -810,25 +569,16 @@ FWP_BTC_PRICE = 64_279.0
 #   Gross BPS        198,289  → 188,628 sats
 # 舊的 08-13 參數與敏感度表保留不動 —— 那是黃金回歸測試的對象,不該隨新資料變動。
 # ---------------------------------------------------------------------------
-PARAMS_2026_08_24 = {
-    "btc_held": 840_447,
-    # ⚠️ 這一份的官方公式加回的是 **USD Assets**(Reserve $5.10B + Cash $1.59B),
-    #    不是只有 USD Reserve —— 08-13 那份加回的是單一的 $4.650B。兩份揭露
-    #    口徑不同,各自照自己的公式對,不要互相套用。
-    "usd_reserve": 6.69 * B,
-    "debt_otm_notional": 6.754 * B,
-    "pref_otm_notional": 14.966 * B,
-    # FWP 只寫 "~419.9M",此值為反解(讓六列敏感度的最大絕對誤差最小,$0.009)。
-    # 逐列反解落在 419.974M–420.065M(差 2.2bp),不存在能逐分重現全部六列的
-    # 單一值 —— 與 08-13 那份同樣的成因:輸入只揭露到 $1M 精度。
-    "fdso": 419_988_970,
-}
-FWP_2026_08_24_ACCESSION = "d431748dfwp"
-FWP_2026_08_24_SHARES_ASSUMED_DILUTED = 445.6 * M   # 由 Gross BPS 188,628 sats 反解
-FWP_2026_08_24_MSTR_PRICE = 119.25
-FWP_2026_08_24_BTC_PRICE = 77_004.0
-FWP_2026_08_24_USD_RESERVE = 5.10 * B     # 指定用於優先股股息與債息
-FWP_2026_08_24_USD_CASH = 1.59 * B        # 一般用途流動性
+# 08-24 的 usd_reserve 欄是 USD Assets（Reserve $5.10B + Cash $1.59B）。
+# 08-13 那一列的 usd_reserve 是單一的 $4.650B。兩份口徑各自留在 CSV。
+_fwp24 = load_fwp_row("2026-08-24")
+PARAMS_2026_08_24 = fwp_params("2026-08-24")
+FWP_2026_08_24_ACCESSION = _fwp24["accession"]
+FWP_2026_08_24_SHARES_ASSUMED_DILUTED = float(_fwp24["shares_assumed_diluted"])
+FWP_2026_08_24_MSTR_PRICE = float(_fwp24["mstr_price"])
+FWP_2026_08_24_BTC_PRICE = float(_fwp24["btc_price"])
+FWP_2026_08_24_USD_RESERVE = float(_fwp24["usd_reserve_stated"])
+FWP_2026_08_24_USD_CASH = float(_fwp24["usd_cash"])
 
 # 官方敏感度表(6 列,實測全部對到 0.02% 以內)
 FWP_2026_08_24_SENSITIVITY_TABLE: Tuple[Tuple[float, float], ...] = (
@@ -856,7 +606,7 @@ FWP_2026_08_24_DERIVED_METRICS = {
     "vol_30d_pct": 71,
     "vol_1y_pct": 76,
 }
-FWP_2026_08_24_ANNUAL_OBLIGATIONS = 1.703 * B
+FWP_2026_08_24_ANNUAL_OBLIGATIONS = float(_fwp24["annual_obligations"])
 
 # §6.1 黃金測試:官方敏感度表
 FWP_SENSITIVITY_TABLE: Tuple[Tuple[float, float], ...] = (
