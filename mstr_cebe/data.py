@@ -257,7 +257,11 @@ WEEKLY_BTC_HELD = load_weekly_btc_held()
 # (已移除的手工表在同一天寫 446,400,是 8-K 初次揭露值,差 1,070 顆／0.24%。)
 XBRL_BTC_HELD = load_xbrl_btc_held()
 
-# us-gaap:LongTermDebtNoncurrent — 每季,取代原本只有 3 個點的 CONVERTIBLE_TOTALS
+# 2026-06-30 以前是 us-gaap:LongTermDebtNoncurrent（流動部分不到 $40M，
+# 四捨五入到百萬後與總額幾乎相同）。2026-09-30 改用 us-gaap:LongTermDebt
+# $6,715,414,000（accession 0001050446-26-000060）：非流動只剩
+# $5,669,745,000，另外 $1,045,669,000 被重分類成一年內到期。沿用非流動
+# 會把債務少記約 $1.05B。
 XBRL_DEBT = load_xbrl_debt()
 
 # us-gaap:CashAndCashEquivalentsAtCarryingValue — 每季,資產負債表現金(非 USD Reserve)

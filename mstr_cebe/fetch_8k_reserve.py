@@ -38,6 +38,11 @@ __all__ = ["parse_reserve", "fetch_all"]
 
 _SCALE = {"million": 1e6, "billion": 1e9}
 
+
+def _usd(num: str, unit: str) -> float:
+    """$132.7 million 是 132.7 × 1e6。直接乘會得到 132699999.99999999。"""
+    return float(round(float(num) * _SCALE[unit.lower()]))
+
 # 新版:Reserve 與 Cash 兩個數字
 _BOTH_PAT = re.compile(
     r'As of ([A-Z][a-z]+ \d{1,2}, \d{4}), the balances of the USD Reserve and '
@@ -60,15 +65,15 @@ def parse_reserve(html: str) -> Optional[Dict]:
     if m:
         return {
             "as_of": _parse_date(m.group(1)).isoformat(),
-            "usd_reserve": float(m.group(2)) * _SCALE[m.group(3).lower()],
-            "usd_cash": float(m.group(4)) * _SCALE[m.group(5).lower()],
+            "usd_reserve": _usd(m.group(2), m.group(3)),
+            "usd_cash": _usd(m.group(4), m.group(5)),
         }
 
     m = _ONE_PAT.search(text)
     if m:
         return {
             "as_of": _parse_date(m.group(1)).isoformat(),
-            "usd_reserve": float(m.group(2)) * _SCALE[m.group(3).lower()],
+            "usd_reserve": _usd(m.group(2), m.group(3)),
             "usd_cash": None,
         }
     return None

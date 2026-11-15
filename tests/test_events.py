@@ -274,7 +274,9 @@ def test_flows_between_matches_the_legacy_aggregation():
             }
             got = E.flows_between(conn, a, end)
             for k, want in legacy.items():
-                assert got[k] == want, f"{a} {k}: {got[k]!r} != {want!r}"
+                # 百萬美元欄位乘回去之後，浮點尾數會差到 1e-8 美元。
+                assert got[k] == pytest.approx(want, abs=0.01), (
+                    f"{a} {k}: {got[k]!r} != {want!r}")
     finally:
         conn.close()
 

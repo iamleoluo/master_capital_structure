@@ -8,15 +8,15 @@ import { metricAt } from "../src/metrics/read";
 const last = N - 1;
 
 describe("截至日", () => {
-  it("最後一天的可轉債沿用 2026-06-30", () => {
+  it("最後一天的債務沿用 2026-09-30 的長期債務總額", () => {
     const f = freshness("claims.debt", last);
     expect(f.method).toBe("carry");
-    expect(f.asOf).toBe("2026-06-30");
+    expect(f.asOf).toBe("2026-09-30");
   });
 
   it("股數與現金欄停在自己的最後變動日", () => {
-    expect(freshness("shares.basic", last)).toMatchObject({ method: "carry", asOf: "2026-08-21" });
-    expect(freshness("claims.cash", last)).toMatchObject({ method: "spliced", asOf: "2026-09-28" });
+    expect(freshness("shares.basic", last)).toMatchObject({ method: "carry", asOf: "2026-10-26" });
+    expect(freshness("claims.cash", last)).toMatchObject({ method: "spliced", asOf: "2026-11-09" });
   });
 
   it("股價與幣價是當日", () => {
@@ -24,12 +24,12 @@ describe("截至日", () => {
     expect(freshness("price.btc", last).asOf).toBe(daily.date[last]);
   });
 
-  it("持幣是週頻階梯，最後一天仍是 847,666", () => {
+  it("持幣是週頻階梯，最後一天是 2026-11-08 的 850,364", () => {
     const i = daily.date.indexOf("2024-11-22");
     expect(metricAt("btc.held", i).value).toBe(331200);
     expect(daily.held[i]).not.toBe(331200);
-    expect(metricAt("btc.held", last).value).toBe(847666);
-    expect(freshness("btc.held", last)).toMatchObject({ method: "step", asOf: "2026-09-27" });
+    expect(metricAt("btc.held", last).value).toBe(850364);
+    expect(freshness("btc.held", last)).toMatchObject({ method: "step", asOf: "2026-11-08" });
   });
 
   it("頁面不再畫最舊欄位的天數徽章", () => {

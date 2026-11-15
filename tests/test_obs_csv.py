@@ -13,6 +13,7 @@ def test_xbrl_debt_matches_the_old_constants():
         (date(2025, 3, 31), 8.140e9), (date(2025, 6, 30), 8.162e9),
         (date(2025, 9, 30), 8.174e9), (date(2025, 12, 31), 8.159e9),
         (date(2026, 3, 31), 8.165e9), (date(2026, 6, 30), 6.670e9),
+        (date(2026, 9, 30), 6_715_414_000),
     )
 
 
@@ -27,7 +28,11 @@ def test_xbrl_cash_and_holdings_anchors():
 def test_share_counts_and_preferred_q2():
     basic = {sc.as_of: sc.basic for sc in D.SHARE_COUNTS}
     assert basic[date(2026, 8, 21)] == 415_932_914
+    assert basic[date(2026, 10, 25)] == 422_354_607
     q2 = next(p for p in D.PREFERRED_BALANCES if p.as_of == date(2026, 6, 30))
+    q3 = next(p for p in D.PREFERRED_BALANCES if p.as_of == date(2026, 9, 30))
+    assert q3.total == 14_109_839_000
+    assert q3.shares_by_ticker["STRC"] == 90_964_532
     assert q2.total == 15_462_056_000
     assert q2.shares_by_ticker["STRC"] == 104_894_705
     assert [i.ticker for i in D.PREFERRED_IPOS] == ["STRK", "STRF", "STRD", "STRC", "STRE"]
